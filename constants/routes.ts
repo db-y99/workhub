@@ -1,0 +1,41 @@
+/**
+ * Tất cả đường dẫn trang – dùng constants để tái sử dụng, không hardcode.
+ */
+
+export const ROUTES = {
+  // Public
+  HOME: "/",
+  LOGIN: "/login",
+  AUTH_CALLBACK: "/auth/callback",
+  BLOGS: "/blogs",
+
+  // Protected (dashboard)
+  APPROVE: "/approve",
+  USERS: "/users",
+  DEPARTMENTS: "/departments",
+  SETTINGS: "/settings",
+  STATISTICS: "/statistics",
+  LOANS_DISBURSEMENT_SUCCESS: "/loans/disbursement-success",
+  COMPANY_RESOURCES: "/company-resources",
+  PERMISSIONS: "/permissions",
+  ROLES: "/roles",
+} as const;
+
+export type RouteValue = (typeof ROUTES)[keyof typeof ROUTES];
+
+export const PUBLIC_ROUTES = [ROUTES.HOME, ROUTES.LOGIN] as const;
+
+export const PROTECTED_ROUTES = [
+  ROUTES.APPROVE,
+  ROUTES.USERS,
+  ROUTES.DEPARTMENTS,
+  ROUTES.SETTINGS,
+  ROUTES.STATISTICS,
+  ROUTES.LOANS_DISBURSEMENT_SUCCESS,
+  ROUTES.COMPANY_RESOURCES,
+  ROUTES.PERMISSIONS,
+  ROUTES.ROLES,
+  ROUTES.HOME
+] as const;
+
+export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.AUTH_CALLBACK] as const;

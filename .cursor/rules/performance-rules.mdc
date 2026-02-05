@@ -1,0 +1,909 @@
+---
+alwaysApply: true
+---
+## 1️⃣ PAGE LUÔN LÀ SERVER COMPONENT
+
+**Rule:** Tất cả file `page.tsx` phải là Server Component (không có `'use client'`)
+
+**Lý do:**
+- Server Components render trên server, giảm JavaScript bundle
+- Tự động code splitting
+- Có thể fetch data trực tiếp từ database
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - app/users/page.tsx
+import { getUsersService } from '@/services/users/users.service';
+import UsersTable from '@/components/users-table.client';
+
+const UsersPage = async () => {
+  const users = await getUsersService();
+
+  return <UsersTable users={users} />;
+};
+
+export default UsersPage;
+
+// ❌ SAI - Không được làm
+'use client'; // ❌ KHÔNG được thêm vào page.tsx
+const UsersPage = () => { ... }
+```
+
+---
+
+## 2️⃣ COMPONENT > 200 DÒNG → TÁCH
+
+**Rule:** Nếu component có hơn 200 dòng code, phải tách thành các component nhỏ hơn
+
+**Lý do:**
+- Dễ maintain và test
+- Tăng khả năng tái sử dụng
+- Hỗ trợ code splitting tốt hơn
+
+**Cách tách:**
+```typescript
+// ❌ SAI - Component quá dài (> 200 dòng)
+const UserDashboard = () => {
+  // 300+ dòng code...
+  return <div>...</div>;
+};
+
+// ✅ ĐÚNG - Tách thành các component nhỏ
+// components/user-dashboard.tsx
+import UserHeader from './user-header.client';
+import UserStats from './user-stats.client';
+import UserTable from './user-table.client';
+
+const UserDashboard = () => {
+  return (
+    <div>
+      <UserHeader />
+      <UserStats />
+      <UserTable />
+    </div>
+  );
+};
+```
+
+---
+
+## 3️⃣ DYNAMIC IMPORTS & SSR RULES
+
+**⚠️ IMPORTANT:** This project uses Vercel React Best Practices for detailed dynamic import patterns.
+
+**Reference:** See `.cursor/skills/vercel-react-best-practices/rules/bundle-dynamic-imports.md` for comprehensive dynamic import guidance.
+
+**Project-Specific Rules:**
+
+### Dynamic Import Usage:
+- ✅ **Always use `dynamic()`** for large layout components (Sidebar, Right panel, Modal)
+- ✅ **Always use `dynamic()`** for heavy components (Charts, Editors, Tables)
+- ✅ **Always provide loading states** with `loading` prop
+- ✅ **Reference Vercel rules** for detailed examples
+
+### SSR False Rules (CRITICAL):
+**❌ KHÔNG dùng `ssr: false`** nếu component vẫn render tốt trên server
+**✅ CHỈ dùng `ssr: false`** khi component phụ thuộc browser-only API
+
+**Lý do:**
+- SSR giúp SEO tốt hơn, initial render nhanh hơn
+- Chỉ tắt SSR khi thật sự cần (browser-only API)
+- Tránh tắt SSR không cần thiết → mất lợi ích của SSR
+
+**Khi nào CẦN `ssr: false`:**
+- ✅ Component dùng `window`, `document`, `localStorage`, `sessionStorage`
+- ✅ Chart libraries: Chart.js, Recharts, D3, etc.
+- ✅ Rich text editors: TinyMCE, Quill, Draft.js, etc.
+- ✅ Canvas, WebGL, Media APIs
+
+**Khi nào KHÔNG CẦN `ssr: false`:**
+- ❌ Component chỉ render JSX/HTML thông thường
+- ❌ Sidebar, Modal, Right panel (chỉ render UI)
+- ❌ Form components, Table components
+- ❌ Component không dùng browser APIs
+
+### .client.tsx ≠ ssr: false
+**Quan trọng:** Client Component (`.client.tsx`) vẫn có thể SSR được!
+
+Client Component chỉ cần `'use client'` directive, không nhất thiết phải tắt SSR. Chỉ tắt SSR khi component dùng browser-only APIs.
+
+**Project Convention:**
+```typescript
+// ✅ ĐÚNG - Component render tốt trên server → KHÔNG cần ssr: false
+const Sidebar = dynamic(() => import('@/components/sidebar.client'), {
+  loading: () => <div>Loading sidebar...</div>,
+  // KHÔNG có ssr: false → component vẫn SSR được!
+});
+
+// ✅ ĐÚNG - Chart dùng browser API → CẦN ssr: false
+const ChartComponent = dynamic(
+  () => import('@/components/chart.client'),
+  {
+    ssr: false, // ✅ CẦN vì Chart.js dùng window/document
+    loading: () => <div>Loading chart...</div>,
+  }
+);
+
+// ❌ SAI - Tắt SSR không cần thiết
+const UserProfile = dynamic(() => import('@/components/user-profile.client'), {
+  ssr: false, // ❌ KHÔNG CẦN - component chỉ render JSX
+});
+```
+
+**Project Guidelines:**
+- ✅ Sidebar/Right panel → `dynamic()` with **NO** `ssr: false`
+- ✅ Charts/Editors → `dynamic()` with `ssr: false`
+- ✅ Always provide loading states
+- ✅ Reference Vercel rules for detailed examples
+
+---
+
+## 5️⃣ KHÔNG FETCH TRONG USEEFFECT CHO INITIAL LOAD
+
+**Rule:** Không dùng `useEffect` để fetch data cho initial load. Thay vào đó:
+- Server Component: Fetch trực tiếp trong component
+- Client Component: Dùng React Query hoặc Server Component pass data xuống
+
+**Lý do:**
+- `useEffect` chạy sau khi component mount → tăng loading time
+- Server Component fetch data trước khi render → nhanh hơn
+- Tránh layout shift và flash of loading state
+
+**Ví dụ:**
+```typescript
+// ❌ SAI - Fetch trong useEffect
+'use client';
+
+const UsersPage = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // ❌ Fetch sau khi mount → chậm
+    fetchUsers().then(setUsers).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  return <UsersTable users={users} />;
+};
+
+// ✅ ĐÚNG - Server Component fetch trực tiếp
+const UsersPage = async () => {
+  const users = await getUsersService(); // Fetch trên server
+  return <UsersTable users={users} />;
+};
+
+// ✅ ĐÚNG - Client Component dùng React Query
+'use client';
+
+import { useUsersQuery } from '@/features/users/queries/use-users.query';
+
+const UsersPage = () => {
+  const { data: users, isLoading } = useUsersQuery();
+
+  if (isLoading) return <div>Loading...</div>;
+  return <UsersTable users={users} />;
+};
+
+// ✅ ĐÚNG - React Query với initialData (No double fetch!)
+const DashboardPage = async () => {
+  const users = await getUsersService(); // Fetch trên server
+  return <UsersClient initialData={users} />;
+};
+
+// Client component với initialData
+'use client';
+
+const UsersClient = ({ initialData }: { initialData: User[] }) => {
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    initialData, // ✅ No loading state, no double fetch
+  });
+
+  return <UsersTable users={users} />;
+};
+```
+
+---
+
+## 5️⃣1️⃣ CACHE STRATEGY CHO DATA FETCHING
+
+**Rule:** Luôn chọn cache strategy phù hợp cho mỗi fetch operation. Next.js có 3 strategies chính:
+
+**Lý do:**
+- Cache strategy ảnh hưởng lớn đến performance và cost
+- Static/ISR giảm server load và improve response time
+- Dynamic chỉ dùng khi cần real-time data
+
+**Cache Strategies:**
+
+### Static (force-cache)
+**Dùng cho:** Content không thay đổi thường xuyên
+- Blog posts, documentation
+- Product descriptions (ít thay đổi)
+- Static pages
+
+```typescript
+// ✅ ĐÚNG - Static content
+const blogPost = await fetch(`https://api.example.com/posts/${id}`, {
+  cache: 'force-cache' // Default, có thể bỏ qua
+});
+```
+
+### ISR (Incremental Static Regeneration)
+**Dùng cho:** Content thay đổi nhưng không cần real-time
+- Product pages (update vài lần/ngày)
+- CMS content
+- Dashboard với data refresh định kỳ
+
+```typescript
+// ✅ ĐÚNG - ISR với revalidate
+const products = await fetch('https://api.example.com/products', {
+  next: { revalidate: 3600 } // Revalidate sau 1 giờ
+});
+
+// ✅ ĐÚNG - ISR với tag-based revalidation
+const cmsContent = await fetch('https://api.example.com/content', {
+  next: { tags: ['cms-content'] } // Có thể revalidate bằng tag
+});
+```
+
+### Dynamic (no-store)
+**Dùng cho:** Real-time data, user-specific data
+- User dashboard với live data
+- Shopping cart
+- Real-time notifications
+
+```typescript
+// ✅ ĐÚNG - Dynamic data
+const userDashboard = await fetch(`https://api.example.com/dashboard/${userId}`, {
+  cache: 'no-store' // Không cache, luôn fetch fresh
+});
+```
+
+**Guidelines:**
+- ✅ **Ưu tiên Static/ISR** cho content không cần real-time
+- ✅ **Dùng Dynamic** chỉ khi thật sự cần fresh data mỗi request
+- ✅ **ISR với tags** cho CMS/dashboard để có thể revalidate khi cần
+- ⚠️ **Không set cache strategy** → Next.js sẽ dùng default (có thể không phù hợp)
+
+**Ví dụ thực tế:**
+```typescript
+// ✅ ĐÚNG - Blog post (static)
+async function BlogPostPage({ id }: { id: string }) {
+  const post = await fetch(`https://api.example.com/posts/${id}`, {
+    cache: 'force-cache' // Blog post không đổi
+  });
+  return <BlogPost post={post} />;
+}
+
+// ✅ ĐÚNG - Product page (ISR)
+async function ProductPage({ id }: { id: string }) {
+  const product = await fetch(`https://api.example.com/products/${id}`, {
+    next: { revalidate: 3600 } // Update mỗi giờ
+  });
+  return <Product product={product} />;
+}
+
+// ✅ ĐÚNG - User dashboard (dynamic)
+async function DashboardPage() {
+  const user = await requireAuth();
+  const stats = await fetch(`https://api.example.com/stats/${user.id}`, {
+    cache: 'no-store' // Cần fresh data
+  });
+  return <Dashboard stats={stats} />;
+}
+```
+
+---
+
+## 6️⃣ TYPE NAMING CONVENTION
+
+**Rule:** Luôn dùng `type TSomething` cho type alias (project lớn)
+
+**Lý do:**
+- Dễ phân biệt type và value
+- Consistent naming convention
+- TypeScript best practice
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Luôn dùng type TSomething
+export type TCourseItem = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+};
+
+// ✅ ĐÚNG - Type composition
+export type TCourseWithMeta = TCourseItem & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ✅ ĐÚNG - Sử dụng trong component
+import { TCourseItem } from '@/types/course.types';
+
+type Props = {
+  course: TCourseItem;
+};
+
+const CourseCard = ({ course }: Props) => {
+  return <div>{course.title}</div>;
+};
+```
+
+**Quy tắc:**
+- ✅ **Luôn dùng `type TSomething`** cho type alias
+- ✅ **Interface chỉ dùng khi:**
+  - Cần `extends` (inheritance)
+  - Public contract/API definitions
+- ❌ **Không dùng interface** cho internal types
+
+---
+
+## 7️⃣ OPTIMIZE FOR BOTH WEB AND MOBILE PERFORMANCE
+
+**Rule:** Tối ưu cho cả web và mobile, xem xét:
+- Bundle size
+- Network conditions
+- Device capabilities
+- Battery usage
+
+**Lý do:**
+- Mobile users có network và device limitations
+- Better user experience across all devices
+- SEO và Core Web Vitals
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Responsive và optimized
+'use client';
+
+import { useMediaQuery } from '@/hooks/use-media-query';
+import dynamic from 'next/dynamic';
+
+// Chart library dùng window/document → CẦN ssr: false
+const HeavyChart = dynamic(() => import('@/components/heavy-chart.client'), {
+  ssr: false, // ✅ CẦN vì Chart.js dùng browser APIs
+});
+
+const Dashboard = () => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  return (
+    <div>
+      <Header />
+      {isMobile ? (
+        // Lightweight mobile view
+        <MobileDashboard />
+      ) : (
+        // Full desktop view with charts
+        <>
+          <DesktopDashboard />
+          <HeavyChart />
+        </>
+      )}
+    </div>
+  );
+};
+```
+
+---
+
+## 4️⃣ ASYNC OPERATIONS & PARALLELIZATION
+
+**Reference:** See `.cursor/skills/vercel-react-best-practices/rules/async-parallel.md` for detailed Promise.all() patterns and waterfall elimination.
+
+**Project Rule:** Always use `Promise.all()` for independent async operations.
+
+**Example:**
+```typescript
+// ✅ ĐÚNG - Parallel operations
+const [user, posts, comments] = await Promise.all([
+  fetchUser(),
+  fetchPosts(),
+  fetchComments()
+]);
+```
+
+**Server Component Pattern:**
+```typescript
+// ✅ ĐÚNG - Server component với parallel fetches
+const DashboardPage = async () => {
+  // Start all fetches immediately
+  const [stats, recentPosts, userProfile] = await Promise.all([
+    getDashboardStats(),
+    getRecentPosts(),
+    getCurrentUserProfile()
+  ]);
+
+  return <Dashboard stats={stats} posts={recentPosts} profile={userProfile} />;
+};
+```
+
+---
+
+## 8️⃣ PREFER SUSPENSE OVER MANUAL LOADING STATES
+
+**Rule:** Prefer Suspense boundaries over manual loading states when possible
+
+**Lý do:**
+- Better UX: No layout shift, faster initial render
+- Automatic loading states
+- Works great with Server Components
+- Streaming content progressively
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Suspense cho async components
+import { Suspense } from 'react';
+
+// Server Component với async data
+async function UserProfile({ userId }: { userId: string }) {
+  const user = await fetchUser(userId); // Async fetch
+  return <div>{user.name}</div>;
+}
+
+// Client wrapper với Suspense
+function ProfilePage({ userId }: { userId: string }) {
+  return (
+    <div>
+      <h1>Profile</h1>
+      <Suspense fallback={<div>Loading profile...</div>}>
+        <UserProfile userId={userId} />
+      </Suspense>
+    </div>
+  );
+}
+
+// ❌ KHÔNG - Manual loading state (layout shift)
+function BadProfilePage({ userId }: { userId: string }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUser(userId).then(setUser).finally(() => setLoading(false));
+  }, [userId]);
+
+  return (
+    <div>
+      <h1>Profile</h1>
+      {loading ? (
+        <div>Loading profile...</div> // Layout shift!
+      ) : (
+        <div>{user.name}</div>
+      )}
+    </div>
+  );
+}
+```
+
+**Khi nào dùng Suspense:**
+- ✅ Async Server Components
+- ✅ Heavy data tables
+- ✅ Charts and visualizations
+- ✅ Large content blocks
+
+**Khi nào dùng manual loading:**
+- ❌ Small, fast operations
+- ❌ When you want layout shift
+- ❌ Complex loading states (retry, error boundaries)
+
+---
+
+**Rule:**
+- Sử dụng Next.js Image component
+- Chọn format phù hợp (WebP, AVIF)
+- Include size data
+- **`loading="lazy"` là default** - không cần set
+- **Chỉ set `priority={true}`** cho above-the-fold images
+
+**Lý do:**
+- Giảm bandwidth
+- Faster page load
+- Better Core Web Vitals
+- Better SEO
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Basic optimized image (lazy load by default)
+import Image from 'next/image';
+
+const ProductImage = ({ src, alt }: { src: string; alt: string }) => {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={800}
+      height={600}
+      quality={85}
+      // loading="lazy" là default - KHÔNG cần set
+      // priority={false} là default - KHÔNG cần set
+    />
+  );
+};
+
+// ✅ ĐÚNG - Hero image - priority load (above-the-fold)
+const HeroImage = ({ src, alt }: { src: string; alt: string }) => {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={1920}
+      height={1080}
+      quality={90}
+      priority={true} // ✅ CHỈ set cho above-the-fold images
+      placeholder="blur"
+      blurDataURL="data:image/jpeg;base64,..." // Optional: blur placeholder
+    />
+  );
+};
+
+// Responsive image với sizes
+const ResponsiveImage = ({ src, alt }: { src: string; alt: string }) => {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={1200}
+      height={800}
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+      quality={85}
+      loading="lazy"
+    />
+  );
+};
+
+// Remote image với domain whitelist
+// next.config.js
+module.exports = {
+  images: {
+    domains: ['example.com', 'cdn.example.com'],
+    formats: ['image/avif', 'image/webp'],
+  },
+};
+
+// Usage
+const RemoteImage = () => {
+  return (
+    <Image
+      src="https://example.com/image.jpg"
+      alt="Remote image"
+      width={800}
+      height={600}
+    />
+  );
+};
+```
+
+**Best Practices cho Images:**
+- ✅ Luôn dùng Next.js `Image` component
+- ✅ Specify `width` và `height` để tránh layout shift
+- ✅ Use `priority={true}` cho above-the-fold images
+- ✅ Use `loading="lazy"` cho below-the-fold images
+- ✅ Specify `sizes` cho responsive images
+- ✅ Use modern formats (WebP, AVIF)
+- ✅ Optimize quality (85-90 cho photos, 100 cho graphics)
+
+---
+
+## 9️⃣ FONT OPTIMIZATION
+
+**Rule:** Luôn dùng `next/font` để load fonts, không load từ CDN ngoài
+
+**Lý do:**
+- `next/font` tự động optimize và self-host fonts
+- Giảm layout shift (CLS)
+- Privacy: không gửi request đến Google Fonts
+- Performance: fonts được bundle và optimize
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Dùng next/font/google
+import { Inter } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap', // Giảm layout shift
+});
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+// ✅ ĐÚNG - Custom font với next/font/local
+import localFont from 'next/font/local';
+
+const customFont = localFont({
+  src: './fonts/custom-font.woff2',
+  display: 'swap',
+});
+
+// ❌ SAI - Load font từ CDN
+// ❌ KHÔNG được làm:
+<link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet" />
+
+// ❌ KHÔNG được làm:
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter');
+</style>
+```
+
+**Rule:**
+- ✅ **BẮT BUỘC dùng `next/font`** cho tất cả fonts
+- ✅ **Google Fonts:** Dùng `next/font/google`
+- ✅ **Custom fonts:** Dùng `next/font/local`
+- ❌ **KHÔNG load font từ CDN** (`<link>`, `@import`)
+- ✅ **Set `display: 'swap'`** để giảm layout shift
+
+---
+
+## 🔟 CACHE & REVALIDATION
+
+**Rule:** Dùng `revalidateTag()` và `revalidatePath()` để invalidate cache khi cần
+
+**Lý do:**
+- ISR cache cần được invalidate khi content thay đổi
+- Tag-based revalidation linh hoạt hơn path-based
+- Quan trọng cho CMS, dashboard, admin panels
+
+**revalidateTag() - Tag-based Revalidation**
+
+**Dùng cho:** Content có thể group theo category/tag
+- CMS content (blog posts, pages)
+- Product categories
+- Content có thể update theo nhóm
+
+```typescript
+// ✅ ĐÚNG - Fetch với tag
+async function BlogPostPage({ id }: { id: string }) {
+  const post = await fetch(`https://api.example.com/posts/${id}`, {
+    next: { tags: ['blog-posts', `post-${id}`] } // Multiple tags
+  });
+  return <BlogPost post={post} />;
+}
+
+// ✅ ĐÚNG - Revalidate bằng tag (trong Server Action)
+'use server';
+
+import { revalidateTag } from 'next/cache';
+
+export async function updatePostAction(id: string, data: PostData) {
+  await updatePostService(id, data);
+  
+  // Revalidate specific post
+  revalidateTag(`post-${id}`);
+  
+  // Hoặc revalidate all blog posts
+  revalidateTag('blog-posts');
+  
+  return { success: true };
+}
+```
+
+**revalidatePath() - Path-based Revalidation**
+
+**Dùng cho:** Specific pages hoặc route groups
+- User profile pages
+- Dashboard routes
+- Specific page cần refresh
+
+```typescript
+// ✅ ĐÚNG - Revalidate specific path
+'use server';
+
+import { revalidatePath } from 'next/cache';
+
+export async function updateUserAction(userId: string, data: UserData) {
+  await updateUserService(userId, data);
+  
+  // Revalidate user profile page
+  revalidatePath(`/users/${userId}`);
+  
+  // Hoặc revalidate all user pages
+  revalidatePath('/users');
+  
+  return { success: true };
+}
+```
+
+**Khi nào dùng cái nào:**
+- ✅ **revalidateTag():** Khi content có thể group (CMS, products, blog)
+- ✅ **revalidatePath():** Khi cần refresh specific page hoặc route group
+- ✅ **Có thể dùng cả hai:** Tag cho content, path cho page structure
+
+**Ví dụ thực tế:**
+```typescript
+// CMS Content với tags
+const cmsPage = await fetch(`https://api.example.com/pages/${slug}`, {
+  next: { tags: ['cms-pages', `page-${slug}`] }
+});
+
+// Server Action update CMS
+'use server';
+export async function updateCMSPageAction(slug: string, content: string) {
+  await updateCMSPageService(slug, content);
+  revalidateTag(`page-${slug}`); // Invalidate specific page
+  revalidatePath(`/pages/${slug}`); // Invalidate page route
+  return { success: true };
+}
+```
+
+**Guidelines:**
+- ✅ **Dùng tags** cho CMS/dashboard content
+- ✅ **Dùng paths** cho user-specific pages
+- ✅ **Combine cả hai** nếu cần
+- ⚠️ **Không overuse:** Chỉ revalidate khi content thật sự thay đổi
+
+---
+
+## 1️⃣1️⃣ ANTI-PATTERNS (CẦN TRÁNH)
+
+**Rule:** Tránh các patterns phổ biến gây performance issues và bad UX
+
+### ❌ "use client" toàn app
+```typescript
+// ❌ SAI - Root layout có 'use client'
+'use client'; // ❌ KHÔNG được làm
+export default function RootLayout({ children }) {
+  return <html><body>{children}</body></html>;
+}
+
+// ✅ ĐÚNG - Root layout là Server Component
+export default function RootLayout({ children }) {
+  return <html><body>{children}</body></html>;
+}
+```
+
+### ❌ Fetch trong useEffect cho page chính
+```typescript
+// ❌ SAI - Fetch trong useEffect
+'use client';
+const UsersPage = () => {
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(setUsers);
+  }, []);
+  return <UsersTable users={users} />;
+};
+
+// ✅ ĐÚNG - Fetch ở Server Component
+const UsersPage = async () => {
+  const users = await getUsersService();
+  return <UsersTable users={users} />;
+};
+```
+
+### ❌ Không set cache cho fetch
+```typescript
+// ❌ SAI - Không set cache strategy
+const products = await fetch('https://api.example.com/products');
+// Next.js sẽ dùng default, có thể không phù hợp
+
+// ✅ ĐÚNG - Explicit cache strategy
+const products = await fetch('https://api.example.com/products', {
+  next: { revalidate: 3600 } // ISR với 1 giờ
+});
+```
+
+### ❌ Đẩy toàn bộ logic sang client
+```typescript
+// ❌ SAI - Logic ở client
+'use client';
+const Dashboard = () => {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    // Complex logic ở client
+    fetchData().then(processData).then(setData);
+  }, []);
+  return <div>{/* ... */}</div>;
+};
+
+// ✅ ĐÚNG - Logic ở server
+const Dashboard = async () => {
+  const data = await getDashboardData(); // Logic ở server
+  return <DashboardClient data={data} />;
+};
+```
+
+### ❌ Render table 1k+ rows ở client
+```typescript
+// ❌ SAI - Render 1000 rows ở client
+'use client';
+const UsersTable = ({ users }: { users: User[] }) => {
+  return (
+    <table>
+      {users.map(user => <tr key={user.id}>...</tr>)} // 1000 rows!
+    </table>
+  );
+};
+
+// ✅ ĐÚNG - Pagination hoặc virtualization
+'use client';
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+const UsersTable = ({ users }: { users: User[] }) => {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: users.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50,
+  });
+  
+  return (
+    <div ref={parentRef} style={{ height: '400px', overflow: 'auto' }}>
+      {virtualizer.getVirtualItems().map(virtualRow => (
+        <div key={virtualRow.key}>{/* ... */}</div>
+      ))}
+    </div>
+  );
+};
+```
+
+**Summary Anti-patterns:**
+- ❌ "use client" ở root layout hoặc page.tsx
+- ❌ Fetch trong useEffect cho initial load
+- ❌ Không set cache strategy cho fetch
+- ❌ Đẩy business logic sang client không cần thiết
+- ❌ Render large lists (>100 rows) không có pagination/virtualization
+
+---
+
+## 📋 CHECKLIST KHI VIẾT CODE
+
+- [ ] Page là Server Component (không có `'use client'`)?
+- [ ] Component > 200 dòng đã được tách?
+- [ ] Dynamic imports dùng đúng (reference Vercel rules)?
+- [ ] SSR false chỉ dùng khi component phụ thuộc browser-only API?
+- [ ] .client.tsx ≠ ssr: false (Client Component vẫn SSR được)?
+- [ ] Không fetch trong `useEffect` cho initial load?
+- [ ] React Query dùng initialData để tránh double fetch?
+- [ ] Types luôn dùng `type TSomething` (không dùng interface)?
+- [ ] Server Component fetch data trực tiếp?
+- [ ] Async operations dùng `Promise.all()` khi independent?
+- [ ] Suspense boundaries dùng thay manual loading states?
+- [ ] Images được optimize (format, size, lazy loading)?
+- [ ] Next.js Image component được sử dụng?
+- [ ] loading="lazy" là default, chỉ set priority cho above-the-fold?
+- [ ] Cache strategy đã được set cho fetch operations?
+- [ ] Fonts dùng `next/font` thay vì CDN?
+- [ ] revalidateTag/revalidatePath được dùng khi cần?
+- [ ] Tránh các anti-patterns (fetch trong useEffect, "use client" toàn app)?
+
+---
+
+## 🎯 TÓM TẮT
+
+**Performance Best Practices (Project-Specific):**
+1. **Server Components First** → Giảm bundle size
+2. **Dynamic Imports & SSR Rules** → Reference Vercel, focus project conventions
+3. **Async Parallelization** → Dùng `Promise.all()` cho independent operations
+4. **Suspense Boundaries** → Prefer over manual loading states
+5. **Avoid Client-side Fetch** → Fetch trên server + React Query initialData
+6. **Component Size** → Tách component > 200 dòng
+7. **Type Naming** → Luôn dùng `type TSomething`
+8. **Image Optimization** → Next.js Image với lazy loading default
+9. **Cache Strategy** → Chọn phù hợp (Static/ISR/Dynamic)
+10. **Font Optimization** → Dùng `next/font`, không CDN
+11. **Cache Revalidation** → Dùng tags/paths khi cần
+12. **Avoid Anti-patterns** → Tránh common mistakes
+
+**References:**
+- 🔗 Vercel React Best Practices: `.cursor/skills/vercel-react-best-practices/`
+- 📖 Dynamic Imports: `rules/bundle-dynamic-imports.md`
+- ⚡ Parallel Operations: `rules/async-parallel.md`
+- 🎯 Suspense: `rules/async-suspense-boundaries.md`
+
+**Mục tiêu:**
+- ⚡ Fast Initial Load
+- 📦 Small Bundle Size
+- 🚀 Better User Experience
+- 📱 Great Mobile Experience
+- 🖼️ Optimized Images

@@ -1,0 +1,659 @@
+---
+alwaysApply: true
+---
+### 0️⃣ HẠN CHẾ DÙNG CLASS
+
+**Rule:** Ưu tiên **types, interfaces, plain objects và factory functions**. Chỉ dùng class khi thật sự cần (VD: thư viện bên ngoài yêu cầu `instanceof`).
+
+**Ưu tiên:**
+- ✅ `type` / `interface` cho error shape
+- ✅ `const createError = { ... }` — factory trả về plain object
+- ✅ `Result<T, E>` — discriminated union
+- ❌ `class ValidationError extends Error` — tránh trừ khi bắt buộc
+
+**Lý do:**
+- Tree-shaking, bundle gọn hơn
+- Dễ serialize (object), không cần `instanceof`
+- Functional style, phù hợp React/Next
+
+---
+
+### 1️⃣ PRIORITIZE ERROR HANDLING AND EDGE CASES
+
+**Rule:** Luôn xử lý errors và edge cases trước khi implement logic chính
+
+**Lý do:**
+- Đảm bảo ứng dụng stable và reliable
+- Tránh crash khi gặp unexpected data
+- Cải thiện user experience
+
+**Ví dụ (Result, không throw):**
+```typescript
+// ✅ ĐÚNG - Xử lý errors trước, return Result
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+
+export const getUserService = async (userId: string): Promise<Result<User | null>> => {
+  if (!userId || typeof userId !== 'string') {
+    return err(createError.validation('Invalid userId'));
+  }
+  if (userId.length === 0) return ok(null);
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+
+  if (error) return err(createError.database(`FETCH_USER_FAILED: ${error.message}`));
+  return ok(data);
+};
+
+// ❌ SAI - Không validate đầu vào
+export const getUserService = async (userId: string) => {
+  // Logic chính ngay → có thể crash nếu userId invalid
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  // ...
+};
+```
+
+---
+
+### 2️⃣ HANDLE ERRORS AT THE BEGINNING OF FUNCTIONS
+
+**Rule:** Xử lý errors và edge cases ở đầu function, trước khi thực hiện logic chính
+
+**Lý do:**
+- Dễ đọc và maintain
+- Fail fast principle
+- Tránh thực hiện logic không cần thiết
+
+**Ví dụ (Result + plain object):**
+```typescript
+// ✅ ĐÚNG - Errors ở đầu function, return err(...)
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const createUserService = async (userData: CreateUserInput): Promise<Result<User>> => {
+  if (!userData.email || !userData.email.includes('@')) {
+    return err(createError.validation(ERROR_MESSAGES.INVALID_EMAIL));
+  }
+  if (!userData.full_name || userData.full_name.trim().length === 0) {
+    return err(createError.validation(ERROR_MESSAGES.FULL_NAME_REQUIRED));
+  }
+  if (userData.email.length > 255) {
+    return err(createError.validation(ERROR_MESSAGES.EMAIL_TOO_LONG));
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from('users').insert(userData).select().single();
+
+  if (error) return err(createError.database(`CREATE_USER_FAILED: ${error.message}`));
+  return ok(data);
+};
+```
+
+---
+
+### 3️⃣ USE EARLY RETURNS FOR ERROR CONDITIONS
+
+**Rule:** Dùng early returns để tránh deep nesting và tăng readability
+
+**Lý do:**
+- Code dễ đọc hơn
+- Giảm cognitive load
+- Tránh "pyramid of doom"
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Early returns
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const processPayment = async (paymentData: PaymentData) => {
+  // Early return cho invalid input
+  if (!paymentData.amount || paymentData.amount <= 0) {
+    return { success: false, error: 'Invalid amount' };
+  }
+
+  if (!paymentData.userId) {
+    return { success: false, error: ERROR_MESSAGES.USER_ID_REQUIRED };
+  }
+
+  // Early return cho edge case
+  if (paymentData.amount > 10000) {
+    return { success: false, error: 'Amount exceeds limit' };
+  }
+
+  // Logic chính - không cần else
+  const result = await chargePayment(paymentData);
+  return { success: true, data: result };
+};
+
+// ❌ SAI - Deep nesting
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const processPayment = async (paymentData: PaymentData) => {
+  if (paymentData.amount && paymentData.amount > 0) {
+    if (paymentData.userId) {
+      if (paymentData.amount <= 10000) {
+        const result = await chargePayment(paymentData);
+        return { success: true, data: result };
+      } else {
+        return { success: false, error: 'Amount exceeds limit' };
+      }
+    } else {
+      return { success: false, error: ERROR_MESSAGES.USER_ID_REQUIRED };
+    }
+  } else {
+    return { success: false, error: 'Invalid amount' };
+  }
+};
+```
+
+---
+
+### 4️⃣ UTILIZE GUARD CLAUSES
+
+**Rule:** Sử dụng guard clauses để xử lý preconditions và invalid states sớm
+
+**Lý do:**
+- Code flow rõ ràng hơn
+- Dễ test và debug
+- Tránh nested conditions
+
+**Ví dụ (Result + plain object, không class):**
+```typescript
+// ✅ ĐÚNG - Guard clauses → return err(...)
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const updateUserService = async (
+  userId: string,
+  updates: UpdateUserInput
+): Promise<Result<User>> => {
+  if (!userId) return err(createError.validation(ERROR_MESSAGES.USER_ID_REQUIRED));
+  if (!updates || Object.keys(updates).length === 0) {
+    return err(createError.validation(ERROR_MESSAGES.UPDATES_OBJECT_EMPTY));
+  }
+
+  const existingResult = await getUserService(userId);
+  if (existingResult.ok === false) return err(existingResult.error);
+
+  if (updates.email && !isValidEmail(updates.email)) {
+    return err(createError.validation(ERROR_MESSAGES.INVALID_EMAIL_FORMAT));
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) return err(createError.database(`UPDATE_USER_FAILED: ${error.message}`));
+  return ok(data);
+};
+```
+
+---
+
+### 5️⃣ SERVICE: VALIDATE & TRẢ VỀ RESULT; KHÔNG QUYẾT ĐỊNH USER MESSAGE
+
+**🔒 RULE CỨNG:**
+- ❌ **Service KHÔNG quyết định user-facing message**
+- ✅ **Ưu tiên: Service trả về `Result<T, E>` (error là object `{ code, message }`)**
+- ✅ **Action / Component layer map `error.code` → user message**
+
+**Lý do:**
+- Service dùng lại ở nhiều context (API, Action, Component)
+- Tách biệt business logic và presentation
+- Result pattern: explicit, type-safe, không cần class
+
+**Ví dụ (Result + plain object):**
+```typescript
+// ✅ ĐÚNG - Service return Result, error có code (không class)
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const deleteUserService = async (userId: string): Promise<Result<true>> => {
+  if (!userId) return err(createError.validation(ERROR_MESSAGES.USER_ID_REQUIRED));
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+
+  if (error) return err(createError.database('DELETE_USER_FAILED'));
+  return ok(true);
+};
+
+// ✅ ĐÚNG - Action unwrap Result, map code → user message
+'use server';
+
+import { deleteUserService } from '@/services/users/users.service';
+import { isErr } from '@/types/result.types';
+import { ERROR_CODES } from '@/constants/error-codes';
+
+export const deleteUserAction = async (userId: string) => {
+  const r = await deleteUserService(userId);
+  if (isErr(r)) {
+    const msg = r.error.code === ERROR_CODES.DATABASE
+      ? 'Unable to delete user. Please try again later.'
+      : r.error.code === ERROR_CODES.VALIDATION
+        ? 'Invalid user ID'
+        : 'An unexpected error occurred. Please contact support.';
+    return { success: false, error: msg };
+  }
+  return { success: true };
+};
+
+// ✅ ĐÚNG - Component dùng Action, hiển thị message từ Action
+'use client';
+
+import { deleteUserAction } from '@/features/users/actions/delete-user.action';
+
+const DeleteUserButton = ({ userId }: { userId: string }) => {
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    const result = await deleteUserAction(userId);
+    if (!result.success) setError(result.error);
+    // else success handling
+  };
+
+  return (
+    <div>
+      <button onClick={handleDelete}>Delete User</button>
+      {error && <div className="error-message">{error}</div>}
+    </div>
+  );
+};
+
+// ❌ SAI - Service quyết định user message
+export const deleteUserService = async (userId: string) => {
+  if (error) {
+    return err({ code: 'DATABASE', message: 'Unable to delete user. Please try again later.' }); // ❌
+  }
+};
+```
+
+---
+
+### 6️⃣ KHÔNG DÙNG SERVICE TRỰC TIẾP TRONG CLIENT COMPONENT
+
+**🔒 RULE CỨNG:**
+- ❌ **Không gọi service trực tiếp trong Client Component với useEffect**
+- ✅ **Dùng Server Component, Server Action, hoặc React Query wrapper**
+
+**Lý do:**
+- Service là server-side code, không nên expose trực tiếp cho client
+- React Query cung cấp caching, refetching, error handling tốt hơn
+- Phù hợp với App Router architecture
+
+**Ví dụ:**
+```typescript
+// ❌ SAI - Gọi service trực tiếp trong Client Component
+'use client';
+
+const UserProfile = ({ userId }: { userId: string }) => {
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getUserService(userId) // ❌ Anti-pattern
+      .then(setUser)
+      .catch(setError);
+  }, [userId]);
+
+  return <div>{user?.email}</div>;
+};
+
+// ✅ ĐÚNG - Dùng React Query wrapper
+// hooks/use-users.ts
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getUsersClientService } from '@/services/users/users.client';
+
+export const useUserQuery = (userId: string) =>
+  useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUsersClientService(userId),
+    enabled: Boolean(userId),
+  });
+
+// Component
+'use client';
+
+import { useUserQuery } from '@/hooks/use-users';
+
+const UserProfile = ({ userId }: { userId: string }) => {
+  const { data: user, isLoading, error } = useUserQuery(userId);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return <div>{user?.email}</div>;
+};
+
+// ✅ ĐÚNG - Dùng Server Component
+// app/users/[id]/page.tsx
+import { getUserService } from '@/services/users/users.service';
+import UserProfile from '@/components/user-profile.client';
+
+const UserPage = async ({ params }: { params: { id: string } }) => {
+  const user = await getUserService(params.id);
+  return <UserProfile user={user} />;
+};
+```
+
+---
+
+### 7️⃣ USE RESULT + PLAIN OBJECT ERRORS (ƯU TIÊN); TRÁNH CLASS
+
+**Rule:** Dùng **Result pattern** + **plain object** (type/interface) + **factory functions**. Hạn chế class (`ValidationError`, `NotFoundError`, ...).
+
+**Lý do:**
+- Đồng bộ với **(1) Pattern Result/Error**
+- Error là data (object), dễ serialize, không cần `instanceof`
+- Type-safe, explicit trong signature
+
+**Ví dụ — types + factory (không class):**
+```typescript
+// constants/error-codes.ts
+export const ERROR_CODES = {
+  VALIDATION: 'VALIDATION_ERROR',
+  NOT_FOUND: 'NOT_FOUND',
+  DATABASE: 'DATABASE_ERROR',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+// constants/error-messages.ts
+export const ERROR_MESSAGES = {
+  USER_ID_REQUIRED: 'User ID is required',
+  UPDATES_OBJECT_EMPTY: 'Updates object cannot be empty',
+  INVALID_EMAIL: 'Invalid email address',
+  FULL_NAME_REQUIRED: 'Full name is required',
+  EMAIL_TOO_LONG: 'Email is too long',
+  INVALID_AMOUNT: 'Invalid amount',
+  AMOUNT_EXCEEDS_LIMIT: 'Amount exceeds limit',
+  INVALID_EMAIL_FORMAT: 'Invalid email format',
+} as const;
+
+// types/result.types.ts
+export type AppErrorObject = { code: string; message: string; statusCode?: number };
+export type Result<T, E = AppErrorObject> = { ok: true; data: T } | { ok: false; error: E };
+export const ok = <T>(data: T): Result<T, never> => ({ ok: true, data });
+export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
+export const isOk = <T, E>(r: Result<T, E>): r is { ok: true; data: T } => r.ok === true;
+export const isErr = <T, E>(r: Result<T, E>): r is { ok: false; error: E } => r.ok === false;
+
+// lib/errors.ts — factory (plain object, KHÔNG class)
+import { ERROR_CODES } from '@/constants/error-codes';
+
+export const createError = {
+  validation: (message: string): AppErrorObject => ({
+    code: ERROR_CODES.VALIDATION,
+    message,
+    statusCode: 400,
+  }),
+  notFound: (message: string) => ({
+    code: ERROR_CODES.NOT_FOUND,
+    message,
+    statusCode: 404,
+  }),
+  database: (message: string) => ({
+    code: ERROR_CODES.DATABASE,
+    message,
+    statusCode: 500,
+  }),
+  unauthorized: (message = 'Unauthorized') => ({
+    code: ERROR_CODES.UNAUTHORIZED,
+    message,
+    statusCode: 401,
+  }),
+};
+
+// Service — return Result
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+import { ERROR_MESSAGES } from '@/constants/error-messages';
+
+export const getUserService = async (userId: string): Promise<Result<User>> => {
+  if (!userId) return err(createError.validation(ERROR_MESSAGES.USER_ID_REQUIRED));
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return err(createError.notFound(`User with ID ${userId} not found`));
+    }
+    return err(createError.database(`FETCH_USER_FAILED: ${error.message}`));
+  }
+  return ok(data);
+};
+
+// hooks/use-users.ts — React Query: unwrap Result, throw plain object để giữ code
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getUsersClientService } from '@/services/users/users.client';
+import { isErr } from '@/types/result.types';
+
+export const useUserQuery = (userId: string) =>
+  useQuery({
+    queryKey: ['user', userId],
+    queryFn: async () => {
+      const r = await getUsersClientService(userId);
+      if (isErr(r)) throw r.error; // throw plain object { code, message } — React Query cần throw
+      return r.data;
+    },
+    enabled: Boolean(userId),
+    retry: false,
+  });
+
+// Component — check error.code (plain object), không instanceof
+'use client';
+
+import { useUserQuery } from '@/hooks/use-users';
+import { ERROR_CODES } from '@/constants/error-codes';
+
+const UserProfile = ({ userId }: { userId: string }) => {
+  const { data: user, isLoading, error } = useUserQuery(userId);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) {
+    const err = error as { code?: string };
+    const msg = err?.code === ERROR_CODES.NOT_FOUND ? 'User not found' : err?.code === ERROR_CODES.VALIDATION ? 'Invalid user ID' : 'An error occurred';
+    return <div className="error">{msg}</div>;
+  }
+  return <div>{user?.email}</div>;
+};
+
+// Server Component / Page — unwrap Result, check error.code (không instanceof)
+// app/users/[id]/page.tsx
+import { getUserService } from '@/services/users/users.service';
+import { isErr } from '@/types/result.types';
+import { ERROR_CODES } from '@/constants/error-codes';
+import { notFound } from 'next/navigation';
+
+const UserPage = async ({ params }: { params: { id: string } }) => {
+  const result = await getUserService(params.id);
+  if (isErr(result)) {
+    if (result.error.code === ERROR_CODES.NOT_FOUND) notFound();
+    throw new Error(result.error.message); // hoặc redirect
+  }
+  return <div>{result.data.email}</div>;
+};
+```
+
+**Khi bắt buộc dùng `throw` (VD: API route, thư viện):** wrap trong try/catch rồi convert sang `err(createError.database(...))` nếu muốn giữ Result trong nội bộ.
+
+---
+
+## 🏗️ ERROR HANDLING ARCHITECTURE RULES
+
+### Service Layer
+**Responsibility:**
+- ❌ **KHÔNG validate input** (validation ở Action layer với Zod)
+- ✅ Return `Result<T, E>` (E = plain object `{ code, message }`), hạn chế `throw` và class
+- ✅ Không quyết định user-facing message
+- ✅ Không redirect, không log (log ở Action/API)
+- ✅ Chỉ làm database operation
+
+**⚠️ Lưu ý:** Input validation BẮT BUỘC ở Action layer với Zod. Service chỉ làm database operation với input đã được validate.
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Service KHÔNG validate input, chỉ làm DB operation
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+
+// Input đã được validate ở Action layer với Zod → không cần validate lại
+export const deleteUserService = async (userId: string): Promise<Result<true>> => {
+  // userId đã được validate ở Action → chỉ làm DB operation
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+
+  if (error) return err(createError.database('DELETE_USER_FAILED'));
+  return ok(true);
+};
+```
+
+### Action / API / Page Layer
+**Responsibility:**
+- ✅ **BẮT BUỘC: Validate input với Zod** trước khi gọi service
+- ✅ Unwrap `Result` (`isErr`), không `try/catch` nếu service đã dùng Result
+- ✅ Log khi `isErr(result)` với `result.error`
+- ✅ Map `error.code` → user message
+- ✅ Redirect nếu cần
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Action validate input với Zod, sau đó gọi service
+'use server';
+
+import { logger } from '@/lib/logger';
+import { deleteUserService } from '@/services/users/users.service';
+import { isErr } from '@/types/result.types';
+import { ERROR_CODES } from '@/constants/error-codes';
+import { z } from 'zod';
+
+// Schema validation
+const DeleteUserSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+});
+
+export const deleteUserAction = async (formData: FormData) => {
+  try {
+    // ✅ BẮT BUỘC: Validate input với Zod
+    const rawInput = { userId: formData.get('userId') };
+    const { userId } = DeleteUserSchema.parse(rawInput);
+
+    // Service không validate → chỉ làm DB operation
+    const r = await deleteUserService(userId);
+    if (isErr(r)) {
+      logger.error('Delete user action failed', { userId, error: r.error });
+      const msg = r.error.code === ERROR_CODES.DATABASE
+        ? 'Unable to delete user. Please try again later.'
+        : 'An unexpected error occurred.';
+      return { success: false, error: msg };
+    }
+    return { success: true };
+  } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: error.errors.map((e) => e.message).join(', '),
+      };
+    }
+    return { success: false, error: 'An unexpected error occurred.' };
+  }
+};
+```
+
+### Client Layer
+**Responsibility:**
+- ✅ Không gọi Supabase trực tiếp
+- ✅ Gọi Action/API; nhận `{ success, error? }` — message đã map từ `error.code`
+- ✅ Nếu dùng React Query với `throw` trong queryFn: check `(error as { code?: string }).code`, không dùng `instanceof` class
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Client dùng message từ Action (đã map từ error.code)
+'use client';
+
+import { deleteUserAction } from '@/features/users/actions/delete-user.action';
+
+const DeleteButton = ({ userId }: { userId: string }) => {
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    const result = await deleteUserAction(userId);
+    if (!result.success) setError(result.error); // message từ Action
+  };
+
+  return (
+    <div>
+      <button onClick={handleDelete}>Delete</button>
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+};
+```
+
+### Logging Best Practices
+**Rule:**
+- ✅ **Service:** Không log (chỉ throw error)
+- ✅ **Action / API:** Log errors với context
+- ✅ **Client:** Không log (chỉ hiển thị message)
+
+**Lý do:**
+- Service có thể dùng lại ở nhiều context → tránh log trùng
+- Action/API có đầy đủ context (request, user, etc.)
+- Tránh spam log ở client
+
+---
+
+## 📋 CHECKLIST
+
+### Error Handling
+- [ ] **(1) Pattern Result/Error** — Service trả về `Result<T, E>`, `ok`/`err`, `isOk`/`isErr`?
+- [ ] **Hạn chế class** — Error là plain object `{ code, message }`, `createError` factory, không `ValidationError`/`DatabaseError` class?
+- [ ] Errors được xử lý ở đầu function?
+- [ ] Dùng early returns cho error conditions?
+- [ ] Guard clauses được sử dụng?
+- [ ] Service return Result (hoặc throw có code), không quyết định user message?
+- [ ] **Service KHÔNG validate input (validation ở Action layer với Zod)?**
+- [ ] **Action/API BẮT BUỘC validate input với Zod trước khi gọi service?**
+- [ ] Action/API unwrap Result, log và map `error.code` → user message?
+- [ ] Client không gọi service trực tiếp (React Query/Server Component); dùng message từ Action hoặc `error.code`?
+- [ ] ERROR_CODES, ERROR_MESSAGES dùng constants?
+
+---
+
+## 🎯 TÓM TẮT
+
+**Error Handling Principles:**
+1. **(1) Result/Error pattern** → `Result<T, E>`, `ok`/`err`, `isOk`/`isErr`; ưu tiên return thay vì throw
+2. **Hạn chế class** → Plain object `{ code, message }` + `createError` factory; tránh Error classes
+3. **Fail Fast** → Validate và handle errors sớm
+4. **Early Returns** → Tránh deep nesting
+5. **Guard Clauses** → Xử lý preconditions trước
+6. **Separation of Concerns** → Service return Result, Action log & map `error.code`, Client display
+7. **Constants** → ERROR_CODES, ERROR_MESSAGES
+
+**Architecture Layers:**
+- **Service:** Return `Result<T, E>`, `err(createError.xxx(...))` (không log, không user message)
+- **Action/API:** Unwrap Result, log, map `error.code` → user message
+- **Client:** Hiển thị message từ Action hoặc dựa trên `error.code` (không `instanceof` class)
+
+**Mục tiêu:**
+- 🛡️ Robust error handling
+- 📝 Type-safe error handling với Result pattern
+- 🔧 Maintainable code với constants và plain objects

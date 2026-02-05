@@ -1,0 +1,1777 @@
+---
+alwaysApply: true
+---
+## 📌 PATH ALIASES
+
+Dự án sử dụng path alias `@/*` trỏ về root directory (đã cấu hình trong `tsconfig.json`):
+
+```typescript
+// tsconfig.json
+{
+  "paths": {
+    "@/*": ["./*"]
+  }
+}
+```
+
+**Cách import:**
+```typescript
+// ✅ ĐÚNG
+import { ROUTES } from '@/constants/routes';
+import { supabaseClient } from '@/lib/supabase/client';
+import { User } from '@/services/users/users.types';
+import { Navbar } from '@/components/navbar';
+import { siteConfig } from '@/config/site';
+
+// ❌ SAI - Không dùng relative paths dài
+import { ROUTES } from '../../../constants/routes';
+```
+
+---
+
+## 1️⃣ CONSTANTS – ROUTES (KHÔNG HARD CODE)
+
+**File:** `constants/routes.ts`
+
+```typescript
+export const ROUTES = {
+  // Public routes
+  HOME: '/',
+  LOGIN: '/login',
+  SIGNUP: '/signup',
+  ABOUT: '/about',
+  BLOG: '/blog',
+  DOCS: '/docs',
+  PRICING: '/pricing',
+  
+  // Protected routes (cần đăng nhập)
+  DASHBOARD: '/dashboard',
+  USERS: '/dashboard/users',
+  PROFILE: '/dashboard/profile',
+  SETTINGS: '/dashboard/settings',
+  
+  // Auth routes (không được vào nếu đã login)
+  AUTH_CALLBACK: '/auth/callback',
+} as const;
+
+// Route groups for middleware protection
+export const PUBLIC_ROUTES = [
+  ROUTES.HOME,
+  ROUTES.LOGIN,
+  ROUTES.SIGNUP,
+  ROUTES.ABOUT,
+  ROUTES.BLOG,
+  ROUTES.DOCS,
+  ROUTES.PRICING,
+] as const;
+
+export const PROTECTED_ROUTES = [
+  ROUTES.DASHBOARD,
+  ROUTES.USERS,
+  ROUTES.PROFILE,
+  ROUTES.SETTINGS,
+] as const;
+
+export const AUTH_ROUTES = [
+  ROUTES.LOGIN,
+  ROUTES.SIGNUP,
+  ROUTES.AUTH_CALLBACK,
+] as const;
+```
+
+**Rule:** 
+- Tất cả routes phải được định nghĩa trong file này, không được hardcode trong code
+- Định nghĩa route groups (`PUBLIC_ROUTES`, `PROTECTED_ROUTES`, `AUTH_ROUTES`) để dùng trong middleware
+
+**⚠️ Lưu ý quan trọng:**
+- ✅ **Tất cả giá trị có cấu trúc** (roles, permissions, status, enum values) → **PHẢI dùng constants**
+- ✅ Không hardcode string literals như `'admin'`, `'active'`, `'pending'`, etc.
+- ✅ Dùng `as const` để type safety
+- ✅ Export types từ constants để reuse
+
+**Ví dụ các giá trị cần constants:**
+- Roles: `ROLES.ADMIN`, `ROLES.USER` (không dùng `'admin'`, `'user'`)
+- Status: `STATUS.ACTIVE`, `STATUS.PENDING` (không dùng `'active'`, `'pending'`)
+- Permissions: `PERMISSIONS.CREATE_USER` (không dùng `'create_user'`)
+- Error codes: `ERROR_CODES.NOT_FOUND` (không dùng `'NOT_FOUND'`)
+
+---
+
+## 1️⃣1️⃣ ENV & CONFIG – KHÔNG ĐƯỢC process.env RẢI RÁC
+
+**🔒 RULE CỨNG:**
+- ❌ **KHÔNG dùng `process.env.XYZ` trực tiếp** ngoài `config/`
+- ✅ **BẮT BUỘC wrap qua config + Zod validation**
+
+**Lý do:**
+- Tránh crash production vì thiếu env variables
+- Type-safe env access với Zod validation
+- Centralized config management
+- Fail fast khi env invalid (build time hoặc startup)
+
+**Cấu trúc:**
+```typescript
+// config/env.ts
+import { z } from 'zod';
+
+const EnvSchema = z.object({
+  // Public env (exposed to client)
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url('Invalid Supabase URL'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key is required'),
+  
+  // Server-only env (không expose cho client)
+  DATABASE_URL: z.string().url('Invalid database URL').optional(),
+  SECRET_KEY: z.string().min(1, 'Secret key is required').optional(),
+});
+
+// Parse và validate env tại build/startup time
+export const env = EnvSchema.parse({
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  DATABASE_URL: process.env.DATABASE_URL,
+  SECRET_KEY: process.env.SECRET_KEY,
+});
+```
+
+**Ví dụ sử dụng:**
+```typescript
+// ✅ ĐÚNG - Dùng env từ config
+// lib/supabase/client.ts
+import { createBrowserClient } from '@supabase/ssr';
+import { env } from '@/config/env';
+
+export const supabaseClient = createBrowserClient(
+  env.NEXT_PUBLIC_SUPABASE_URL,
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// ✅ ĐÚNG - Server client
+// lib/supabase/server.ts
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { env } from '@/config/env';
+
+export const createSupabaseServerClient = () => {
+  const cookieStore = cookies();
+
+  return createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+};
+
+// ❌ SAI - Dùng process.env trực tiếp
+export const supabaseClient = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, // ❌ KHÔNG được dùng
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // ❌
+);
+```
+
+**Rule:**
+- ✅ **Tất cả env variables** phải được định nghĩa trong `config/env.ts`
+- ✅ **Zod validation** để đảm bảo env hợp lệ
+- ✅ **Import từ `@/config/env`** khi cần dùng env
+- ❌ **KHÔNG dùng `process.env`** trực tiếp trong code (trừ `config/env.ts`)
+- ✅ **Type-safe** với Zod schema → TypeScript tự động infer type
+
+---
+
+## 2️⃣ SUPABASE CLIENT (CLIENT SIDE)
+
+**File:** `lib/supabase/client.ts`
+
+```typescript
+import { createBrowserClient } from '@supabase/ssr';
+import { env } from '@/config/env';
+
+export const supabaseClient = createBrowserClient(
+  env.NEXT_PUBLIC_SUPABASE_URL,
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+```
+
+**Rule:** Chỉ dùng cho Client Components, hooks, và client-side services.
+
+---
+
+## 3️⃣ SUPABASE SERVER CLIENT
+
+**File:** `lib/supabase/server.ts`
+
+```typescript
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { env } from '@/config/env';
+
+export const createSupabaseServerClient = () => {
+  const cookieStore = cookies();
+
+  return createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+};
+```
+
+**Rule:** Chỉ dùng trong Server Components, Server Actions, và server-side services.
+
+---
+
+## 4️⃣ SUPABASE MIDDLEWARE
+
+**File:** `lib/supabase/middleware.ts`
+
+```typescript
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { ROUTES } from '@/constants/routes';
+import { env } from '@/config/env';
+
+export const updateSession = (request: NextRequest) => {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get: (name) => request.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove: (name, options) => {
+          response.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+
+  return { supabase, response };
+};
+```
+
+**Rule:** Dùng trong `app/middleware.ts` để xử lý session và authentication.
+
+**⚠️ Lưu ý:** Hạn chế sử dụng `getSession()` theo khuyến nghị của Supabase docs. Thay vào đó, dùng `getUser()` để check authentication.
+
+---
+
+## 4️⃣1️⃣ ROUTE PROTECTION & AUTH GUARDS
+
+### Protected và Public Routes
+
+**File:** `constants/routes.ts` (cập nhật)
+
+```typescript
+export const ROUTES = {
+  // Public routes
+  HOME: '/',
+  LOGIN: '/login',
+  SIGNUP: '/signup',
+  ABOUT: '/about',
+  BLOG: '/blog',
+  DOCS: '/docs',
+  PRICING: '/pricing',
+  
+  // Protected routes (cần đăng nhập)
+  DASHBOARD: '/dashboard',
+  USERS: '/dashboard/users',
+  PROFILE: '/dashboard/profile',
+  SETTINGS: '/dashboard/settings',
+  
+  // Auth routes (không được vào nếu đã login)
+  AUTH_CALLBACK: '/auth/callback',
+} as const;
+
+// Route groups
+export const PUBLIC_ROUTES = [
+  ROUTES.HOME,
+  ROUTES.LOGIN,
+  ROUTES.SIGNUP,
+  ROUTES.ABOUT,
+  ROUTES.BLOG,
+  ROUTES.DOCS,
+  ROUTES.PRICING,
+] as const;
+
+export const PROTECTED_ROUTES = [
+  ROUTES.DASHBOARD,
+  ROUTES.USERS,
+  ROUTES.PROFILE,
+  ROUTES.SETTINGS,
+] as const;
+
+export const AUTH_ROUTES = [
+  ROUTES.LOGIN,
+  ROUTES.SIGNUP,
+  ROUTES.AUTH_CALLBACK,
+] as const;
+```
+
+---
+
+### Middleware với Route Protection
+
+**File:** `app/middleware.ts`
+
+```typescript
+import { NextResponse, type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
+import { ROUTES, PUBLIC_ROUTES, PROTECTED_ROUTES, AUTH_ROUTES } from '@/constants/routes';
+
+export async function middleware(request: NextRequest) {
+  const { supabase, response } = updateSession(request);
+  const { pathname } = request.nextUrl;
+
+  // Check authentication - dùng getUser() thay vì getSession()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isAuthenticated = !!user;
+  
+  // Type-safe route checking - không dùng any
+  // ⚠️ Lưu ý: HOME ('/') là special-case với startsWith()
+  // - Nếu chỉ dùng startsWith('/'), sẽ match mọi route (không mong muốn)
+  // - Logic hiện tại: check exact match (pathname === route) TRƯỚC startsWith()
+  // - Với route = '/': pathname === '/' → match exact, không cần startsWith()
+  // - Với route khác: pathname === '/dashboard' || pathname.startsWith('/dashboard/') → match exact + nested
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  const isProtectedRoute = PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  const isAuthRoute = AUTH_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  // Rule 1: Nếu đã login → không được vào auth routes → redirect về dashboard
+  if (isAuthenticated && isAuthRoute) {
+    return NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url));
+  }
+
+  // Rule 2: Nếu chưa login → không được vào protected routes → redirect về login
+  if (!isAuthenticated && isProtectedRoute) {
+    const redirectUrl = new URL(ROUTES.LOGIN, request.url);
+    redirectUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes - tự guard bằng server logic)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+```
+
+**Rules:**
+- ✅ Dùng `getUser()` thay vì `getSession()` (theo Supabase docs)
+- ✅ Nếu đã login → redirect khỏi auth routes về dashboard
+- ✅ Nếu chưa login → redirect khỏi protected routes về login
+- ✅ Public routes luôn accessible
+- ✅ Lưu redirect URL để quay lại sau khi login
+- ✅ Type-safe route checking (không dùng `any`)
+- ✅ Handle nested routes tốt hơn với `startsWith()`
+- ✅ **Loại trừ `/api` routes** - API tự guard bằng server logic, không cần middleware
+- ✅ **CHỈ check authentication** - Không check role/permission trong middleware
+
+---
+
+### Auth Guard Helper
+
+**File:** `lib/auth/guards.ts`
+
+```typescript
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ROUTES } from '@/constants/routes';
+import { redirect } from 'next/navigation';
+
+/**
+ * Server-side auth guard
+ * Redirect nếu chưa đăng nhập
+ * @returns User object nếu đã đăng nhập
+ */
+export const requireAuth = async () => {
+  const supabase = createSupabaseServerClient();
+  
+  // Dùng getUser() thay vì getSession()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect(ROUTES.LOGIN);
+  }
+
+  return user;
+};
+
+/**
+ * Server-side auth guard với redirect path
+ * @param redirectTo - Path để redirect sau khi login
+ * @returns User object nếu đã đăng nhập
+ */
+export const requireAuthWithRedirect = async (redirectTo: string) => {
+  const supabase = createSupabaseServerClient();
+  
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    // ✅ Dùng relative URL - redirect() là server-only, không cần absolute URL
+    redirect(`${ROUTES.LOGIN}?redirect=${encodeURIComponent(redirectTo)}`);
+  }
+
+  return user;
+};
+
+/**
+ * Check nếu user đã đăng nhập (không redirect)
+ * @returns User object hoặc null
+ */
+export const getCurrentUser = async () => {
+  const supabase = createSupabaseServerClient();
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
+};
+
+/**
+ * Redirect nếu đã đăng nhập (dùng cho auth pages)
+ */
+export const redirectIfAuthenticated = async () => {
+  const supabase = createSupabaseServerClient();
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect(ROUTES.DASHBOARD);
+  }
+};
+```
+
+**Usage trong Server Components:**
+
+```typescript
+// ✅ ĐÚNG - Protected page (Middleware đã handle, không cần guard nếu chỉ cần check auth)
+// app/(dashboard)/users/page.tsx
+import { getUsersService } from '@/services/users/users.service';
+import UsersTable from '@/components/users-table.client';
+
+const UsersPage = async () => {
+  // Middleware đã redirect nếu chưa login, không cần requireAuth() nữa
+  const users = await getUsersService();
+
+  return <UsersTable users={users} />;
+};
+
+export default UsersPage;
+
+// ✅ ĐÚNG - Protected page (Cần user object trong page)
+// app/(dashboard)/profile/page.tsx
+import { requireAuth } from '@/lib/auth/guards';
+import { getUserProfileService } from '@/services/users/users.service';
+
+const ProfilePage = async () => {
+  // Cần user object → dùng requireAuth() để lấy user
+  const user = await requireAuth();
+  const profile = await getUserProfileService(user.id);
+
+  return <ProfileForm user={user} profile={profile} />;
+};
+
+// ✅ ĐÚNG - Auth page (Middleware đã handle, không cần guard)
+// app/(auth)/login/page.tsx
+import LoginForm from '@/components/login-form.client';
+
+const LoginPage = async () => {
+  // Middleware đã redirect nếu đã login, không cần redirectIfAuthenticated() nữa
+  return <LoginForm />;
+};
+
+export default LoginPage;
+
+// ✅ ĐÚNG - Check user không redirect (cần user data)
+// app/page.tsx
+import { getCurrentUser } from '@/lib/auth/guards';
+
+const HomePage = async () => {
+  // Cần user data để render conditional content
+  const user = await getCurrentUser();
+
+  return (
+    <div>
+      {user ? (
+        <div>Welcome back, {user.email}</div>
+      ) : (
+        <div>Welcome, please login</div>
+      )}
+    </div>
+  );
+};
+
+export default HomePage;
+```
+
+**Khi nào cần dùng Guards:**
+- ✅ **Cần user object** trong page → dùng `requireAuth()` hoặc `getCurrentUser()`
+- ✅ **Logic phức tạp** → cần check role, permissions, etc.
+- ❌ **Chỉ cần check auth** → Middleware đã handle, không cần guard
+
+**Khi nào KHÔNG cần Guards:**
+- ❌ Middleware đã handle route protection đầy đủ
+- ❌ Chỉ cần check authenticated/not authenticated (không cần user object)
+
+---
+
+### Client-side Auth Guard Hook
+
+**File:** `hooks/use-require-auth.ts`
+
+```typescript
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabaseClient } from '@/lib/supabase/client';
+import { ROUTES } from '@/constants/routes';
+import type { User } from '@supabase/supabase-js';
+
+export const useRequireAuth = () => {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Dùng getUser() thay vì getSession()
+      const { data } = await supabaseClient.auth.getUser();
+
+      if (!data.user) {
+        setIsLoading(false); // ✅ FIX: Set loading false trước khi redirect
+        router.replace(ROUTES.LOGIN);
+        return;
+      }
+
+      setUser(data.user);
+      setIsLoading(false);
+    };
+
+    checkAuth();
+    // ✅ Không cần onAuthStateChange - Middleware đã handle route protection
+    // Hook chỉ dùng cho widget/modal, getUser() là đủ
+  }, [router]);
+
+  return { user, isLoading };
+};
+```
+
+**⚠️ Lưu ý quan trọng:**
+- ✅ Set `isLoading(false)` trước khi redirect để tránh kẹt loading
+- ✅ Không cần `onAuthStateChange` - Middleware đã handle route protection
+- ✅ Dùng `router.replace()` thay vì `router.push()` để không tạo history entry
+- ✅ Hook chỉ dùng cho widget/modal, không dùng cho page-level protection
+
+**⚠️ QUAN TRỌNG: Khi nào dùng `useRequireAuth()`**
+
+❗ **KHÔNG dùng cho page-level protection** - Middleware đã handle rồi!
+
+✅ **CHỈ dùng cho:**
+- Modal cần user object
+- Client-only widget (sidebar, dropdown, etc.)
+- Component độc lập cần user object
+- Component không phải page-level
+
+❌ **KHÔNG dùng cho:**
+- Protected pages (middleware đã handle)
+- Auth pages (middleware đã handle)
+- Page-level components
+
+**Usage trong Client Components:**
+
+```typescript
+// ✅ ĐÚNG - Modal cần user object
+'use client';
+
+import { useRequireAuth } from '@/hooks/use-require-auth';
+
+const UserSettingsModal = () => {
+  const { user, loading } = useRequireAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return null; // Modal sẽ không hiển thị nếu chưa login
+  }
+
+  return <div>Settings for {user.email}</div>;
+};
+
+// ✅ ĐÚNG - Client-only widget
+const UserDropdown = () => {
+  const { user, loading } = useRequireAuth();
+
+  if (loading || !user) {
+    return null;
+  }
+
+  return <Dropdown user={user} />;
+};
+
+// ❌ SAI - Page-level component (middleware đã handle)
+const ProtectedPage = () => {
+  const { user, loading } = useRequireAuth(); // ❌ KHÔNG cần
+  // Middleware đã redirect nếu chưa login
+  return <div>Protected content</div>;
+};
+```
+
+---
+
+## ✅ RULES CHO AUTH & ROUTE PROTECTION
+
+### ❌ KHÔNG ĐƯỢC LÀM
+
+1. ❌ **Sử dụng `getSession()`**
+   - Không dùng `supabase.auth.getSession()` trong middleware hoặc server components
+   - Phải dùng `getUser()` thay thế (theo Supabase docs)
+
+2. ❌ **Hardcode route paths trong guards**
+   - Không hardcode `/login`, `/dashboard` trong guards
+   - Phải dùng `ROUTES` từ `@/constants/routes`
+
+3. ❌ **Dùng `useRequireAuth()` cho page-level protection**
+   - ❌ KHÔNG dùng `useRequireAuth()` cho protected pages (middleware đã handle)
+   - ❌ KHÔNG dùng `useRequireAuth()` cho auth pages (middleware đã handle)
+   - ❌ KHÔNG dùng `useRequireAuth()` cho page-level components
+   - ✅ CHỈ dùng `useRequireAuth()` cho: Modal, Client-only widget, Component độc lập cần user object
+
+### ✅ PHẢI LÀM
+
+1. ✅ **Dùng `getUser()` thay vì `getSession()`**
+   - Trong middleware: `await supabase.auth.getUser()`
+   - Trong server components: `await supabase.auth.getUser()`
+   - Trong client: `await supabaseClient.auth.getUser()`
+
+2. ✅ **Middleware protection (Primary - Lớp bảo vệ chính)**
+   - Nếu đã login → redirect khỏi auth routes
+   - Nếu chưa login → redirect khỏi protected routes
+   - Public routes luôn accessible
+   - **Middleware đã handle route protection đầy đủ, không cần guard trong page nữa**
+
+3. ✅ **Server-side guards (Optional - chỉ khi cần)**
+   - **KHÔNG cần** guard nếu middleware đã handle route protection
+   - **CHỈ cần** guard khi:
+     - Cần user object trong page → dùng `requireAuth()` hoặc `getCurrentUser()`
+     - Cần logic phức tạp (role, permissions, etc.)
+   - **KHÔNG cần** `redirectIfAuthenticated()` trong auth pages vì middleware đã handle
+
+4. ✅ **Route constants**
+   - Định nghĩa `PUBLIC_ROUTES`, `PROTECTED_ROUTES`, `AUTH_ROUTES` trong `constants/routes.ts`
+   - Dùng constants thay vì hardcode
+
+5. ✅ **Role & Permission (Future)**
+   - **Auth = Middleware** → Handle authentication (đã login hay chưa)
+   - **Permission = Server Guard / Service** → Handle authorization (role, permissions)
+   - Permissions được check ở server-side, không phải middleware
+   - Dùng guards trong pages/services để check permissions
+
+**🔒 RULE CỨNG - Auth vs Permission:**
+
+1. **Middleware: CHỈ check authentication (login hay chưa)**
+   - ✅ Check: User đã login hay chưa
+   - ❌ KHÔNG check: Role, Permission, Status
+   - ❌ KHÔNG có logic phức tạp (tránh edge crash)
+
+2. **Permission: CHỈ check ở page (PermissionGuard)**
+   - ✅ Check trong page với `<PermissionGuard requiredPermissions={[...]}>`
+   - ❌ KHÔNG check permission trong API routes
+   - ❌ KHÔNG check permission trong server actions
+   - **Lý do:** Page có thể gọi nhiều API của các feature khác; nếu API check permission sẽ 403 dù user đã vào được page
+   - **API routes & Server actions:** CHỈ check auth (đăng nhập), không check permission
+
+3. **Tại sao không check role trong middleware?**
+   - Middleware chạy ở edge → có thể crash với logic phức tạp
+   - Role/permission logic thường cần database query
+   - Server guards/services có đầy đủ context và error handling
+
+**Rule:**
+- **Dùng constants cho roles, permissions, status, etc.** → Tránh typo và dễ maintain
+- **Tách biệt rõ ràng:** Auth (middleware) vs Permission (server)
+
+**Ví dụ (cho tương lai):**
+
+```typescript
+// constants/roles.ts
+export const ROLES = {
+  ADMIN: 'admin',
+  USER: 'user',
+  MODERATOR: 'moderator',
+} as const;
+
+export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+// constants/permissions.ts
+export const PERMISSIONS = {
+  CREATE_USER: 'create_user',
+  DELETE_USER: 'delete_user',
+  EDIT_USER: 'edit_user',
+  VIEW_USERS: 'view_users',
+} as const;
+
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+// lib/auth/permissions.ts
+import { redirect } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
+import { ROLES, type Role } from '@/constants/roles';
+import type { User } from '@supabase/supabase-js';
+
+export const requireAdmin = (user: User) => {
+  if (user.role !== ROLES.ADMIN) {
+    redirect(ROUTES.DASHBOARD);
+  }
+};
+
+export const requireRole = (user: User, allowedRoles: Role[]) => {
+  if (!allowedRoles.includes(user.role as Role)) {
+    redirect(ROUTES.DASHBOARD);
+  }
+};
+
+// Usage trong page
+const AdminPage = async () => {
+  const user = await requireAuth();
+  requireAdmin(user); // Check permission
+  
+  return <div>Admin content</div>;
+};
+
+// Usage với multiple roles
+const ModeratorPage = async () => {
+  const user = await requireAuth();
+  requireRole(user, [ROLES.ADMIN, ROLES.MODERATOR]);
+  
+  return <div>Moderator content</div>;
+};
+```
+
+**⚠️ Lưu ý:**
+- ✅ Tất cả roles, permissions, status, enum values → Dùng constants
+- ✅ Không hardcode string literals như `'admin'`, `'active'`, etc.
+- ✅ Dùng `as const` để type safety
+- ✅ Export types từ constants để reuse
+
+---
+
+## 5️⃣ AUTH HOOK (use-auth – CHỐT)
+
+**File:** `hooks/use-auth.ts`
+
+```typescript
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { supabaseClient } from '@/lib/supabase/client';
+import { ROUTES } from '@/constants/routes';
+
+export const useAuth = () => {
+  const router = useRouter();
+
+  const signInWithGoogle = async () => {
+    await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${location.origin}/auth/callback`,
+      },
+    });
+  };
+
+  const signOut = async () => {
+    await supabaseClient.auth.signOut();
+    router.push(ROUTES.LOGIN);
+  };
+
+  return {
+    signInWithGoogle,
+    signOut,
+  };
+};
+```
+
+**Rule:** Tất cả authentication logic phải thông qua hook này, không gọi trực tiếp Supabase auth trong components.
+
+---
+
+## 6️⃣ USERS TYPES (BẮT BUỘC RIÊNG)
+
+**File:** `types/users.types.ts`
+
+```typescript
+export interface User {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+}
+```
+
+**Rule:** 
+- ❌ KHÔNG được viết types/interfaces trong file service
+- ✅ BẮT BUỘC tách riêng file `*.types.ts` trong folder `types/`
+- ✅ Tất cả types/interfaces phải nằm trong `types/`
+- ✅ Import types từ `@/types/{feature}.types.ts` khi cần
+
+---
+
+## 7️⃣ USERS SERVICE – SERVER SIDE
+
+**File:** `services/users/users.service.ts`
+
+```typescript
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { User } from '@/types/users.types';
+
+export const getUsersService = async (): Promise<User[]> => {
+  const supabase = createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, full_name, created_at'); // ✅ Select cụ thể columns
+
+  if (error) {
+    // ⚠️ Lưu ý: Service throw là OK khi được gọi từ Server Component
+    // Next.js có error boundary tự động để handle. Nếu muốn dùng Result pattern,
+    // có thể refactor sau: return err({ code: ERROR_CODES.DB_ERROR, message: error.message })
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+};
+```
+
+**Rule:**
+- Chỉ chứa logic database
+- Không chứa types/interfaces
+- Import types từ `@/types/{feature}.types.ts`
+- Chỉ dùng `createSupabaseServerClient()`
+- **Service throw Error là OK** khi được gọi từ Server Component (Next.js error boundary handle)
+- **Ưu tiên Result pattern** (`return err(...)`) khi service có thể dùng ở nhiều context
+
+---
+
+## 8️⃣ USERS SERVICE – CLIENT SIDE
+
+**File:** `services/users/users.client.ts`
+
+```typescript
+import { supabaseClient } from '@/lib/supabase/client';
+import { User } from '@/types/users.types';
+
+export const getUsersClientService = async (): Promise<User[]> => {
+  const { data, error } = await supabaseClient
+    .from('users')
+    .select('id, email, full_name, created_at'); // ✅ Select cụ thể columns
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+```
+
+**Rule:**
+- Chỉ dùng cho client-side fetching (React Query, useEffect, etc.)
+- Không chứa types/interfaces
+- Import types từ `@/types/{feature}.types.ts`
+- Chỉ dùng `supabaseClient`
+
+---
+
+## 9️⃣ SERVER COMPONENT (PAGE)
+
+**File:** `app/(dashboard)/users/page.tsx`
+
+```typescript
+import { getUsersService } from '@/services/users/users.service';
+import UsersTable from '@/components/users-table.client';
+
+const UsersPage = async () => {
+  const users = await getUsersService();
+
+  return <UsersTable users={users} />;
+};
+
+export default UsersPage;
+```
+
+**Rule:**
+- ❌ Không gọi Supabase trực tiếp
+- ❌ Không query database trực tiếp
+- ✅ Chỉ gọi service
+- ✅ Pass data xuống Client Component
+
+---
+
+## 🔟 CLIENT COMPONENT
+
+**File:** `components/users-table.client.tsx`
+
+```typescript
+'use client';
+
+import { User } from '@/types/users.types';
+
+type Props = {
+  users: User[];
+};
+
+const UsersTable = ({ users }: Props) => {
+  return (
+    <ul>
+      {users.map((u) => (
+        <li key={u.id}>{u.email}</li>
+      ))}
+    </ul>
+  );
+};
+
+export default UsersTable;
+```
+
+**Rule:**
+- ❌ Không gọi Supabase trực tiếp
+- ✅ Nhận data từ props hoặc React Query
+- ✅ Import types từ `@/types/{feature}.types.ts`
+- ✅ Đặt trong folder `components/` như cấu trúc hiện tại
+
+---
+
+## 1️⃣1️⃣ REACT QUERY (CLIENT FETCH)
+
+**File:** `features/users/queries/use-users.query.ts`
+
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getUsersClientService } from '@/services/users/users.client';
+
+export const useUsersQuery = () =>
+  useQuery({
+    queryKey: ['users'],
+    queryFn: getUsersClientService,
+  });
+```
+
+**Rule:**
+- Dùng cho client-side data fetching
+- Gọi client service, không gọi Supabase trực tiếp
+- Đặt trong folder `features/{feature}/queries/`
+- Chỉ chứa queries và actions, không chứa components
+
+---
+
+## 1️⃣2️⃣ ZOD VALIDATION – BẮT BUỘC ở Action Layer
+
+**🔒 RULE CỨNG:**
+- ❌ **Service KHÔNG validate input**
+- ✅ **Server Action BẮT BUỘC dùng Zod để validate input**
+
+**Lý do:**
+- Tách biệt validation logic và database logic
+- Service có thể dùng lại ở nhiều context (không chỉ từ Action)
+- Zod cung cấp type-safe validation với TypeScript
+- Action layer là boundary giữa client và server → cần validate chặt chẽ
+
+**Cấu trúc:**
+```typescript
+// features/users/actions/create-user.schema.ts
+import { z } from 'zod';
+
+export const CreateUserSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  full_name: z.string().min(1, 'Full name is required'),
+});
+
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+```
+
+**Ví dụ Action:**
+```typescript
+// features/users/actions/create-user.action.ts
+'use server';
+
+import { CreateUserSchema } from './create-user.schema';
+import { createUserService } from '@/services/users/users.service';
+import { revalidatePath } from 'next/cache';
+
+export const createUserAction = async (formData: FormData) => {
+  // ✅ BẮT BUỘC: Validate input với Zod trước khi gọi service
+  const rawInput = {
+    email: formData.get('email'),
+    full_name: formData.get('full_name'),
+  };
+
+  // Zod parse sẽ throw ZodError nếu invalid
+  const input = CreateUserSchema.parse(rawInput);
+
+  // Service KHÔNG validate → chỉ làm database operation
+  const user = await createUserService(input);
+
+  revalidatePath('/users');
+  return { success: true, data: user };
+};
+```
+
+**Ví dụ Action với error handling:**
+```typescript
+// features/users/actions/create-user.action.ts
+'use server';
+
+import { CreateUserSchema } from './create-user.schema';
+import { createUserService } from '@/services/users/users.service';
+import { ZodError } from 'zod';
+
+export const createUserAction = async (formData: FormData) => {
+  try {
+    const rawInput = {
+      email: formData.get('email'),
+      full_name: formData.get('full_name'),
+    };
+
+    // Validate với Zod
+    const input = CreateUserSchema.parse(rawInput);
+
+    // Service không validate → chỉ làm DB operation
+    const user = await createUserService(input);
+
+    return { success: true, data: user };
+  } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        error: error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', '),
+      };
+    }
+
+    // Handle service errors
+    return { success: false, error: 'Failed to create user' };
+  }
+};
+```
+
+**Service KHÔNG validate:**
+```typescript
+// services/users/users.service.ts
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { User } from '@/types/users.types';
+import type { CreateUserInput } from '@/features/users/actions/create-user.schema';
+
+// ✅ ĐÚNG - Service KHÔNG validate input, chỉ làm DB operation
+export const createUserService = async (input: CreateUserInput): Promise<User> => {
+  const supabase = createSupabaseServerClient();
+
+  // Input đã được validate ở Action layer → không cần validate lại
+  const { data, error } = await supabase
+    .from('users')
+    .insert(input)
+    .select('id, email, full_name, created_at') // ✅ Select cụ thể columns
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+```
+
+**❌ SAI - Service validate input:**
+```typescript
+// ❌ SAI - Service không được validate input
+export const createUserService = async (input: CreateUserInput) => {
+  // ❌ KHÔNG được validate ở đây
+  if (!input.email || !input.email.includes('@')) {
+    throw new Error('Invalid email');
+  }
+
+  // ...
+};
+```
+
+**Rule:**
+- ✅ **Action layer:** BẮT BUỘC dùng Zod để validate input từ formData/client
+- ✅ **Schema file:** Đặt trong `features/{feature}/actions/{action}.schema.ts`
+- ✅ **Type inference:** Dùng `z.infer<typeof Schema>` để generate TypeScript type
+- ❌ **Service layer:** KHÔNG validate input, chỉ làm database operation
+- ✅ **Error handling:** Action catch ZodError và return user-friendly message
+
+---
+
+## 1️⃣3️⃣ SERVER ACTIONS – ƯU TIÊN THAY API ROUTES
+
+**Rule:** Ưu tiên Server Actions thay vì API routes cho form submissions và mutations
+
+**Lý do:**
+- Server Actions tự động handle CSRF protection
+- Ít JavaScript bundle (không cần API route code)
+- Dễ cache và revalidate
+- Type-safe với TypeScript
+- Tích hợp tốt với forms (`<form action={action}>`)
+
+**Khi nào dùng Server Actions:**
+- ✅ Form submissions (create, update, delete)
+- ✅ Mutations từ client components
+- ✅ Actions không cần public API endpoint
+- ✅ Actions chỉ dùng trong app (không expose cho third-party)
+
+**Khi nào vẫn cần API Routes:**
+- ✅ Webhooks (cần public endpoint)
+- ✅ Third-party integrations (OAuth callbacks, payment webhooks)
+- ✅ Public API endpoints (cho mobile apps, external services)
+- ✅ File uploads với multipart/form-data (có thể dùng Server Actions nhưng API route đơn giản hơn)
+
+**Ví dụ Server Actions:**
+```typescript
+// ✅ ĐÚNG - Server Action cho form submission
+// features/users/actions/create-user.action.ts
+'use server';
+
+import { CreateUserSchema } from './create-user.schema';
+import { createUserService } from '@/services/users/users.service';
+import { revalidatePath } from 'next/cache';
+
+export const createUserAction = async (formData: FormData) => {
+  const rawInput = {
+    email: formData.get('email'),
+    full_name: formData.get('full_name'),
+  };
+
+  const input = CreateUserSchema.parse(rawInput);
+  const user = await createUserService(input);
+  
+  revalidatePath('/users');
+  return { success: true, data: user };
+};
+
+// ✅ ĐÚNG - Dùng trong form
+'use client';
+
+import { createUserAction } from '@/features/users/actions/create-user.action';
+
+export function CreateUserForm() {
+  return (
+    <form action={createUserAction}>
+      <input name="email" type="email" />
+      <input name="full_name" type="text" />
+      <button type="submit">Create User</button>
+    </form>
+  );
+}
+```
+
+**Ví dụ API Route (khi cần):**
+```typescript
+// ✅ ĐÚNG - API Route cho webhook
+// app/api/webhooks/stripe/route.ts
+import { headers } from 'next/headers';
+
+export async function POST(request: Request) {
+  const signature = headers().get('stripe-signature');
+  // Verify webhook signature
+  // Process webhook
+  return Response.json({ received: true });
+}
+```
+
+**Lợi ích Server Actions:**
+- ✅ **Auto CSRF:** Next.js tự động protect
+- ✅ **Ít JS:** Không cần fetch code ở client
+- ✅ **Type-safe:** TypeScript types tự động
+- ✅ **Easy revalidation:** Dùng `revalidatePath()` / `revalidateTag()`
+- ✅ **Form integration:** `<form action={action}>` đơn giản
+
+**Guidelines:**
+- ✅ **Ưu tiên Server Actions** cho form submissions và mutations
+- ✅ **Dùng API Routes** chỉ khi cần public endpoint hoặc webhooks
+- ✅ **Server Actions** cho internal app actions
+- ✅ **API Routes** cho external integrations
+
+---
+
+### ❌ KHÔNG ĐƯỢC LÀM
+
+1. ❌ **Component gọi Supabase trực tiếp**
+   - Component không được import và sử dụng `supabaseClient` hoặc `createSupabaseServerClient`
+   - Phải thông qua service hoặc hook
+
+2. ❌ **Server Component query DB trực tiếp**
+   - Server Component không được query database trực tiếp
+   - Phải gọi service
+
+3. ❌ **Hardcode route**
+   - Không được hardcode đường dẫn như `'/login'`, `'/dashboard'`
+   - Phải dùng `ROUTES` từ `@/constants/routes`
+
+4. ❌ **Type / Interface nằm chung file service hoặc trong folder services/**
+   - Không được định nghĩa types/interfaces trong file service
+   - Không được đặt file `*.types.ts` trong folder `services/` hoặc `features/`
+   - Phải tách riêng file `*.types.ts` trong folder `types/`
+
+5. ❌ **Service validate input**
+   - Service KHÔNG được validate input
+   - Validation phải ở Action layer với Zod
+   - Service chỉ làm database operation
+
+6. ❌ **Service gọi service khác**
+   - Service KHÔNG được gọi service khác
+   - Chỉ Feature/Action layer được orchestration
+   - Service = atomic DB operation
+
+7. ❌ **Dùng `.select('*')`**
+   - KHÔNG được dùng `.select('*')` trong Supabase query
+   - PHẢI select cụ thể columns cần thiết
+   - Tránh leak sensitive fields và improve performance
+
+8. ❌ **Client Service throw raw Supabase error**
+   - Client Service KHÔNG được throw raw Supabase error object
+   - PHẢI throw Error đã map hoặc dùng Result pattern
+   - Tránh leak sensitive details (table names, column names, etc.)
+
+9. ❌ **Dùng `process.env` trực tiếp**
+   - KHÔNG được dùng `process.env.XYZ` trực tiếp trong code (trừ `config/env.ts`)
+   - PHẢI wrap qua `config/env.ts` với Zod validation
+   - Tránh crash production vì thiếu env variables
+
+10. ❌ **Sử dụng `any` type**
+   - Không được sử dụng `any` type trừ trường hợp bất khả kháng
+   - Phải dùng `unknown` hoặc định nghĩa type cụ thể
+   - Nếu bắt buộc dùng `any`, phải có comment giải thích lý do
+
+11. ❌ **Type assertion phức tạp: `as unknown as T`, `(x as any).field`**
+   - KHÔNG dùng `(profile as unknown as { role?: {...} }).role` – khó đọc, dễ sai
+   - KHÔNG dùng `(obj as any).field` – mất type safety
+   - PHẢI tạo helper function hoặc type guard trong `lib/` (VD: `getRoleCode()` trong `lib/profile-utils.ts`)
+   - Dùng type narrowing qua runtime check (typeof, in, v.v.) thay vì assertion phức tạp
+   - Ví dụ: Profile có `role` từ API (object/array/string) → dùng `getRoleCode(profile)` thay vì assertion inline
+
+12. ❌ **Đặt file markdown documentation ở root hoặc folder khác**
+   - KHÔNG được đặt file `.md` documentation ở root directory (trừ `README.md`)
+   - KHÔNG được đặt file `.md` trong các folder khác như `components/`, `services/`, etc.
+   - PHẢI đặt tất cả file markdown documentation trong folder `docs/`
+   - Giúp dễ quản lý và tổ chức documentation
+
+### ✅ PHẢI LÀM
+
+1. ✅ **Service = DB only**
+   - Service chỉ chứa logic database
+   - Không chứa business logic phức tạp
+   - Không chứa types/interfaces
+
+2. ✅ **Types = `types/*.types.ts`**
+   - Tất cả types/interfaces phải nằm trong folder `types/`
+   - File format: `types/{feature}.types.ts`
+   - Import types từ `@/types/{feature}.types.ts` khi cần
+
+3. ✅ **Navigation = ROUTES**
+   - Tất cả navigation phải dùng `ROUTES` từ `@/constants/routes`
+   - Không hardcode đường dẫn
+
+4. ✅ **Auth = use-auth**
+   - Tất cả authentication logic phải thông qua `useAuth()` hook
+   - Không gọi Supabase auth trực tiếp trong components
+
+5. ✅ **Zod Validation ở Action Layer**
+   - Server Action BẮT BUỘC dùng Zod để validate input
+   - Schema file: `features/{feature}/actions/{action}.schema.ts`
+   - Service KHÔNG validate input, chỉ làm database operation
+   - Dùng `z.infer<typeof Schema>` để generate TypeScript type
+
+6. ✅ **Service Boundary**
+   - Service chỉ làm atomic DB operation
+   - Service KHÔNG gọi service khác
+   - Feature/Action layer orchestrate nhiều services
+
+7. ✅ **Select Columns cụ thể**
+   - PHẢI select cụ thể columns: `.select('id, email, full_name')`
+   - KHÔNG dùng `.select('*')`
+   - Tránh leak sensitive fields, improve performance
+
+8. ✅ **Client Service Error Handling**
+   - Throw Error đã map: `throw new Error('FAILED_TO_FETCH_USERS')`
+   - Hoặc dùng Result pattern: `return err(createError.database('FETCH_USERS_FAILED'))`
+   - KHÔNG throw raw Supabase error object
+
+9. ✅ **ENV & CONFIG Management**
+   - Tất cả env variables phải định nghĩa trong `config/env.ts`
+   - Dùng Zod validation để đảm bảo env hợp lệ
+   - Import từ `@/config/env` khi cần dùng env
+   - KHÔNG dùng `process.env` trực tiếp (trừ `config/env.ts`)
+
+10. ✅ **UI Components = HeroUI First**
+
+**File:** `services/users/users.client.ts`
+
+**🔒 RULE CỨNG:**
+- ❌ **KHÔNG throw raw Supabase error object**
+- ✅ **Throw Error đã map** hoặc **dùng Result pattern**
+
+**Lý do:**
+- Tránh leak sensitive details từ Supabase error
+- Đúng với triết lý error handling (không expose internal error structure)
+- Error message có thể chứa thông tin nhạy cảm (table names, column names, etc.)
+
+**Ví dụ:**
+```typescript
+import { supabaseClient } from '@/lib/supabase/client';
+import { User } from '@/types/users.types';
+
+// ✅ ĐÚNG - Throw Error đã map (không leak detail)
+export const getUsersClientService = async (): Promise<User[]> => {
+  const { data, error } = await supabaseClient
+    .from('users')
+    .select('id, email, full_name, created_at'); // ✅ Select cụ thể columns
+
+  if (error) {
+    // ✅ Throw Error đã map, không throw raw Supabase error
+    throw new Error('FAILED_TO_FETCH_USERS');
+  }
+
+  return data ?? [];
+};
+
+// ✅ ĐÚNG - Dùng Result pattern (nếu dùng với React Query error handling)
+import { Result, ok, err } from '@/types/result.types';
+import { createError } from '@/lib/errors';
+
+export const getUsersClientService = async (): Promise<Result<User[]>> => {
+  const { data, error } = await supabaseClient
+    .from('users')
+    .select('id, email, full_name, created_at');
+
+  if (error) {
+    // ✅ Return Result với error đã map
+    return err(createError.database('FETCH_USERS_FAILED'));
+  }
+
+  return ok(data ?? []);
+};
+
+// ❌ SAI - Throw raw Supabase error (leak detail)
+export const getUsersClientService = async (): Promise<User[]> => {
+  const { data, error } = await supabaseClient
+    .from('users')
+    .select('id, email, full_name, created_at');
+
+  if (error) {
+    throw error; // ❌ KHÔNG được throw raw Supabase error
+  }
+
+  return data ?? [];
+};
+```
+
+**Rule:**
+- Chỉ dùng cho client-side fetching (React Query, useEffect, etc.)
+- Không chứa types/interfaces
+- Import types từ `@/types/{feature}.types.ts`
+- Chỉ dùng `supabaseClient`
+- ❌ **KHÔNG throw raw Supabase error** → Tránh leak detail
+- ✅ **Throw Error đã map** hoặc **dùng Result pattern**
+
+---
+
+## 9️⃣ SERVER COMPONENT (PAGE)
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Sử dụng HeroUI components
+import { Button } from '@heroui/button';
+import { Input } from '@heroui/input';
+import { Card, CardBody, CardHeader } from '@heroui/card';
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/table';
+
+const UserForm = () => {
+  return (
+    <Card>
+      <CardHeader>Create User</CardHeader>
+      <CardBody>
+        <Input label="Email" />
+        <Input label="Name" />
+        <Button color="primary">Submit</Button>
+      </CardBody>
+    </Card>
+  );
+};
+
+// ❌ SAI - Tạo custom component khi HeroUI đã có
+import { Button as CustomButton } from '@/components/custom-button'; // ❌
+```
+
+**Khi nào được tạo custom component:**
+- ✅ HeroUI không có component tương ứng
+- ✅ Cần logic business phức tạp không thể wrap HeroUI component
+- ✅ Cần component composite (kết hợp nhiều HeroUI components)
+
+9. ✅ **Type Safety = Use Types, Avoid `any` & Complex Assertions**
+   - Luôn định nghĩa type cụ thể cho variables, functions, props
+   - Sử dụng `type` hoặc `interface` thay vì `any`
+   - Dùng `unknown` nếu chưa biết type chính xác
+   - **Tránh type assertion phức tạp** (`as unknown as T`, `(x as any).field`) → tạo helper/type guard trong `lib/`
+   - Import types từ `@/types/{feature}.types.ts`
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - Sử dụng type cụ thể
+import { User } from '@/types/users.types';
+
+type Props = {
+  user: User;
+  onUpdate: (user: User) => void;
+};
+
+const UserCard = ({ user, onUpdate }: Props) => {
+  return <div>{user.email}</div>;
+};
+
+// ✅ ĐÚNG - Dùng unknown khi chưa biết type
+const parseData = (data: unknown): User => {
+  if (typeof data === 'object' && data !== null && 'email' in data) {
+    return data as User;
+  }
+  throw new Error('Invalid user data');
+};
+
+// ❌ SAI - Sử dụng any
+const handleData = (data: any) => { // ❌
+  return data.email;
+};
+
+// ❌ SAI - Không có type
+const UserCard = ({ user, onUpdate }) => { // ❌
+  return <div>{user.email}</div>;
+};
+
+// ✅ ĐÚNG - Type cho function parameters và return
+type CreateUserInput = {
+  email: string;
+  full_name: string;
+};
+
+export const createUserService = async (
+  input: CreateUserInput
+): Promise<User> => {
+  // Implementation
+};
+
+// ✅ ĐÚNG - Type cho event handlers
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  // ...
+};
+
+// ✅ ĐÚNG - Type cho generic functions
+const fetchData = async <T>(url: string): Promise<T> => {
+  const response = await fetch(url);
+  return response.json();
+};
+```
+
+**Best Practices:**
+- ✅ Luôn type props của components
+- ✅ Type function parameters và return values
+- ✅ Type event handlers (React.FormEvent, React.MouseEvent, etc.)
+- ✅ Sử dụng generic types khi cần (`<T>`)
+- ✅ Dùng `as const` cho literal types
+- ✅ Dùng utility types (Partial, Pick, Omit, etc.)
+
+10. ✅ **Documentation Files = `docs/` Folder**
+   - Tất cả file markdown documentation phải đặt trong folder `docs/`
+   - File format: `docs/{document-name}.md`
+   - KHÔNG đặt file `.md` ở root directory (trừ `README.md`)
+   - Giúp dễ quản lý và tổ chức documentation
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - File markdown trong docs/
+docs/PERFORMANCE_OPTIMIZATIONS.md
+docs/api-reference.md
+docs/deployment.md
+
+// ❌ SAI - File markdown ở root hoặc folder khác
+PERFORMANCE_OPTIMIZATIONS.md  // ❌ KHÔNG được đặt ở root
+components/README.md           // ❌ KHÔNG được đặt trong components/
+```
+
+---
+
+## 📁 CÁC FOLDER HIỆN CÓ VÀ CÁCH TÍCH HỢP
+
+### ✅ `components/` - All Components
+**Mục đích:** Chứa TẤT CẢ components của app (shared và feature-specific)
+
+**Rule:**
+- ✅ Tất cả components đều nằm trong `components/`
+- ✅ Không có folder `components/` trong `features/`
+- ❌ Không gọi Supabase trực tiếp trong components
+- ✅ Import types từ `@/types/{feature}.types.ts`
+- ✅ Client Components phải có suffix `.client.tsx` hoặc `'use client'` directive
+- ✅ **Ưu tiên sử dụng HeroUI components** (`@heroui/*`) trước khi tạo custom component
+
+**Cấu trúc:**
+```typescript
+components/
+├── navbar.tsx                    # Shared layout component
+├── theme-switch.tsx              # Shared utility component
+├── icons.tsx                     # Shared icons
+├── users-table.client.tsx        # Feature-specific component
+├── user-form.client.tsx          # Feature-specific component
+└── products-list.client.tsx       # Feature-specific component
+```
+
+**Ví dụ:**
+```typescript
+// ✅ components/navbar.tsx - Shared, dùng ở nhiều nơi
+// ✅ components/theme-switch.tsx - Shared utility
+// ✅ components/users-table.client.tsx - Feature-specific
+// ✅ components/user-form.client.tsx - Feature-specific
+```
+
+### ✅ `config/` - App Configuration
+**Mục đích:** Chứa các file cấu hình (fonts, site config, env, etc.)
+
+**Rule:**
+- ✅ Giữ nguyên cấu trúc hiện tại
+- ✅ **BẮT BUỘC:** Tất cả env variables phải định nghĩa trong `config/env.ts` với Zod validation
+- ✅ Có thể thêm config mới như `config/supabase.ts` nếu cần
+
+**Cấu trúc:**
+```typescript
+config/
+├── fonts.ts          # Font configuration
+├── site.ts           # Site configuration
+└── env.ts            # NEW: Environment variables với Zod validation
+```
+
+### ✅ `types/` - All Types/Interfaces
+**Mục đích:** Chứa TẤT CẢ types/interfaces của app (global và feature-specific)
+
+**Rule:**
+- ✅ Types dùng chung → `types/index.ts`
+- ✅ Types thuộc feature/service → `types/{feature}.types.ts`
+- ❌ KHÔNG định nghĩa types trong file service
+- ❌ KHÔNG đặt types trong folder `services/` hoặc `features/`
+
+**Cấu trúc:**
+```typescript
+types/
+├── index.ts              # Global types (IconSvgProps, etc.)
+├── users.types.ts        # User-related types
+├── products.types.ts     # Product-related types
+└── auth.types.ts         # Auth-related types
+```
+
+**Ví dụ import:**
+```typescript
+// ✅ ĐÚNG
+import { User } from '@/types/users.types';
+import { IconSvgProps } from '@/types';
+
+// ❌ SAI
+import { User } from '@/services/users/users.types';
+import { User } from './users.types';  // trong service file
+```
+
+### ✅ `styles/` - Global Styles
+**Mục đích:** Chứa CSS global và theme styles
+
+**Rule:**
+- ✅ Giữ nguyên cấu trúc hiện tại
+- ✅ Import trong `app/layout.tsx`
+
+### ✅ `app/` - Next.js App Router
+**Mục đích:** Chứa routes, layouts, pages của Next.js
+
+**Rule:**
+- ✅ Server Components gọi service, không query DB trực tiếp
+- ✅ Client Components nhận data từ props hoặc React Query
+- ✅ Sử dụng route groups `(auth)`, `(dashboard)` để tổ chức
+- ✅ Dùng `ROUTES` từ `@/constants/routes` cho navigation
+
+**Cấu trúc hiện tại:**
+```
+app/
+├── (auth)/          # NEW: Auth routes
+├── (dashboard)/     # NEW: Protected routes
+│   └── users/       # NEW: Feature pages
+├── about/           # EXISTING: Keep as is
+├── blog/            # EXISTING: Keep as is
+├── docs/            # EXISTING: Keep as is
+├── pricing/         # EXISTING: Keep as is
+├── layout.tsx       # EXISTING: Root layout
+├── page.tsx         # EXISTING: Home page
+├── providers.tsx    # EXISTING: App providers
+└── error.tsx        # EXISTING: Error boundary
+```
+
+### ✅ `public/` - Static Assets
+**Mục đích:** Chứa các file tĩnh (images, icons, favicon, etc.)
+
+**Rule:**
+- ✅ Giữ nguyên cấu trúc hiện tại
+
+### ✅ `docs/` - Documentation Files
+**Mục đích:** Chứa TẤT CẢ các file markdown documentation của project
+
+**Rule:**
+- ✅ **BẮT BUỘC:** Tất cả file `.md` (markdown) documentation phải đặt trong folder `docs/`
+- ❌ **KHÔNG được đặt** file `.md` ở root directory hoặc các folder khác
+- ✅ Bao gồm: README, guides, API reference, deployment docs, performance docs, etc.
+- ✅ File `README.md` ở root là exception (file README chính của project)
+
+**Cấu trúc:**
+```typescript
+docs/
+├── README.md                    # Documentation index/overview
+├── INDEX.md                     # Documentation index
+├── api-reference.md            # API documentation
+├── database-schema.md          # Database schema docs
+├── deployment.md                # Deployment guide
+├── usage.md                     # Usage guide
+└── PERFORMANCE_OPTIMIZATIONS.md # Performance optimizations docs
+```
+
+**Ví dụ:**
+```typescript
+// ✅ ĐÚNG - File markdown trong docs/
+docs/PERFORMANCE_OPTIMIZATIONS.md
+docs/api-reference.md
+docs/deployment.md
+
+// ❌ SAI - File markdown ở root
+PERFORMANCE_OPTIMIZATIONS.md  // ❌ KHÔNG được đặt ở root
+components/README.md            // ❌ KHÔNG được đặt trong components/
+```
+
+**Lưu ý:**
+- File `README.md` ở root directory là exception và được phép giữ lại
+- Tất cả các file documentation khác phải nằm trong `docs/`
+
+### ✅ `features/` - Feature Queries & Actions
+**Mục đích:** Chứa React Query hooks và Server Actions cho từng feature
+
+**Rule:**
+- ✅ Chỉ chứa `queries/` và `actions/`
+- ❌ KHÔNG chứa `components/` (components nằm trong `components/`)
+- ✅ Mỗi feature có folder riêng: `features/{feature}/`
+
+**Cấu trúc:**
+```typescript
+features/
+├── users/
+│   ├── queries/
+│   │   └── use-users.query.ts
+│   └── actions/
+│       └── create-user.action.ts
+└── products/
+    ├── queries/
+    │   └── use-products.query.ts
+    └── actions/
+        └── create-product.action.ts
+```
+
+**Ví dụ:**
+```typescript
+// ✅ features/users/queries/use-users.query.ts - React Query hook
+// ✅ features/users/actions/create-user.action.ts - Server Action
+// ❌ features/users/components/ - KHÔNG có folder này
+```
+
+---
+
+## 📋 CHECKLIST KHI VIẾT CODE
+
+- [ ] Đã tạo file `types/{feature}.types.ts` riêng cho types/interfaces?
+- [ ] Service không chứa types/interfaces?
+- [ ] Types nằm trong folder `types/` chứ không phải `services/`?
+- [ ] Component không gọi Supabase trực tiếp?
+- [ ] Server Component chỉ gọi service?
+- [ ] Đã dùng `ROUTES` thay vì hardcode?
+- [ ] Auth logic thông qua `useAuth()` hook?
+- [ ] Client service dùng `supabaseClient`?
+- [ ] Server service dùng `createSupabaseServerClient()`?
+- [ ] Features chỉ chứa queries và actions, không có components?
+- [ ] Components nằm trong folder `components/`?
+- [ ] **Server Action đã dùng Zod để validate input?**
+- [ ] **Service KHÔNG validate input (validation ở Action layer)?**
+- [ ] **Service KHÔNG gọi service khác (chỉ Feature/Action orchestrate)?**
+- [ ] **Đã select cụ thể columns thay vì `.select('*')`?**
+- [ ] **Client Service KHÔNG throw raw Supabase error (throw Error đã map hoặc Result)?**
+- [ ] **Đã dùng env từ `@/config/env` thay vì `process.env` trực tiếp?**
+- [ ] Đã ưu tiên sử dụng HeroUI components trước khi tạo custom component?
+- [ ] Không sử dụng `any` type (dùng `unknown` hoặc type cụ thể)?
+- [ ] **Tránh type assertion phức tạp** (`as unknown as T`, `(x as any).field`) – dùng helper/type guard?
+- [ ] Tất cả props, functions, variables đã có type?
+- [ ] Import types từ `@/types/{feature}.types.ts`?
+- [ ] Middleware đã implement route protection (redirect nếu đã login vào auth routes, chưa login vào protected routes)?
+- [ ] Đã dùng `getUser()` thay vì `getSession()`?
+- [ ] Chỉ dùng `requireAuth()` khi cần user object trong page (không cần nếu chỉ check auth)?
+- [ ] Không dùng `redirectIfAuthenticated()` trong auth pages (middleware đã handle)?
+- [ ] Route constants (PUBLIC_ROUTES, PROTECTED_ROUTES, AUTH_ROUTES) đã được định nghĩa?
+- [ ] **File markdown documentation đã đặt trong folder `docs/` (không đặt ở root)?**
+
+---
+
+## 🎯 TÓM TẮT
+
+**Kiến trúc 3 tầng:**
+1. **Services** → Database layer (Supabase)
+2. **Features** → Business logic layer (Queries, Actions)
+3. **Components + App** → Presentation layer (Components, Pages, Layouts)
+
+**Nguyên tắc:**
+- Separation of concerns
+- Single responsibility
+- Type safety
+- Reusability
+

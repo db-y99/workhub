@@ -1,0 +1,251 @@
+---
+description: Production deployment checklist and review guide. Use this rule when preparing for production deployment, reviewing code before deployment, setting up monitoring/analytics, configuring security settings, or optimizing performance. This checklist covers build verification, configuration checks, monitoring setup, error handling, security, performance optimization, and documentation requirements.
+alwaysApply: true
+---
+
+## 📋 PRODUCTION CHECKLIST
+
+**Lưu ý:** Đây là checklist để review trước khi deploy, không phải rules cứng. Một số items có thể skip trong development.
+
+---
+
+## 🔍 BUILD & ANALYSIS
+
+### 1. Build Check
+```bash
+# ✅ Luôn chạy build trước khi deploy
+npm run build
+```
+
+**Kiểm tra:**
+- [ ] Build thành công không có errors
+- [ ] Không có warnings nghiêm trọng
+- [ ] Static pages được generate đúng
+- [ ] Dynamic routes được mark đúng
+
+### 2. Route Analysis
+**Kiểm tra output của `next build`:**
+
+```
+Route (app)                              Size     First Load JS
+┌ ○ /                                    5.2 kB         85.3 kB
+├ ○ /about                              2.1 kB         82.2 kB
+├ ● /dashboard                          3.4 kB         86.5 kB
+└ ● /dashboard/users                    4.1 kB         87.2 kB
+```
+
+**Kiểm tra:**
+- [ ] Routes nào là Static (○) vs Dynamic (●)
+- [ ] Static routes có đủ không? (ưu tiên static cho content pages)
+- [ ] Dynamic routes chỉ dùng khi cần thiết
+- [ ] Bundle size hợp lý (< 200KB First Load JS)
+
+### 3. Bundle Size Monitoring
+**Kiểm tra bundle size:**
+
+```bash
+# Analyze bundle size
+npm run build
+# Check .next/analyze/ hoặc dùng @next/bundle-analyzer
+```
+
+**Guidelines:**
+- ✅ First Load JS < 200KB (ideal)
+- ✅ Individual route < 100KB
+- ✅ Large dependencies được dynamic import
+- ✅ Không có duplicate dependencies
+
+---
+
+## ⚙️ CONFIGURATION
+
+### 4. React Strict Mode
+**File:** `next.config.js`
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true, // ✅ BẮT BUỘC trong production
+};
+
+module.exports = nextConfig;
+```
+
+**Lý do:**
+- Phát hiện potential bugs sớm
+- Warn về deprecated APIs
+- Better development experience
+
+**Kiểm tra:**
+- [ ] `reactStrictMode: true` đã được set
+- [ ] Không có warnings trong console khi dev
+
+### 5. Environment Variables
+**Kiểm tra:**
+- [ ] Tất cả env variables đã được set trong production
+- [ ] Không có hardcoded secrets trong code
+- [ ] `NEXT_PUBLIC_*` variables đúng (sẽ expose cho client)
+- [ ] Server-only env variables không expose cho client
+
+---
+
+## 📊 MONITORING & ANALYTICS
+
+### 6. Vercel Analytics (nếu deploy trên Vercel)
+**Setup:**
+```typescript
+// app/layout.tsx
+import { Analytics } from '@vercel/analytics/react';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Analytics /> {/* ✅ Thêm Analytics */}
+      </body>
+    </html>
+  );
+}
+```
+
+**Kiểm tra:**
+- [ ] Analytics đã được setup
+- [ ] Page views được track đúng
+- [ ] Custom events (nếu có) hoạt động
+
+### 7. Speed Insights (nếu deploy trên Vercel)
+**Setup:**
+```typescript
+// app/layout.tsx
+import { SpeedInsights } from '@vercel/speed-insights/next';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <SpeedInsights /> {/* ✅ Thêm Speed Insights */}
+      </body>
+    </html>
+  );
+}
+```
+
+**Kiểm tra:**
+- [ ] Speed Insights đã được setup
+- [ ] Core Web Vitals được track
+- [ ] Performance metrics được monitor
+
+---
+
+## 🐛 ERROR HANDLING
+
+### 8. Error Boundaries
+**Kiểm tra:**
+- [ ] Error boundaries đã được setup (`error.tsx`)
+- [ ] Error logging hoạt động (nếu có)
+- [ ] User-friendly error messages
+
+### 9. Server Actions Error Handling
+**Kiểm tra:**
+- [ ] Server Actions có error handling đầy đủ
+- [ ] Errors được log (không expose sensitive info)
+- [ ] User nhận được friendly error messages
+
+---
+
+## 🔒 SECURITY
+
+### 10. Security Headers
+**File:** `next.config.js`
+
+```javascript
+const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+};
+```
+
+**Kiểm tra:**
+- [ ] Security headers đã được set (nếu cần)
+- [ ] CORS được config đúng (nếu có API routes)
+- [ ] Authentication/Authorization hoạt động đúng
+
+---
+
+## ⚡ PERFORMANCE
+
+### 11. Image Optimization
+**Kiểm tra:**
+- [ ] Tất cả images dùng Next.js `Image` component
+- [ ] Images có `width` và `height` set
+- [ ] Above-the-fold images có `priority={true}`
+- [ ] Image domains được whitelist trong `next.config.js` (nếu dùng remote images)
+
+### 12. Font Optimization
+**Kiểm tra:**
+- [ ] Fonts dùng `next/font` (không load từ CDN)
+- [ ] Font display strategy được set (`swap`)
+
+### 13. Cache Strategy
+**Kiểm tra:**
+- [ ] Fetch operations có cache strategy phù hợp
+- [ ] Static content dùng `force-cache`
+- [ ] ISR content có `revalidate` time hợp lý
+- [ ] Dynamic content dùng `no-store` khi cần
+
+---
+
+## 📝 DOCUMENTATION
+
+### 14. README & Documentation
+**Kiểm tra:**
+- [ ] README.md có đầy đủ setup instructions
+- [ ] Environment variables được document
+- [ ] Deployment process được document
+- [ ] API endpoints được document (nếu có)
+
+---
+
+## 🎯 QUICK CHECKLIST
+
+**Trước khi deploy:**
+- [ ] `npm run build` thành công
+- [ ] `reactStrictMode: true` trong config
+- [ ] Environment variables đã set
+- [ ] Error boundaries hoạt động
+- [ ] Images được optimize
+- [ ] Fonts dùng `next/font`
+- [ ] Cache strategy phù hợp
+- [ ] Analytics/Speed Insights setup (nếu cần)
+- [ ] Security headers được config (nếu cần)
+- [ ] Documentation đầy đủ
+
+---
+
+## 📚 REFERENCES
+
+- [Next.js Production Deployment](https://nextjs.org/docs/deployment)
+- [Vercel Analytics](https://vercel.com/docs/analytics)
+- [Vercel Speed Insights](https://vercel.com/docs/speed-insights)
+- [Next.js Security Headers](https://nextjs.org/docs/app/api-reference/next-config/headers)

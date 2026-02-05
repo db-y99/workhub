@@ -1,0 +1,422 @@
+---
+globs: *.sql
+alwaysApply: false
+---
+**⚠️ CHỈ ÁP DỤNG CHO FILE SQL:** Rules này chỉ áp dụng khi làm việc với các file `.sql`, migrations, hoặc database-related code.
+
+## 2️⃣ MIGRATION FILE NAMING
+
+**Rule:** Migration files phải có naming convention rõ ràng theo format của Supabase CLI
+
+**Command:**
+```bash
+supabase migration new <description>
+```
+
+**Format:**
+```
+{timestamp}_{description}.sql
+```
+
+**Ví dụ:**
+```
+20260123043207_create_users_table.sql
+20260124043207_add_user_email_index.sql
+20260125043207_create_user_profiles_table.sql
+```
+
+**Rule:**
+- ✅ Timestamp format: **`YYYYMMDDHHMMSS`** - 14 digits (Supabase CLI tự động generate)
+- ✅ Description: snake_case, mô tả rõ ràng migration làm gì
+- ✅ Mỗi migration chỉ làm một việc (single responsibility)
+- ✅ Migration phải reversible (có thể rollback)
+- ✅ **KHÔNG tự tạo file migration thủ công** - luôn dùng `supabase migration new <name>`
+
+---
+
+## 3️⃣ TABLE & COLUMN NAMING
+
+**Rule:** Consistent naming convention
+
+**Table names:**
+- ✅ **snake_case**, **plural**: `users`, `user_profiles`, `order_items`
+- ✅ Descriptive, không viết tắt không rõ ràng
+- ❌ Không dùng: `tbl_users`, `Users`, `userTbl`
+
+**Column names:**
+- ✅ **snake_case**: `user_id`, `created_at`, `full_name`
+- ✅ Timestamps: `created_at`, `updated_at`, `deleted_at`
+- ✅ Foreign keys: `{table}_id` (e.g., `user_id`, `order_id`)
+- ✅ Boolean: `is_active`, `has_permission`, `is_deleted`
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Naming convention
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ❌ SAI - Naming không consistent
+CREATE TABLE Users (  -- ❌ PascalCase
+  ID UUID PRIMARY KEY,  -- ❌ Uppercase
+  Email TEXT,  -- ❌ PascalCase
+  fullName TEXT,  -- ❌ camelCase
+  createdDate TIMESTAMPTZ  -- ❌ camelCase, không consistent với created_at
+);
+```
+
+---
+
+## 4️⃣ INDEXES & CONSTRAINTS
+
+**Rule:** Đặt tên indexes và constraints rõ ràng
+
+**Index naming:**
+- ✅ Format: `idx_{table}_{columns}`
+- ✅ Unique index: `idx_{table}_{columns}_unique`
+
+**Constraint naming:**
+- ✅ Primary key: `pk_{table}`
+- ✅ Foreign key: `fk_{table}_{referenced_table}`
+- ✅ Unique: `uk_{table}_{columns}`
+- ✅ Check: `ck_{table}_{description}`
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Named indexes và constraints
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email TEXT NOT NULL,
+  user_id UUID NOT NULL,
+  
+  CONSTRAINT pk_users PRIMARY KEY (id),
+  CONSTRAINT uk_users_email UNIQUE (email),
+  CONSTRAINT fk_users_profiles FOREIGN KEY (user_id) REFERENCES profiles(id)
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+CREATE UNIQUE INDEX idx_users_email_unique ON users(email) WHERE deleted_at IS NULL;
+```
+
+---
+
+## 5️⃣ FUNCTIONS & TRIGGERS NAMING
+
+**Rule:** Consistent naming cho functions và triggers
+
+**Function naming:**
+- ✅ **snake_case**: `get_user_by_id`, `update_user_timestamp`
+- ✅ Prefix với action: `get_`, `create_`, `update_`, `delete_`
+- ✅ Descriptive: `get_user_by_email` thay vì `get_user`
+
+**Trigger naming:**
+- ✅ Format: `{table}_{action}_{description}`
+- ✅ Ví dụ: `users_before_insert_set_timestamps`, `users_after_update_audit_log`
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Function naming
+CREATE OR REPLACE FUNCTION get_user_by_id(user_id UUID)
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  full_name TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    u.id,
+    u.email,
+    u.full_name
+  FROM users u
+  WHERE u.id = user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ ĐÚNG - Trigger naming
+CREATE TRIGGER users_before_insert_set_timestamps
+  BEFORE INSERT ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION set_created_at();
+
+CREATE TRIGGER users_after_update_update_timestamp
+  AFTER UPDATE ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+```
+
+---
+
+## 6️⃣ COMMENTS & DOCUMENTATION
+
+**Rule:** Comment cho complex logic và business rules
+
+**Khi nào cần comment:**
+- ✅ Complex queries với nhiều JOINs
+- ✅ Business logic trong functions
+- ✅ Non-obvious constraints hoặc indexes
+- ✅ Migration purpose và context
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Comment rõ ràng
+-- Migration: Add email verification status to users table
+-- Reason: Support email verification flow for new user registration
+-- Date: 2024-01-01
+
+ALTER TABLE users
+  ADD COLUMN email_verified_at TIMESTAMPTZ;
+
+-- Index for fast lookup of unverified users
+CREATE INDEX idx_users_email_unverified
+  ON users(email)
+  WHERE email_verified_at IS NULL;
+
+-- Function to get active users with verified email
+-- Returns only users who have verified their email and are not deleted
+CREATE OR REPLACE FUNCTION get_active_verified_users()
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  full_name TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    u.id,
+    u.email,
+    u.full_name
+  FROM users u
+  WHERE
+    u.email_verified_at IS NOT NULL  -- Only verified users
+    AND u.deleted_at IS NULL;        -- Only active users
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## 7️⃣ SECURITY BEST PRACTICES
+
+### Row Level Security (RLS)
+**Rule:** Luôn enable RLS cho tables có sensitive data
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Enable RLS và define policies
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  full_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own data
+CREATE POLICY "Users can view own data"
+  ON users
+  FOR SELECT
+  USING (auth.uid() = id);
+
+-- Policy: Users can update own data
+CREATE POLICY "Users can update own data"
+  ON users
+  FOR UPDATE
+  USING (auth.uid() = id);
+```
+
+### SQL Injection Prevention
+**Rule:** Luôn dùng parameterized queries, không concatenate user input
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Parameterized query
+CREATE OR REPLACE FUNCTION get_user_by_email(user_email TEXT)
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  full_name TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    u.id,
+    u.email,
+    u.full_name
+  FROM users u
+  WHERE u.email = user_email;  -- ✅ Parameter, không concatenate
+END;
+$$ LANGUAGE plpgsql;
+
+-- ❌ SAI - SQL injection risk
+-- WHERE u.email = user_email || '%';  -- ❌ Nếu user_email có chứa SQL
+```
+
+---
+
+## 8️⃣ PERFORMANCE OPTIMIZATION
+
+**Rule:** Optimize queries cho performance
+
+### Indexes
+- ✅ Index trên columns thường dùng trong WHERE, JOIN, ORDER BY
+- ✅ Partial indexes cho filtered queries
+- ✅ Composite indexes cho multi-column queries
+
+### Query Optimization
+- ✅ Select chỉ columns cần thiết (không `SELECT *`)
+- ✅ Use `EXISTS` thay vì `COUNT(*)` khi chỉ cần check existence
+- ✅ Use `LIMIT` để giới hạn kết quả
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Optimized với indexes
+-- Index cho WHERE clause
+CREATE INDEX idx_users_email ON users(email);
+
+-- Partial index cho active users
+CREATE INDEX idx_users_active
+  ON users(id, email)
+  WHERE deleted_at IS NULL;
+
+-- Composite index cho multi-column query
+CREATE INDEX idx_users_status_created
+  ON users(is_active, created_at DESC);
+
+-- ✅ ĐÚNG - Optimized query
+SELECT
+  id,
+  email,
+  full_name
+FROM users
+WHERE
+  email = 'user@example.com'
+  AND deleted_at IS NULL
+LIMIT 1;
+
+-- ✅ ĐÚNG - Use EXISTS thay vì COUNT
+-- Check if user exists
+SELECT EXISTS(
+  SELECT 1
+  FROM users
+  WHERE email = 'user@example.com'
+);
+```
+
+---
+
+## 9️⃣ MIGRATION BEST PRACTICES
+
+**Rule:** Migration phải safe và reversible
+
+**Do's:**
+- ✅ Add columns với `DEFAULT` value hoặc `NULL`
+- ✅ Add constraints với `NOT VALID` rồi validate sau
+- ✅ Drop columns trong separate migration
+- ✅ Test migration trên local trước khi deploy
+
+**Don'ts:**
+- ❌ Drop columns ngay lập tức (có thể break app đang chạy)
+- ❌ Add `NOT NULL` constraint mà không có default
+- ❌ Rename columns trực tiếp (dùng `ALTER COLUMN` với migration steps)
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Safe migration
+-- Step 1: Add column với default
+ALTER TABLE users
+  ADD COLUMN phone_number TEXT;
+
+-- Step 2: Update existing rows (nếu cần)
+UPDATE users
+SET phone_number = ''
+WHERE phone_number IS NULL;
+
+-- Step 3: Add NOT NULL constraint (sau khi đã có data)
+ALTER TABLE users
+  ALTER COLUMN phone_number SET NOT NULL;
+
+-- ❌ SAI - Unsafe migration
+ALTER TABLE users
+  ADD COLUMN phone_number TEXT NOT NULL;  -- ❌ Sẽ fail nếu có existing rows
+```
+
+---
+
+## 🔟 TYPE SAFETY & VALIDATION
+
+**Rule:** Dùng appropriate data types và constraints
+
+**Data types:**
+- ✅ `UUID` cho primary keys
+- ✅ `TEXT` cho strings (không giới hạn length)
+- ✅ `TIMESTAMPTZ` cho timestamps (timezone-aware)
+- ✅ `BOOLEAN` cho flags
+- ✅ `JSONB` cho JSON data (indexable)
+
+**Constraints:**
+- ✅ `NOT NULL` cho required fields
+- ✅ `UNIQUE` cho unique constraints
+- ✅ `CHECK` cho validation rules
+- ✅ `DEFAULT` cho default values
+
+**Ví dụ:**
+```sql
+-- ✅ ĐÚNG - Type safety và validation
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  full_name TEXT,
+  age INTEGER CHECK (age >= 0 AND age <= 150),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Index trên JSONB field
+CREATE INDEX idx_users_metadata ON users USING GIN (metadata);
+```
+
+---
+
+## 📋 CHECKLIST KHI VIẾT SQL
+
+- [ ] SQL keywords đã uppercase?
+- [ ] Identifiers đã lowercase snake_case?
+- [ ] Indentation 2 spaces, code dễ đọc?
+- [ ] Migration file đã đúng naming convention?
+- [ ] Table/column names đã consistent?
+- [ ] Indexes và constraints đã có tên rõ ràng?
+- [ ] Functions/triggers đã đúng naming?
+- [ ] Complex logic đã có comments?
+- [ ] RLS đã enable cho sensitive tables?
+- [ ] Queries đã optimized (indexes, LIMIT, EXISTS)?
+- [ ] Migration đã safe và reversible?
+- [ ] Data types và constraints đã phù hợp?
+
+---
+
+## 🎯 TÓM TẮT
+
+**SQL Formatting Principles:**
+1. **Consistency** → Uppercase keywords, lowercase identifiers
+2. **Readability** → Proper indentation, line breaks
+3. **Naming** → snake_case, descriptive names
+4. **Security** → RLS, parameterized queries
+5. **Performance** → Indexes, optimized queries
+6. **Safety** → Reversible migrations, proper types
+
+**Mục tiêu:**
+- 📝 Readable và maintainable SQL code
+- 🔒 Secure với RLS và proper constraints
+- ⚡ Performant với indexes và optimized queries
+- 🛡️ Safe migrations không break production
