@@ -135,7 +135,6 @@ export default function LoginForm() {
                 <GoogleIcon className="text-default-700 dark:text-default-300" />
               }
               isLoading={isPending}
-              onPress={handleGoogleLogin}
               className="border-2 font-medium"
             >
               Đăng nhập với Google
