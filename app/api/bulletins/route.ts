@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ROLES } from "@/constants/roles";
+import { BULLETIN_GRADIENTS } from "@/constants/bulletins";
 import { getRoleCode } from "@/lib/profile-utils";
 import { requireAuth } from "@/lib/api-auth";
 import type { TBulletinItem } from "@/types/bulletin.types";
-
-const GRADIENTS = [
-  "from-rose-400/80 to-pink-500/90",
-  "from-sky-300/80 to-blue-500/90",
-  "from-emerald-400/80 to-teal-500/90",
-  "from-amber-400/80 to-orange-500/90",
-  "from-violet-400/80 to-purple-500/90",
-  "from-indigo-400/80 to-blue-600/90",
-  "from-slate-300/80 to-slate-500/80",
-  "from-cyan-300/80 to-blue-500/90",
-];
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -64,38 +54,30 @@ function mapBulletinsToItems(
       tags,
       department_ids: b.department_ids ?? [],
       hasFile,
-      gradient: b.gradient ?? GRADIENTS[idx % GRADIENTS.length],
+      gradient: b.gradient ?? BULLETIN_GRADIENTS[idx % BULLETIN_GRADIENTS.length],
       attachments,
     };
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
 
     const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "12", 10);
+    const search = searchParams.get("search") || "";
+    const dateFilter = searchParams.get("dateFilter") || "";
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, department_id, role:roles(id, code, name)")
       .eq("id", auth.user.id)
       .is("deleted_at", null)
       .single();
-
-    const { data: bulletins, error: bulletinsError } = await supabase
-      .from("bulletins")
-      .select("id, title, description, department_ids, attachments, gradient, created_at")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-
-    if (bulletinsError) {
-      console.error("Error fetching bulletins:", bulletinsError);
-      return NextResponse.json(
-        { error: "Failed to fetch bulletins" },
-        { status: 500 }
-      );
-    }
 
     const roleCode = getRoleCode(profile);
     const isAdmin = roleCode === ROLES.ADMIN;
@@ -111,50 +93,119 @@ export async function GET() {
     
     const allDepartmentId = allDepartment?.id ?? null;
 
-    // Logic hiển thị bulletins:
-    // - Admin: thấy TẤT CẢ bulletins (bao gồm cả "toàn công ty" và bulletin có department cụ thể)
-    // - User thường: chỉ thấy bulletin "toàn công ty" (department_ids chứa ID của department "All")
-    //   và bulletin có department_ids chứa department_id của user
-    let visibleBulletins: typeof bulletins = [];
-    
-    if (isAdmin) {
-      // Admin thấy tất cả bulletins, bao gồm cả "toàn công ty"
-      visibleBulletins = bulletins ?? [];
-    } else {
-      // User thường: filter theo department
-      // QUAN TRỌNG: Bulletin "toàn công ty" (department_ids chứa ID của department "All") 
-      // luôn hiển thị cho TẤT CẢ user thường
-      const canViewBulletin = (departmentIds: string[] | null | undefined) => {
-        // Xử lý department_ids: có thể là null, undefined, hoặc array
-        let ids: string[] = [];
-        if (Array.isArray(departmentIds)) {
-          ids = departmentIds.filter((id) => id && typeof id === "string" && id.trim().length > 0);
-        }
-        
-        // QUAN TRỌNG: Nếu department_ids chứa ID của department "All" (toàn công ty)
-        // → luôn hiển thị cho TẤT CẢ user (cả admin và user thường)
-        if (allDepartmentId && ids.includes(allDepartmentId)) {
-          return true;
-        }
-        
-        // Nếu không có department_ids hoặc empty array → không hiển thị (phải có department "All" cụ thể)
-        if (ids.length === 0) {
-          return false;
-        }
-        
-        // Nếu user không có department_id → chỉ hiển thị bulletin toàn công ty
-        if (!userDepartmentId) {
-          return false;
-        }
-        
-        // Kiểm tra user có thuộc một trong các department được chọn
-        return ids.includes(userDepartmentId);
-      };
+    // Build base query cho bulletins
+    let bulletinsQuery = supabase
+      .from("bulletins")
+      .select("id, title, description, department_ids, attachments, gradient, created_at", { count: "exact" })
+      .is("deleted_at", null);
 
-      visibleBulletins = (bulletins ?? []).filter((b) => {
-        return canViewBulletin(b.department_ids as string[] | null | undefined);
-      });
+    // Filter theo permissions ở DB level trước
+    if (!isAdmin) {
+      // User thường: chỉ thấy bulletin "toàn công ty" hoặc bulletin có department của user
+      if (allDepartmentId && userDepartmentId) {
+        // Bulletin có department_ids chứa "All" HOẶC chứa department_id của user
+        bulletinsQuery = bulletinsQuery.or(
+          `department_ids.cs.{${allDepartmentId}},department_ids.cs.{${userDepartmentId}}`
+        );
+      } else if (allDepartmentId) {
+        // User không có department_id → chỉ thấy bulletin "toàn công ty"
+        bulletinsQuery = bulletinsQuery.contains("department_ids", [allDepartmentId]);
+      } else {
+        // Không có department "All" → không hiển thị gì
+        bulletinsQuery = bulletinsQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Impossible condition
+      }
     }
+    // Admin: không cần filter, thấy tất cả
+
+    // Apply search filter sau khi filter permissions
+    if (search) {
+      bulletinsQuery = bulletinsQuery.or(
+        `title.ilike.%${search}%,description.ilike.%${search}%`
+      );
+    }
+
+    // Apply date filter sau khi filter permissions
+    if (dateFilter && dateFilter !== "all") {
+      const daysAgo = parseInt(dateFilter);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      bulletinsQuery = bulletinsQuery.gte("created_at", cutoffDate.toISOString());
+    }
+
+    // Count total với filter
+    const { count, error: countError } = await bulletinsQuery;
+
+    if (countError) {
+      console.error("Error counting bulletins:", countError);
+      return NextResponse.json(
+        { error: "Failed to count bulletins" },
+        { status: 500 }
+      );
+    }
+
+    const total = count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    // Fetch data với pagination ở DB level
+    let dataQuery = supabase
+      .from("bulletins")
+      .select("id, title, description, department_ids, attachments, gradient, created_at")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+
+    // Apply same filters cho data query
+    if (search) {
+      dataQuery = dataQuery.or(
+        `title.ilike.%${search}%,description.ilike.%${search}%`
+      );
+    }
+
+    if (dateFilter && dateFilter !== "all") {
+      const daysAgo = parseInt(dateFilter);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      dataQuery = dataQuery.gte("created_at", cutoffDate.toISOString());
+    }
+
+    // Apply same filter cho data query
+    if (!isAdmin) {
+      if (allDepartmentId && userDepartmentId) {
+        dataQuery = dataQuery.or(
+          `department_ids.cs.{${allDepartmentId}},department_ids.cs.{${userDepartmentId}}`
+        );
+      } else if (allDepartmentId) {
+        dataQuery = dataQuery.contains("department_ids", [allDepartmentId]);
+      } else {
+        dataQuery = dataQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
+
+    // Apply same filters cho data query
+    if (search) {
+      dataQuery = dataQuery.or(
+        `title.ilike.%${search}%,description.ilike.%${search}%`
+      );
+    }
+
+    if (dateFilter && dateFilter !== "all") {
+      const daysAgo = parseInt(dateFilter);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      dataQuery = dataQuery.gte("created_at", cutoffDate.toISOString());
+    }
+
+    const { data: bulletins, error: bulletinsError } = await dataQuery;
+
+    if (bulletinsError) {
+      console.error("Error fetching bulletins:", bulletinsError);
+      return NextResponse.json(
+        { error: "Failed to fetch bulletins" },
+        { status: 500 }
+      );
+    }
+
+    const visibleBulletins = bulletins ?? [];
 
     // Build department map cho tags
     const deptIds = Array.from(
@@ -181,8 +232,18 @@ export async function GET() {
     }
 
     const items = mapBulletinsToItems(visibleBulletins, deptMap);
+    const hasMore = page < totalPages;
 
-    return NextResponse.json({ bulletins: items });
+    return NextResponse.json({
+      bulletins: items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      },
+    });
   } catch (error) {
     console.error("Error in bulletins API:", error);
     return NextResponse.json(

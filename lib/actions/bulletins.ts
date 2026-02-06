@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import { ROUTES } from "@/constants/routes";
+import { BULLETIN_GRADIENTS } from "@/constants/bulletins";
 import { getBaseUrl } from "@/config/env";
 import { getProfileById } from "@/lib/services/profiles.service";
 import { getDepartmentEmails } from "@/lib/services/departments.service";
@@ -14,6 +15,8 @@ import {
 } from "@/lib/email-template";
 import { type TBulletinCreatedData } from "@/types/email.types";
 import { stripHtml } from "@/lib/functions";
+import { PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
+import { getPermissionsByUserId } from "@/lib/services/permissions.service";
 
 type TAttachment = { name: string; fileId: string; size?: number };
 
@@ -24,6 +27,15 @@ export async function createBulletin(formData: FormData) {
 
     if (!user) {
       return { error: "Bạn cần đăng nhập để đăng bảng tin" };
+    }
+
+    // Check permission
+    const permissions = await getPermissionsByUserId(user.id);
+    const canCreate = permissions.includes(
+      toPermissionCode("bulletins", PERMISSION_ACTIONS.CREATE)
+    );
+    if (!canCreate) {
+      return { error: "Bạn không có quyền tạo bảng tin" };
     }
 
     const title = (formData.get("title") as string)?.trim();
@@ -45,18 +57,8 @@ export async function createBulletin(formData: FormData) {
       ? JSON.parse(attachmentsJson)
       : [];
 
-    const gradients = [
-      "from-rose-400/80 to-pink-500/90",
-      "from-sky-300/80 to-blue-500/90",
-      "from-emerald-400/80 to-teal-500/90",
-      "from-amber-400/80 to-orange-500/90",
-      "from-violet-400/80 to-purple-500/90",
-      "from-indigo-400/80 to-blue-600/90",
-      "from-slate-300/80 to-slate-500/80",
-      "from-cyan-300/80 to-blue-500/90",
-    ];
     const gradient =
-      gradients[Math.floor(Math.random() * gradients.length)] ?? gradients[0];
+      BULLETIN_GRADIENTS[Math.floor(Math.random() * BULLETIN_GRADIENTS.length)] ?? BULLETIN_GRADIENTS[0];
 
     // Đảm bảo department_ids luôn là array (empty array [] nếu không chọn department nào)
     // Empty array [] = toàn công ty, sẽ hiển thị cho tất cả user
@@ -191,6 +193,15 @@ export async function updateBulletin(bulletinId: string, formData: FormData) {
 
     if (!user) {
       return { error: "Bạn cần đăng nhập để sửa bảng tin" };
+    }
+
+    // Check permission
+    const permissions = await getPermissionsByUserId(user.id);
+    const canEdit = permissions.includes(
+      toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT)
+    );
+    if (!canEdit) {
+      return { error: "Bạn không có quyền sửa bảng tin" };
     }
 
     // Kiểm tra bulletin có tồn tại không

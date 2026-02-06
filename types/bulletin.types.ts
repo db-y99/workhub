@@ -35,3 +35,15 @@ export type TBulletinItem = {
   /** File đính kèm [{name, fileId, size?}] - tải qua /api/bulletin-files */
   attachments?: Array<{ name: string; fileId: string; size?: number }>;
 };
+
+/** Response từ API /api/bulletins với pagination */
+export type TBulletinsResponse = {
+  bulletins: TBulletinItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};

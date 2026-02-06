@@ -1,4 +1,4 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
@@ -24,6 +24,12 @@ export const siteConfig = {
       href: ROUTES.APPROVE,
       icon: ClipboardCheck,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.APPROVE],
+    },
+    {
+      label: "Bảng tin",
+      href: ROUTES.BULLETINS,
+      icon: Megaphone,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.BULLETINS],
     },
     {
       label: "Send email",

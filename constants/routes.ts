@@ -11,6 +11,7 @@ export const ROUTES = {
 
   // Protected (dashboard)
   APPROVE: "/approve",
+  BULLETINS: "/bulletins",
   USERS: "/users",
   DEPARTMENTS: "/departments",
   SETTINGS: "/settings",
@@ -27,6 +28,7 @@ export const PUBLIC_ROUTES = [ROUTES.HOME, ROUTES.LOGIN] as const;
 
 export const PROTECTED_ROUTES = [
   ROUTES.APPROVE,
+  ROUTES.BULLETINS,
   ROUTES.USERS,
   ROUTES.DEPARTMENTS,
   ROUTES.SETTINGS,

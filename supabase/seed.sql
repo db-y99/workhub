@@ -30,6 +30,21 @@ WHERE NOT EXISTS (
   WHERE permissions.code = p.code AND (permissions.deleted_at IS NULL)
 );
 
+-- Permissions: đảm bảo có page "bulletins" (bảng tin)
+INSERT INTO public.permissions (code, name, sort_order)
+SELECT p.code, p.name, p.sort_order
+FROM (VALUES
+  ('bulletins:view', 'Xem Bảng tin', 37),
+  ('bulletins:create', 'Tạo Bảng tin', 38),
+  ('bulletins:edit', 'Sửa Bảng tin', 39),
+  ('bulletins:delete', 'Xóa Bảng tin', 40)
+) AS p(code, name, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.permissions
+  WHERE permissions.code = p.code AND (permissions.deleted_at IS NULL)
+)
+ON CONFLICT (code) DO NOTHING;
+
 -- Role Permissions: Phân quyền cho từng role
 -- Admin: Toàn quyền (tất cả permissions)
 INSERT INTO public.role_permissions (role_id, permission_id)
@@ -68,6 +83,8 @@ WHERE r.code = 'staff'
     OR (p.code LIKE 'loans:%' AND p.code NOT LIKE '%:delete')
     OR (p.code LIKE 'company-resources:%' AND p.code NOT LIKE '%:delete')
     OR (p.code LIKE 'statistics:%' AND p.code NOT LIKE '%:delete')
+    -- Bulletins: view, create, edit (không delete)
+    OR (p.code LIKE 'bulletins:%' AND p.code NOT LIKE '%:delete')
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -86,6 +103,8 @@ WHERE r.code = 'cs'
     OR (p.code LIKE 'loans:%' AND p.code NOT LIKE '%:delete')
     -- Xem statistics
     OR p.code LIKE 'statistics:view'
+    -- Bulletins: view, create, edit (không delete)
+    OR (p.code LIKE 'bulletins:%' AND p.code NOT LIKE '%:delete')
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -102,6 +121,7 @@ WHERE r.code = 'user'
     OR p.code LIKE 'loans:view'
     OR p.code LIKE 'company-resources:view'
     OR p.code LIKE 'statistics:view'
+    OR p.code LIKE 'bulletins:view'
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
