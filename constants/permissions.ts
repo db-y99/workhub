@@ -47,6 +47,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/users": toPermissionCode("users", PERMISSION_ACTIONS.VIEW),
   "/departments": toPermissionCode("departments", PERMISSION_ACTIONS.VIEW),
   "/permissions": toPermissionCode("permissions", PERMISSION_ACTIONS.VIEW),
+  "/permissions/list": toPermissionCode("permissions", PERMISSION_ACTIONS.VIEW),
   "/roles": toPermissionCode("roles", PERMISSION_ACTIONS.VIEW),
   "/company-resources": toPermissionCode("company-resources", PERMISSION_ACTIONS.VIEW),
   "/statistics": toPermissionCode("statistics", PERMISSION_ACTIONS.VIEW),

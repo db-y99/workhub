@@ -19,6 +19,7 @@ export const ROUTES = {
   LOANS_DISBURSEMENT_SUCCESS: "/loans/disbursement-success",
   COMPANY_RESOURCES: "/company-resources",
   PERMISSIONS: "/permissions",
+  PERMISSIONS_LIST: "/permissions/list",
   ROLES: "/roles",
 } as const;
 
@@ -36,6 +37,7 @@ export const PROTECTED_ROUTES = [
   ROUTES.LOANS_DISBURSEMENT_SUCCESS,
   ROUTES.COMPANY_RESOURCES,
   ROUTES.PERMISSIONS,
+  ROUTES.PERMISSIONS_LIST,
   ROUTES.ROLES,
   ROUTES.HOME
 ] as const;

@@ -15,3 +15,22 @@ export type PermissionFormRow = {
   can_edit: boolean;
   can_delete: boolean;
 };
+
+export interface Permission {
+  id: string;
+  code: string;
+  name: string | null;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface PermissionsListResponse {
+  permissions: Permission[];
+  total: number;
+  totalPages: number;
+  page: number;
+  limit: number;
+}

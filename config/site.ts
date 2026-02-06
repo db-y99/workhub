@@ -1,4 +1,4 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
@@ -72,6 +72,12 @@ export const siteConfig = {
       href: ROUTES.PERMISSIONS,
       icon: KeyRound,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS],
+    },
+    {
+      label: "Danh sách quyền",
+      href: ROUTES.PERMISSIONS_LIST,
+      icon: List,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS_LIST],
     },
     {
       label: "Cài đặt",

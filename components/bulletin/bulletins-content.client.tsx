@@ -41,7 +41,6 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { BulletinDetailModal } from "./bulletin-detail-modal";
 import { EditBulletinModal } from "./edit-bulletin-modal";
 import { AddBulletinModal } from "./add-bulletin-modal";
-import { formatDate } from "@/lib/functions";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/lib/contexts/auth-context";
 import type { TBulletinItem, TBulletinsResponse } from "@/types/bulletin.types";
@@ -65,7 +64,7 @@ export default function BulletinsContent() {
   const [selectedBulletin, setSelectedBulletin] =
     useState<TBulletinItem | null>(null);
   const { isAdmin, hasPermission } = useAuth();
-  
+
   // Permission checks
   const canCreate = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.CREATE));
   const canEdit = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT));
