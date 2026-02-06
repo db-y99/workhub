@@ -2,8 +2,10 @@ import { env } from "@/config/env";
 import { Result, ok, err } from "@/types/result.types";
 import { createError } from "@/lib/errors";
 
-const GOOGLE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzhVY8nEGF1jbO59dTo3KNCz93-4FqlmcAPitKoTjinQJ3n6SIuYIZfO2elkBFLlrth/exec";
+
+function getAppsScriptUrl(): string {
+  return env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL ?? "";
+}
 
 type SendEmailParams = {
   to: string;
@@ -40,7 +42,7 @@ export async function sendEmailViaAppScript(
   }
 
   try {
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+    const response = await fetch(getAppsScriptUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

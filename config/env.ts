@@ -19,6 +19,7 @@ const EnvSchema = z.object({
   FROM_EMAIL: z.string().default("onboarding@resend.dev"),
 
   // Email via Google Apps Script
+  NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL: z.string().url().optional(),
   SECRET_KEY_SEND_MAIL_APP_SCRIPT: z.string().optional(),
 
   // Google Drive – Service Account chung, folder tách theo feature
@@ -41,7 +42,9 @@ const envInput = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     FROM_EMAIL: process.env.FROM_EMAIL,
-    SECRET_KEY_SEND_MAIL_APP_SCRIPT: process.env.SECRET_KEY_SEND_MAIL_APP_SCRIPT,
+  NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL:
+    process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL,
+  SECRET_KEY_SEND_MAIL_APP_SCRIPT: process.env.SECRET_KEY_SEND_MAIL_APP_SCRIPT,
     GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
@@ -75,6 +78,8 @@ try {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY || "re_mock_key",
     FROM_EMAIL: process.env.FROM_EMAIL || "onboarding@resend.dev",
+    NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL:
+      process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL,
     SECRET_KEY_SEND_MAIL_APP_SCRIPT: process.env.SECRET_KEY_SEND_MAIL_APP_SCRIPT,
     GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
     BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
