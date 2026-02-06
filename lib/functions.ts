@@ -1,4 +1,5 @@
 import { EMAIL_REGEX } from "@/constants/email"
+import { tiptapHtmlToPlainText } from "@/lib/tiptap-plain-text"
 
 
 export const formatDate = (dateString: string | null | undefined) => {
@@ -82,13 +83,12 @@ export function parseCCEmailsRaw(ccEmails?: string): string[] {
 
 
 
-/** Strip HTML tags and normalize spaces – hiển thị plain text, không render HTML */
+/** Strip HTML → plain text. Ưu tiên parse bằng Tiptap (cùng schema editor), lỗi thì fallback regex. */
 export function stripHtml(html: string | null | undefined): string {
   if (html == null || typeof html !== "string") return "";
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const fromTiptap = tiptapHtmlToPlainText(html);
+  if (fromTiptap) return fromTiptap;
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /**

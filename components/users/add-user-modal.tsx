@@ -15,7 +15,7 @@ import { createProfile } from "@/lib/actions/profiles";
 import { generatePassword } from "@/lib/functions";
 import type { Department } from "@/types";
 import type { Role } from "@/types/role.types";
-import { Plus, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Plus, RefreshCw } from "lucide-react";
 import useSWR from "swr";
 
 interface AddUserModalProps {
@@ -43,6 +43,7 @@ export function AddUserModal({
 }: AddUserModalProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -149,7 +150,6 @@ export function AddUserModal({
                   <Input
                     isRequired
                     label="Họ tên"
-                    placeholder="Nguyễn Văn A"
                     value={formData.full_name}
                     onValueChange={(v) =>
                       setFormData({ ...formData, full_name: v })
@@ -159,7 +159,6 @@ export function AddUserModal({
                     isRequired
                     label="Email"
                     type="email"
-                    placeholder="user@example.com"
                     value={formData.email}
                     onValueChange={(v) =>
                       setFormData({ ...formData, email: v })
@@ -170,31 +169,45 @@ export function AddUserModal({
                   <Input
                     isRequired
                     label="Mật khẩu"
-                    type="password"
-                    placeholder="Tối thiểu 6 ký tự"
+                    type={isPasswordVisible ? "text" : "password"}
                     value={formData.password}
                     onValueChange={(v) =>
                       setFormData({ ...formData, password: v })
                     }
                     description="Người dùng sẽ dùng mật khẩu này để đăng nhập"
                     endContent={
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        onPress={handleGeneratePassword}
-                        aria-label="Generate password"
-                        className="min-w-0"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-0.5">
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={() => setIsPasswordVisible((v) => !v)}
+                          aria-label={isPasswordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                          className="min-w-0"
+                        >
+                          {isPasswordVisible ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={handleGeneratePassword}
+                          aria-label="Generate password"
+                          className="min-w-0"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </div>
                     }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Số điện thoại"
-                    placeholder="Tùy chọn"
                     value={formData.phone}
                     onValueChange={(v) =>
                       setFormData({ ...formData, phone: v })
@@ -202,7 +215,6 @@ export function AddUserModal({
                   />
                   <Select
                     label="Phòng ban"
-                    placeholder="Chọn phòng ban"
                     selectedKeys={
                       formData.department_id ? [formData.department_id] : []
                     }
@@ -220,7 +232,6 @@ export function AddUserModal({
                 </div>
                 <Select
                   label="Vai trò"
-                  placeholder="Chọn vai trò"
                   selectedKeys={formData.role_id ? [formData.role_id] : []}
                   onSelectionChange={(keys) => {
                     setFormData({
