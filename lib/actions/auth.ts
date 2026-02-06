@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { USER_ROLE, USER_STATUS } from "@/lib/constants";
+import { USER_STATUS } from "@/lib/constants";
 import { ROUTES } from "@/constants/routes";
 import { env } from "@/config/env";
 
@@ -24,7 +24,7 @@ export async function signInWithEmailPassword(email: string, password: string) {
   }
 
   if (data.user) {
-    redirect(ROUTES.APPROVE);
+    return { success: true };
   }
 
   return { error: "Đăng nhập thất bại" };

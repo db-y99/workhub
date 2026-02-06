@@ -7,7 +7,6 @@ import {
   NavbarContent,
   NavbarMenu,
   NavbarMenuToggle,
-  NavbarBrand,
   NavbarItem,
   NavbarMenuItem,
 } from "@heroui/navbar";
@@ -30,15 +29,12 @@ import {
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import { User } from "@heroui/user";
-import { link as linkStyles } from "@heroui/theme";
-import NextLink from "next/link";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { SearchIcon, LogOut, Menu } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { Logo } from "@/components/icons";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { signOut } from "@/lib/actions/auth";
 

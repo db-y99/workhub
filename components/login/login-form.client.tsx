@@ -5,9 +5,11 @@ import { Card, CardBody, CardFooter } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Divider } from "@heroui/divider";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { GoogleIcon } from "@/components/icons";
+import { ROUTES } from "@/constants/routes";
+import { useAuth } from "@/lib/contexts/auth-context";
 import {
   signInWithGoogle,
   signInWithEmailPassword,
@@ -23,6 +25,8 @@ const INTERNAL_SUPPORT_TEXT =
   "Hệ thống nội bộ. Có vấn đề vui lòng liên hệ Admin hoặc IT.";
 
 export default function LoginForm() {
+  const router = useRouter();
+  const { refresh } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -59,7 +63,14 @@ export default function LoginForm() {
 
     startTransition(async () => {
       const result = await signInWithEmailPassword(email, password);
-      if (result?.error) setError(result.error);
+
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+
+      await refresh();
+      router.replace(ROUTES.APPROVE);
     });
   };
 

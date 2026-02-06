@@ -15,7 +15,6 @@ import type { ProfileFromApi } from "@/types";
 import { USER_ROLE } from "@/lib/constants";
 import { getRoleCode } from "@/lib/profile-utils";
 import { createClient } from "@/lib/supabase/client";
-import { getProfileById, getPermissionsByUserId } from "@/lib/db";
 
 interface AuthContextType {
   currentUser: User | null;
@@ -24,6 +23,7 @@ interface AuthContextType {
   isAdmin: boolean;
   hasPermission: (code: string) => boolean;
   loading: boolean;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,37 +34,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const fetchUserData = useCallback(async (userId: string) => {
-    try {
-      const [p, perms] = await Promise.all([
-        getProfileById(userId),
-        getPermissionsByUserId(userId),
-      ]);
-      setProfile(p);
-      setPermissions(perms ?? []);
-    } catch {
+  const fetchUserData = useCallback(async () => {
+    const res = await fetch("/api/auth/me", {
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      setCurrentUser(null);
       setProfile(null);
       setPermissions([]);
+      return;
     }
+
+    const data = await res.json();
+    setCurrentUser(data.user ?? null);
+    setProfile(data.profile ?? null);
+    setPermissions(data.permissions ?? []);
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        const user = session?.user ?? null;
-        setCurrentUser(user);
-
-        if (user) {
-          await fetchUserData(user.id);
-        } else {
-          setProfile(null);
-          setPermissions([]);
-        }
-
-        setLoading(false);
-      });
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      fetchUserData().finally(() => setLoading(false));
+    });
 
     return () => subscription.unsubscribe();
   }, [supabase, fetchUserData]);
@@ -88,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin,
         hasPermission,
         loading,
+        refresh: fetchUserData,
       }}
     >
       {loading ? null : children}
