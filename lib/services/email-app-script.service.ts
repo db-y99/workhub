@@ -7,42 +7,53 @@ function getAppsScriptUrl(): string {
   return env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL ?? "";
 }
 
-type SendEmailParams = {
+export type SendEmailParams = {
   to: string;
   subject: string;
-  body: string;
+  /** Plain text (gửi thành textBody). Dùng khi chỉ gửi text, hoặc làm fallback khi có htmlBody. */
+  body?: string;
+  /** HTML content. Script mới dùng htmlBody + textBody. */
+  htmlBody?: string;
+  /** Plain text fallback khi client không hiển thị HTML. Nếu có htmlBody nên gửi kèm textBody. */
+  textBody?: string;
 };
 
 /**
- * Gửi email qua Google Apps Script
- * @param params - Thông tin email (to, subject, body)
- * @returns Result<true> nếu thành công, Result<Error> nếu thất bại
+ * Gửi email qua Google Apps Script (format mới: htmlBody + textBody)
+ * @param params - to, subject, và (body) hoặc (htmlBody + textBody)
+ * @returns Result<true> nếu thành công
  */
 export async function sendEmailViaAppScript(
   params: SendEmailParams
 ): Promise<Result<true>> {
-  // Kiểm tra env variable
   if (!env.SECRET_KEY_SEND_MAIL_APP_SCRIPT) {
     return err(
       createError.server("SECRET_KEY_SEND_MAIL_APP_SCRIPT không được cấu hình")
     );
   }
 
-  // Validate input
-  if (!params.to || !params.to.trim()) {
-    return err(createError.validation("Email người nhận không được để trống"));
+  const url = getAppsScriptUrl();
+  if (!url) {
+    return err(
+      createError.server("NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL không được cấu hình")
+    );
   }
 
-  if (!params.subject || !params.subject.trim()) {
+  if (!params.to?.trim()) {
+    return err(createError.validation("Email người nhận không được để trống"));
+  }
+  if (!params.subject?.trim()) {
     return err(createError.validation("Tiêu đề email không được để trống"));
   }
 
-  if (!params.body || !params.body.trim()) {
-    return err(createError.validation("Nội dung email không được để trống"));
+  const htmlBody = params.htmlBody?.trim();
+  const textBody = params.textBody?.trim() || params.body?.trim();
+  if (!htmlBody && !textBody) {
+    return err(createError.validation("Nội dung email (body hoặc htmlBody/textBody) không được để trống"));
   }
 
   try {
-    const response = await fetch(getAppsScriptUrl(), {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,7 +62,8 @@ export async function sendEmailViaAppScript(
         key: env.SECRET_KEY_SEND_MAIL_APP_SCRIPT,
         to: params.to.trim(),
         subject: params.subject.trim(),
-        body: params.body.trim(),
+        ...(htmlBody && { htmlBody }),
+        ...(textBody && { textBody }),
       }),
     });
 

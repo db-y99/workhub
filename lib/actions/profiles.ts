@@ -20,10 +20,12 @@ import {
   UpdatePasswordSchema,
 } from "@/lib/actions/profiles/schemas";
 import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
+import { stripHtml } from "@/lib/functions";
 import {
   renderUserAccountEmailHTML,
   getUserAccountEmailSubject,
 } from "@/lib/email-template";
+import juice from 'juice';
 
 /**
  * Create a new user (auth + profile).
@@ -82,16 +84,19 @@ export async function createProfile(data: {
     return { error: msg };
   }
 
-  // Gửi email thông tin tài khoản cho user mới
-  // Không block việc tạo user nếu gửi email thất bại (chỉ log error)
-  const emailResult = await sendEmailViaAppScript({
-    to: parsed.data.email,
-    subject: getUserAccountEmailSubject(),
-    body: renderUserAccountEmailHTML({
+  // Gửi email thông tin tài khoản (format mới: htmlBody + textBody)
+  const htmlContent = juice(
+    renderUserAccountEmailHTML({
       full_name: parsed.data.full_name,
       email: parsed.data.email,
       password: parsed.data.password,
-    }),
+    })
+  );
+  const emailResult = await sendEmailViaAppScript({
+    to: parsed.data.email,
+    subject: getUserAccountEmailSubject(),
+    htmlBody: htmlContent,
+    textBody: stripHtml(htmlContent),
   });
 
   if (isErr(emailResult)) {

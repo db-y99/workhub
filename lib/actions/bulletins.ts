@@ -8,6 +8,12 @@ import { getBaseUrl } from "@/config/env";
 import { getProfileById } from "@/lib/services/profiles.service";
 import { getDepartmentEmails } from "@/lib/services/departments.service";
 import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
+import {
+  renderBulletinCreatedEmailHTML,
+  getBulletinCreatedEmailSubject,
+} from "@/lib/email-template";
+import { type TBulletinCreatedData } from "@/types/email.types";
+import { stripHtml } from "@/lib/functions";
 
 type TAttachment = { name: string; fileId: string; size?: number };
 
@@ -81,22 +87,17 @@ export async function createBulletin(formData: FormData) {
         const creatorName = creatorProfile?.full_name || user.email || "Người dùng";
         const creatorEmail = creatorProfile?.email || user.email || "";
 
-        // Format email body
+        // Format email data
         const baseUrl = getBaseUrl();
         const bulletinUrl = `${baseUrl}${ROUTES.APPROVE}`;
+        const logoUrl = 
+          typeof window !== "undefined"
+            ? `${window.location.origin}/logo.png`
+            : "/logo.png";
 
-        // Build email body parts
-        const emailParts = [
-          "Chào bạn,",
-          "",
-          "Có một bảng tin mới đã được đăng trong hệ thống:",
-          "",
-          `📋 Tiêu đề: ${title}`,
-          `👤 Người đăng: ${creatorName}${creatorEmail ? ` (${creatorEmail})` : ""}`,
-        ];
-
+        // Lấy tên các phòng ban để hiển thị
+        let departmentNames: string | null = null;
         if (departmentIds.length > 0) {
-          // Lấy tên các phòng ban để hiển thị
           const { data: departments } = await supabase
             .from("departments")
             .select("name")
@@ -104,30 +105,51 @@ export async function createBulletin(formData: FormData) {
             .is("deleted_at", null);
 
           if (departments && departments.length > 0) {
-            const departmentNames = departments.map((d) => d.name).join(", ");
-            emailParts.push(`🏢 Phòng ban: ${departmentNames}`);
+            departmentNames = departments.map((d) => d.name).join(", ");
           }
         }
 
-        if (description) {
-          emailParts.push("", `📝 Nội dung:`, description);
-        }
+        const emailData: TBulletinCreatedData = {
+          title,
+          creatorName,
+          creatorEmail: creatorEmail || undefined,
+          departmentNames: departmentNames || undefined,
+          description: description || undefined,
+          attachmentsCount: attachments.length,
+          bulletinUrl,
+        };
 
-        if (attachments.length > 0) {
-          emailParts.push("", `📎 File đính kèm: ${attachments.length} file`);
-        }
+        // Render HTML email template
+        const htmlBody = renderBulletinCreatedEmailHTML(emailData, logoUrl);
+        const emailSubject = getBulletinCreatedEmailSubject(title);
 
-        emailParts.push("", `🔗 Xem chi tiết: ${bulletinUrl}`, "", "Trân trọng,", "Hệ thống Easy Approve");
-
-        const emailBody = emailParts.join("\n");
-        const emailSubject = `[Easy Approve] Bảng tin mới: ${title}`;
+        // Plain text fallback (từ HTML)
+        const textBody = [
+          "Chào bạn,",
+          "",
+          "Có một bảng tin mới đã được đăng trong hệ thống:",
+          "",
+          `📋 Tiêu đề: ${title}`,
+          `👤 Người đăng: ${creatorName}${creatorEmail ? ` (${creatorEmail})` : ""}`,
+          departmentNames ? `🏢 Phòng ban: ${departmentNames}` : "",
+          description ? `📝 Nội dung:\n${stripHtml(description)}` : "",
+          attachments.length > 0 ? `📎 File đính kèm: ${attachments.length} file` : "",
+          "",
+          `🔗 Xem chi tiết: ${bulletinUrl}`,
+          "",
+          "Trân trọng,",
+          "Hệ thống Easy Approve",
+        ]
+          .filter(Boolean)
+          .join("\n");
 
         // Gửi email đến từng recipient (gửi song song)
         const emailPromises = recipientEmails.map((email) =>
           sendEmailViaAppScript({
             to: email.trim(),
             subject: emailSubject,
-            body: emailBody,
+            htmlBody,
+            textBody,
           })
         );
 

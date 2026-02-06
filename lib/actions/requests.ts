@@ -9,6 +9,11 @@ import { getProfileById } from "@/lib/services/profiles.service";
 import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
 import { getBaseUrl } from "@/config/env";
 import { stripHtml } from "@/lib/functions";
+import {
+  renderRequestCreatedEmailHTML,
+  getRequestCreatedEmailSubject,
+} from "@/lib/email-template";
+import { type TRequestCreatedData } from "@/types/email.types";
 
 type TAttachment = { name: string; fileId: string; size?: number };
 
@@ -150,46 +155,55 @@ export async function createRequest(
         const requesterName = requesterProfile?.full_name || user.email || "Người dùng";
         const requesterEmail = requesterProfile?.email || user.email || "";
 
-        // Format email body
+        // Format email data
         const baseUrl = getBaseUrl();
         const approveUrl = `${baseUrl}${ROUTES.APPROVE}`;
-        
-        // Build email body parts
-        const emailParts = [
+        const logoUrl = 
+          typeof window !== "undefined"
+            ? `${window.location.origin}/logo.png`
+            : "/logo.png";
+
+        const emailData: TRequestCreatedData = {
+          title,
+          requesterName,
+          requesterEmail: requesterEmail || undefined,
+          departmentName: departmentName || undefined,
+          description: description || undefined,
+          attachmentsCount: attachments.length,
+          approveUrl,
+        };
+
+        // Render HTML email template
+        const htmlBody = renderRequestCreatedEmailHTML(emailData, logoUrl);
+        const emailSubject = getRequestCreatedEmailSubject(title);
+
+        // Plain text fallback (từ HTML)
+        const textBody = [
           "Chào bạn,",
           "",
           "Có một yêu cầu phê duyệt mới đã được tạo trong hệ thống:",
           "",
           `📋 Tiêu đề: ${title}`,
           `👤 Người yêu cầu: ${requesterName}${requesterEmail ? ` (${requesterEmail})` : ""}`,
-        ];
-
-        if (departmentName) {
-          emailParts.push(`🏢 Phòng ban: ${departmentName}`);
-        }
-
-        if (description) {
-          // Parse HTML thành plain text cho email
-          const plainTextDescription = stripHtml(description);
-          emailParts.push("", `📝 Nội dung chi tiết:`, plainTextDescription);
-        }
-
-        if (attachments.length > 0) {
-          emailParts.push("", `📎 File đính kèm: ${attachments.length} file`);
-        }
-
-        emailParts.push("", `🔗 Xem chi tiết: ${approveUrl}`, "", "Trân trọng,", "Hệ thống Easy Approve");
-
-        const emailBody = emailParts.join("\n");
-
-        const emailSubject = `[Easy Approve] Yêu cầu phê duyệt mới: ${title}`;
+          departmentName ? `🏢 Phòng ban: ${departmentName}` : "",
+          description ? `📝 Nội dung chi tiết:\n${stripHtml(description)}` : "",
+          attachments.length > 0 ? `📎 File đính kèm: ${attachments.length} file` : "",
+          "",
+          `🔗 Xem chi tiết: ${approveUrl}`,
+          "",
+          "Trân trọng,",
+          "Hệ thống Easy Approve",
+        ]
+          .filter(Boolean)
+          .join("\n");
 
         // Gửi email đến từng CC email (gửi song song)
         const emailPromises = ccEmails.map((email) =>
           sendEmailViaAppScript({
             to: email.trim(),
             subject: emailSubject,
-            body: emailBody,
+            htmlBody,
+            textBody,
           })
         );
 

@@ -124,3 +124,99 @@ export function generatePassword(): string {
     .sort(() => Math.random() - 0.5)
     .join("");
 }
+
+
+/**
+ * Chuyển đổi số thành chữ tiếng Việt
+ */
+export function numberToVietnameseWords(num: number): string {
+  const ones = [
+      "",
+      "một",
+      "hai",
+      "ba",
+      "bốn",
+      "năm",
+      "sáu",
+      "bảy",
+      "tám",
+      "chín",
+  ];
+  const tens = [
+      "",
+      "mười",
+      "hai mươi",
+      "ba mươi",
+      "bốn mươi",
+      "năm mươi",
+      "sáu mươi",
+      "bảy mươi",
+      "tám mươi",
+      "chín mươi",
+  ];
+  const hundreds = [
+      "",
+      "một trăm",
+      "hai trăm",
+      "ba trăm",
+      "bốn trăm",
+      "năm trăm",
+      "sáu trăm",
+      "bảy trăm",
+      "tám trăm",
+      "chín trăm",
+  ];
+
+  if (num === 0) return "không";
+  if (num < 10) return ones[num];
+  if (num < 20) {
+      if (num === 10) return "mười";
+      if (num === 11) return "mười một";
+      return "mười " + ones[num % 10];
+  }
+  if (num < 100) {
+      const ten = Math.floor(num / 10);
+      const one = num % 10;
+      if (one === 0) return tens[ten];
+      if (one === 5) return tens[ten] + " lăm";
+      return tens[ten] + " " + ones[one];
+  }
+  if (num < 1000) {
+      const hundred = Math.floor(num / 100);
+      const remainder = num % 100;
+      if (remainder === 0) return hundreds[hundred];
+      return hundreds[hundred] + " " + numberToVietnameseWords(remainder);
+  }
+  if (num < 1000000) {
+      const thousand = Math.floor(num / 1000);
+      const remainder = num % 1000;
+      let result = numberToVietnameseWords(thousand) + " ngàn";
+      if (remainder > 0) {
+          if (remainder < 100) result += " không trăm";
+          result += " " + numberToVietnameseWords(remainder);
+      }
+      return result;
+  }
+  if (num < 1000000000) {
+      const million = Math.floor(num / 1000000);
+      const remainder = num % 1000000;
+      let result = numberToVietnameseWords(million) + " triệu";
+      if (remainder > 0) {
+          if (remainder < 1000) result += " không ngàn";
+          result += " " + numberToVietnameseWords(remainder);
+      }
+      return result;
+  }
+  return num.toString();
+}
+
+/**
+* Format ngày tháng tiếng Việt
+*/
+export function formatDateDMY(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
