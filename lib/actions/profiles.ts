@@ -8,6 +8,7 @@ import {
   updateProfileService,
   deleteProfileService,
   updateProfileStatusService,
+  updateUserPasswordService,
 } from "@/lib/services/profiles.service";
 import { getCurrentUser } from "./auth";
 import { ERROR_CODES } from "@/constants/error-codes";
@@ -17,6 +18,7 @@ import {
   CreateProfileSchema,
   UpdateProfileSchema,
   UpdateProfileStatusSchema,
+  UpdatePasswordSchema,
 } from "@/lib/actions/profiles/schemas";
 
 /**
@@ -141,6 +143,41 @@ export async function deleteProfile(id: string) {
   if (isErr(result)) {
     console.error("[deleteProfile] Service error:", result.error);
     return { error: ERROR_MESSAGES.PROFILE_DELETE_FAILED };
+  }
+
+  revalidatePath(ROUTES.USERS);
+  return { success: true };
+}
+
+/**
+ * Update user password (admin)
+ */
+export async function updateUserPassword(
+  userId: string,
+  data: { password: string; confirmPassword: string }
+) {
+  if (!userId || typeof userId !== "string" || userId.length === 0) {
+    return { error: "ID không hợp lệ" };
+  }
+
+  const parsed = UpdatePasswordSchema.safeParse(data);
+
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return { error: first?.message ?? "Dữ liệu không hợp lệ" };
+  }
+
+  const result = await updateUserPasswordService(userId, parsed.data.password);
+
+  if (isErr(result)) {
+    console.error("[updateUserPassword] Service error:", result.error);
+    const code = result.error.code;
+    const msg =
+      code === ERROR_CODES.SERVER_ERROR &&
+      result.error.message === "SERVICE_ROLE_KEY_MISSING"
+        ? ERROR_MESSAGES.SERVICE_ROLE_KEY_MISSING
+        : ERROR_MESSAGES.PASSWORD_UPDATE_FAILED;
+    return { error: msg };
   }
 
   revalidatePath(ROUTES.USERS);

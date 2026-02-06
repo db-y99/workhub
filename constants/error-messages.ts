@@ -22,6 +22,7 @@ export const ERROR_MESSAGES = {
   PROFILE_CREATE_FAILED: "Không thể tạo tài khoản. Vui lòng thử lại.",
   PROFILE_CREATE_AUTH_FAILED: "Tạo tài khoản thành công nhưng lỗi khi tạo profile",
   PROFILE_STATUS_UPDATE_FAILED: "Không thể cập nhật trạng thái",
+  PASSWORD_UPDATE_FAILED: "Không thể đổi mật khẩu. Vui lòng thử lại.",
 
   // Config
   SERVICE_ROLE_KEY_MISSING: "Chưa cấu hình SUPABASE_SERVICE_ROLE_KEY trong .env.local",

@@ -28,10 +28,12 @@ import {
   RefreshCw,
   Users,
   Plus,
+  KeyRound,
 } from "lucide-react";
 
 import type { Department, ProfileFromApi } from "@/types";
 import { AddUserModal } from "./add-user-modal";
+import { ChangePasswordModal } from "./change-password-modal";
 import { EditEmployeeModal } from "@/components/settings/employees/edit-employee-modal";
 import { DeleteEmployeeModal } from "@/components/settings/employees/delete-employee-modal";
 import { USER_STATUS } from "@/lib/constants";
@@ -133,10 +135,17 @@ export function UsersContent() {
     onOpen: onDeleteModalOpen,
     onClose: onDeleteModalClose,
   } = useDisclosure();
+  const {
+    isOpen: isChangePasswordModalOpen,
+    onOpen: onChangePasswordModalOpen,
+    onClose: onChangePasswordModalClose,
+  } = useDisclosure();
 
   const [editingProfile, setEditingProfile] =
     useState<ProfileWithDepartment | null>(null);
   const [deletingProfile, setDeletingProfile] =
+    useState<ProfileWithDepartment | null>(null);
+  const [changingPasswordProfile, setChangingPasswordProfile] =
     useState<ProfileWithDepartment | null>(null);
 
   const { data: deptData } = useSWR<{ departments: Department[] }>(
@@ -180,6 +189,11 @@ export function UsersContent() {
   const openDeleteModal = (profile: ProfileWithDepartment) => {
     setDeletingProfile(profile);
     onDeleteModalOpen();
+  };
+
+  const openChangePasswordModal = (profile: ProfileWithDepartment) => {
+    setChangingPasswordProfile(profile);
+    onChangePasswordModalOpen();
   };
 
   return (
@@ -379,24 +393,35 @@ export function UsersContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button
-                              color="primary"
+                              isIconOnly
                               size="sm"
                               variant="light"
-                              startContent={<Edit size={16} />}
+                              color="primary"
+                              title="Sửa"
                               onPress={() => openEditModal(item)}
                             >
-                              Sửa
+                              <Edit size={18} />
                             </Button>
                             <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              title="Đổi mật khẩu"
+                              onPress={() => openChangePasswordModal(item)}
+                            >
+                              <KeyRound size={18} />
+                            </Button>
+                            <Button
+                              isIconOnly
                               size="sm"
                               variant="light"
                               color="danger"
-                              startContent={<Trash2 size={16} />}
+                              title="Xóa"
                               onPress={() => openDeleteModal(item)}
                             >
-                              Xóa
+                              <Trash2 size={18} />
                             </Button>
                           </div>
                         </TableCell>
@@ -454,6 +479,15 @@ export function UsersContent() {
           isOpen={isDeleteModalOpen}
           onClose={onDeleteModalClose}
           employee={deletingProfile}
+          onSuccess={mutate}
+        />
+      )}
+
+      {isChangePasswordModalOpen && changingPasswordProfile && (
+        <ChangePasswordModal
+          isOpen={isChangePasswordModalOpen}
+          onClose={onChangePasswordModalClose}
+          employee={changingPasswordProfile}
           onSuccess={mutate}
         />
       )}

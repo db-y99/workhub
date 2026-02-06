@@ -188,6 +188,35 @@ export async function deleteProfileService(id: string): Promise<Result<true>> {
 }
 
 /**
+ * Update user password (admin). Uses Supabase Admin API.
+ * profileId = auth.users.id
+ */
+export async function updateUserPasswordService(
+  userId: string,
+  newPassword: string
+): Promise<Result<true>> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return err(createError.server("SERVICE_ROLE_KEY_MISSING"));
+    }
+    throw e;
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  });
+
+  if (error) {
+    return err(createError.database("UPDATE_PASSWORD_FAILED"));
+  }
+
+  return ok(true);
+}
+
+/**
  * Update profile status.
  */
 export async function updateProfileStatusService(

@@ -84,6 +84,9 @@ export type TUpdateProfileInput = {
   role_id?: string;
 };
 
+// Type cho change password modal - chỉ cần các field tối thiểu
+export type TChangePasswordProfile = Pick<ProfileFromApi, "id" | "full_name" | "email">;
+
 // Request Types
 export type RequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
