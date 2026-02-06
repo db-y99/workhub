@@ -47,69 +47,23 @@ import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { AddRequestModal } from "@/components/requests/add-request-modal";
 import { DiscussionModal } from "@/components/requests/discussion-modal.client";
 import { formatDate } from "@/lib/functions";
+import {
+  formatRequestCode,
+  getDepartmentChipColor,
+  getStatusConfig,
+} from "@/lib/request-utils";
 import { createClient } from "@/lib/supabase/client";
-import type { RequestStatus } from "@/types";
-import { REQUEST_STATUS } from "@/lib/constants";
-
-interface RequestsResponse {
-  requests: any[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-type SortDescriptor = {
-  column: string;
-  direction: "ascending" | "descending";
-};
-
-const columns = [
-  { key: "time", label: "THỜI GIAN" },
-  { key: "sender", label: "NGƯỜI GỬI" },
-  { key: "department", label: "BỘ PHẬN" },
-  { key: "cc", label: "CC" },
-  { key: "content_action", label: "NỘI DUNG & HÀNH ĐỘNG" },
-  { key: "file", label: "FILE" },
-  { key: "status", label: "TRẠNG THÁI" },
-];
-
-function formatRequestCode(createdAt: string, id: string): string {
-  const d = new Date(createdAt);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  const suffix = id.slice(-3).toUpperCase();
-  return `${dd}${mm}${yy}-${suffix}`;
-}
-
-function getDepartmentChipColor(
-  code?: string | null,
-  name?: string | null
-): "primary" | "success" | "default" | "secondary" {
-  const c = (code || name || "").toUpperCase();
-  if (c.includes("IT")) return "primary";
-  if (c.includes("KT") || c.includes("AD")) return "success";
-  if (c.includes("OTHER")) return "default";
-  return "secondary";
-}
-
-const getStatusConfig = (status: RequestStatus) => {
-  switch (status) {
-    case REQUEST_STATUS.PENDING:
-      return { color: "warning" as const, label: "Chờ duyệt" };
-    case REQUEST_STATUS.APPROVED:
-      return { color: "success" as const, label: "Đã duyệt" };
-    case REQUEST_STATUS.REJECTED:
-      return { color: "danger" as const, label: "Từ chối" };
-    case REQUEST_STATUS.CANCELLED:
-      return { color: "secondary" as const, label: "Đã hủy" };
-    default:
-      return { color: "default" as const, label: String(status) };
-  }
-};
-
-const rowsPerPage = 10;
+import type {
+  TApproveRequestItem,
+  TRequestsResponse,
+  TSortDescriptor,
+} from "@/types/approve.types";
+import {
+  APPROVE_TABLE_COLUMNS,
+  APPROVE_ROWS_PER_PAGE,
+  APPROVE_STATUS_FILTER_OPTIONS,
+  APPROVE_DATE_FILTER_OPTIONS,
+} from "@/constants/approve";
 
 export default function ApproveContent() {
   const [mounted, setMounted] = useState(false);
@@ -119,14 +73,15 @@ export default function ApproveContent() {
   const [filterDepartment, setFilterDepartment] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("all");
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+  const [sortDescriptor, setSortDescriptor] = useState<TSortDescriptor>({
     column: "time",
     direction: "descending",
   });
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    new Set(columns.map((col) => col.key))
+    new Set(APPROVE_TABLE_COLUMNS.map((col) => col.key))
   );
-  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<TApproveRequestItem | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isAddOpen,
@@ -151,7 +106,7 @@ export default function ApproveContent() {
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
       page: page.toString(),
-      limit: rowsPerPage.toString(),
+      limit: APPROVE_ROWS_PER_PAGE.toString(),
     });
 
     if (debouncedSearchValue) {
@@ -197,7 +152,7 @@ export default function ApproveContent() {
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<RequestsResponse>(mounted ? apiUrl : null, {
+  } = useSWR<TRequestsResponse>(mounted ? apiUrl : null, {
     revalidateOnFocus: false,
     revalidateOnMount: true,
   });
@@ -245,20 +200,14 @@ export default function ApproveContent() {
     };
   }, [mounted, mutate]);
 
-  const statusOptions = [
-    { value: "all", label: "Tất cả" },
-    { value: "pending", label: "Chờ duyệt" },
-    { value: "approved", label: "Đã duyệt" },
-    { value: "rejected", label: "Từ chối" },
-    { value: "cancelled", label: "Đã hủy" },
-  ];
-
   useEffect(() => {
     setPage(1);
   }, [debouncedSearchValue, filterDepartment, filterStatus, filterDate]);
 
   const headerColumns = useMemo(() => {
-    return columns.filter((column) => visibleColumns.has(column.key));
+    return APPROVE_TABLE_COLUMNS.filter((column) =>
+      visibleColumns.has(column.key)
+    );
   }, [visibleColumns]);
 
   const toggleColumn = (columnKey: string) => {
@@ -378,7 +327,7 @@ export default function ApproveContent() {
                           value={filterStatus}
                           onValueChange={setFilterStatus}
                         >
-                          {statusOptions.map((status) => (
+                          {APPROVE_STATUS_FILTER_OPTIONS.map((status) => (
                             <Radio key={status.value} value={status.value}>
                               {status.label}
                             </Radio>
@@ -392,11 +341,11 @@ export default function ApproveContent() {
                           value={filterDate}
                           onValueChange={setFilterDate}
                         >
-                          <Radio value="all">Tất cả</Radio>
-                          <Radio value="7">7 ngày qua</Radio>
-                          <Radio value="30">30 ngày qua</Radio>
-                          <Radio value="60">60 ngày qua</Radio>
-                          <Radio value="90">90 ngày qua</Radio>
+                          {APPROVE_DATE_FILTER_OPTIONS.map((opt) => (
+                            <Radio key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </Radio>
+                          ))}
                         </RadioGroup>
                       </div>
                     </div>
@@ -452,7 +401,7 @@ export default function ApproveContent() {
                     aria-label="Column selection"
                     closeOnSelect={false}
                     items={[
-                      ...columns.map((col) => ({
+                      ...APPROVE_TABLE_COLUMNS.map((col) => ({
                         key: col.key,
                         label: col.label,
                       })),
@@ -461,7 +410,7 @@ export default function ApproveContent() {
                     onAction={(key) => {
                       if (key === "select-all") {
                         setVisibleColumns(
-                          new Set(columns.map((col) => col.key))
+                          new Set(APPROVE_TABLE_COLUMNS.map((col) => col.key))
                         );
                       } else {
                         toggleColumn(key as string);
@@ -539,8 +488,9 @@ export default function ApproveContent() {
                         onClose={() => setFilterStatus("all")}
                       >
                         {
-                          statusOptions.find((s) => s.value === filterStatus)
-                            ?.label
+                          APPROVE_STATUS_FILTER_OPTIONS.find(
+                            (s) => s.value === filterStatus
+                          )?.label
                         }
                       </Chip>
                     )}
@@ -550,13 +500,11 @@ export default function ApproveContent() {
                         variant="flat"
                         onClose={() => setFilterDate("all")}
                       >
-                        {filterDate === "7"
-                          ? "7 ngày qua"
-                          : filterDate === "30"
-                            ? "30 ngày qua"
-                            : filterDate === "60"
-                              ? "60 ngày qua"
-                              : "90 ngày qua"}
+                        {
+                          APPROVE_DATE_FILTER_OPTIONS.find(
+                            (o) => o.value === filterDate
+                          )?.label
+                        }
                       </Chip>
                     )}
                     <Button
@@ -603,7 +551,7 @@ export default function ApproveContent() {
                 sortDescriptor={sortDescriptor}
                 onSortChange={(descriptor) => {
                   if (descriptor) {
-                    setSortDescriptor(descriptor as SortDescriptor);
+                    setSortDescriptor(descriptor as TSortDescriptor);
                   }
                 }}
               >
@@ -623,7 +571,7 @@ export default function ApproveContent() {
                     loading ? "Đang tải..." : "Không tìm thấy yêu cầu nào"
                   }
                 >
-                  {(item) => (
+                  {(item: TApproveRequestItem) => (
                     <TableRow key={item.id}>
                       {(columnKey) => {
                         if (columnKey === "time") {

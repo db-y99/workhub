@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
-import { createClient } from "@/lib/supabase/server";
 import {
   createProfileService,
   updateProfileService,
