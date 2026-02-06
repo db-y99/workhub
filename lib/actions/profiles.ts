@@ -20,6 +20,11 @@ import {
   UpdateProfileStatusSchema,
   UpdatePasswordSchema,
 } from "@/lib/actions/profiles/schemas";
+import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
+import {
+  renderUserAccountEmailHTML,
+  getUserAccountEmailSubject,
+} from "@/lib/email-template";
 
 /**
  * Create a new user (auth + profile).
@@ -76,6 +81,26 @@ export async function createProfile(data: {
             ? ERROR_MESSAGES.PROFILE_CREATE_FAILED
             : ERROR_MESSAGES.UNEXPECTED_ERROR;
     return { error: msg };
+  }
+
+  // Gửi email thông tin tài khoản cho user mới
+  // Không block việc tạo user nếu gửi email thất bại (chỉ log error)
+  const emailResult = await sendEmailViaAppScript({
+    to: parsed.data.email,
+    subject: getUserAccountEmailSubject(),
+    body: renderUserAccountEmailHTML({
+      full_name: parsed.data.full_name,
+      email: parsed.data.email,
+      password: parsed.data.password,
+    }),
+  });
+
+  if (isErr(emailResult)) {
+    // Log error nhưng không block việc tạo user
+    console.error(
+      "[createProfile] Failed to send account email:",
+      emailResult.error
+    );
   }
 
   revalidatePath(ROUTES.USERS);

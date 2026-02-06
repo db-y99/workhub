@@ -13,6 +13,6 @@ export type ResourceType = (typeof RESOURCE_TYPE)[keyof typeof RESOURCE_TYPE];
 /** Nhãn hiển thị cho loại tài nguyên (thống kê, UI) */
 export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   [RESOURCE_TYPE.ACCOUNT]: "Tài khoản",
-  [RESOURCE_TYPE.COMPUTER]: "Máy tính",
+  [RESOURCE_TYPE.COMPUTER]: "Máy tính / Thiết bị",
   [RESOURCE_TYPE.OTHER]: "Khác",
 } as const;

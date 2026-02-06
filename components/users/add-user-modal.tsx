@@ -12,9 +12,10 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { createProfile } from "@/lib/actions/profiles";
+import { generatePassword } from "@/lib/functions";
 import type { Department } from "@/types";
 import type { Role } from "@/types/role.types";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import useSWR from "swr";
 
 interface AddUserModalProps {
@@ -58,6 +59,11 @@ export function AddUserModal({
   );
   const roles = rolesData?.roles || [];
   const defaultRole = roles.find((r) => r.code === "user");
+
+  const handleGeneratePassword = () => {
+    const newPassword = generatePassword();
+    setFormData({ ...formData, password: newPassword });
+  };
 
   const handleSubmit = () => {
     if (!formData.full_name.trim() || !formData.email.trim() || !formData.password.trim()) {
@@ -160,17 +166,31 @@ export function AddUserModal({
                     }
                   />
                 </div>
-                <Input
-                  isRequired
-                  label="Mật khẩu"
-                  type="password"
-                  placeholder="Tối thiểu 6 ký tự"
-                  value={formData.password}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, password: v })
-                  }
-                  description="Người dùng sẽ dùng mật khẩu này để đăng nhập"
-                />
+                <div className="flex flex-col gap-2">
+                  <Input
+                    isRequired
+                    label="Mật khẩu"
+                    type="password"
+                    placeholder="Tối thiểu 6 ký tự"
+                    value={formData.password}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, password: v })
+                    }
+                    description="Người dùng sẽ dùng mật khẩu này để đăng nhập"
+                    endContent={
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={handleGeneratePassword}
+                        aria-label="Generate password"
+                        className="min-w-0"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    }
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Số điện thoại"

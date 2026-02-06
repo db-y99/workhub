@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition, useMemo } from "react";
+import dynamic from "next/dynamic";
 import useSWR from "swr";
 import { useDebounceValue } from "usehooks-ts";
 import {
@@ -14,8 +15,12 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { EmailRecipientInput } from "@/components/loans/email-recipient-input";
 import { createRequest } from "@/lib/actions/requests";
-import { TiptapRichEditor } from "./tiptap-rich-editor.client";
 import { Plus, X, Send, Trash2 } from "lucide-react";
+
+const TiptapRichEditor = dynamic(
+  () => import("./tiptap-rich-editor.client").then((mod) => ({ default: mod.TiptapRichEditor })),
+  { ssr: false }
+);
 
 type ProfilesResponse = { employees?: { email?: string }[] };
 
@@ -78,7 +83,7 @@ export function AddRequestModal({
 
       // Upload files lên Google Drive qua API route trước
       const attachments: Array<{ name: string; fileId: string; size?: number }> = [];
-      
+
       if (selectedFiles.length > 0) {
         try {
           // Upload từng file song song
@@ -121,7 +126,7 @@ export function AddRequestModal({
       const formDataToSend = new FormData();
       formDataToSend.append("title", title);
       formDataToSend.append("description", description);
-      
+
       // Thêm CC emails
       formData.ccEmails.forEach((email) => {
         formDataToSend.append("cc_emails", email);
@@ -180,6 +185,7 @@ export function AddRequestModal({
       isOpen={isOpen}
       scrollBehavior="inside"
       size="2xl"
+      hideCloseButton={true}
       onClose={handleClose}
       classNames={{
         header: "bg-primary text-primary-foreground p-4 rounded-t-2xl",
@@ -241,14 +247,16 @@ export function AddRequestModal({
                   <label className="block font-semibold text-sm mb-2">
                     NỘI DUNG CHI TIẾT <span className="text-danger">*</span>
                   </label>
-                  <TiptapRichEditor
-                    value={formData.description}
-                    onChange={(html) =>
-                      setFormData({ ...formData, description: html })
-                    }
-                    placeholder="Nhập nội dung chi tiết..."
-                    minHeight="140px"
-                  />
+                  {isOpen && (
+                    <TiptapRichEditor
+                      value={formData.description}
+                      onChange={(html) =>
+                        setFormData({ ...formData, description: html })
+                      }
+                      placeholder="Nhập nội dung chi tiết..."
+                      minHeight="140px"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block font-semibold text-sm mb-2">

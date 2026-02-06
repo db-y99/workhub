@@ -16,14 +16,7 @@ import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import {
-  useDisclosure,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/modal";
+import { useDisclosure } from "@heroui/modal";
 import { Pagination } from "@heroui/pagination";
 import { Skeleton } from "@heroui/skeleton";
 import {
@@ -36,14 +29,17 @@ import {
   Package,
   FileText,
   FileX2,
+  Eye,
 } from "lucide-react";
 
 import type { CompanyResourceWithAssignee } from "@/types/company-resource.types";
-import { RESOURCE_TYPE } from "@/constants/resources";
+import { RESOURCE_TYPE, RESOURCE_TYPE_LABELS } from "@/constants/resources";
 import { formatDate } from "@/lib/functions";
 import { AddResourceModal } from "@/components/company-resources/add-resource-modal";
 import { EditResourceModal } from "@/components/company-resources/edit-resource-modal";
 import { DeleteResourceModal } from "@/components/company-resources/delete-resource-modal";
+import { ResourceNotesModal } from "@/components/company-resources/resource-notes-modal";
+import { ResourceDetailModal } from "@/components/company-resources/resource-detail-modal";
 
 const columns = [
   { key: "name", label: "TÊN TÀI NGUYÊN" },
@@ -53,12 +49,6 @@ const columns = [
   { key: "created_at", label: "NGÀY TẠO" },
   { key: "actions", label: "THAO TÁC" },
 ];
-
-const typeLabels: Record<string, string> = {
-  [RESOURCE_TYPE.ACCOUNT]: "Tài khoản",
-  [RESOURCE_TYPE.COMPUTER]: "Máy tính / Thiết bị",
-  [RESOURCE_TYPE.OTHER]: "Khác",
-};
 
 // Type cho table row (CompanyResourceWithAssignee + optional isSkeleton)
 type CompanyResourceRow = CompanyResourceWithAssignee & {
@@ -115,15 +105,20 @@ export function CompanyResourcesContent() {
     onOpen: onNotesModalOpen,
     onClose: onNotesModalClose,
   } = useDisclosure();
+  const {
+    isOpen: isDetailModalOpen,
+    onOpen: onDetailModalOpen,
+    onClose: onDetailModalClose,
+  } = useDisclosure();
 
   const [editingResource, setEditingResource] =
     useState<CompanyResourceWithAssignee | null>(null);
   const [deletingResource, setDeletingResource] =
     useState<CompanyResourceWithAssignee | null>(null);
-  const [notesModalContent, setNotesModalContent] = useState<{
-    resourceName: string;
-    notes: string;
-  } | null>(null);
+  const [detailResource, setDetailResource] =
+    useState<CompanyResourceWithAssignee | null>(null);
+  const [notesResource, setNotesResource] =
+    useState<CompanyResourceWithAssignee | null>(null);
 
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
@@ -161,18 +156,15 @@ export function CompanyResourcesContent() {
     onDeleteModalOpen();
   };
 
-  const openNotesModal = (resource: CompanyResourceWithAssignee) => {
-    if (!resource.notes?.trim()) return;
-    setNotesModalContent({
-      resourceName: resource.name,
-      notes: resource.notes,
-    });
-    onNotesModalOpen();
+  const openDetailModal = (resource: CompanyResourceWithAssignee) => {
+    setDetailResource(resource);
+    onDetailModalOpen();
   };
 
-  const closeNotesModal = () => {
-    setNotesModalContent(null);
-    onNotesModalClose();
+  const openNotesModal = (resource: CompanyResourceWithAssignee) => {
+    if (!resource.notes?.trim()) return;
+    setNotesResource(resource);
+    onNotesModalOpen();
   };
 
   return (
@@ -257,8 +249,8 @@ export function CompanyResourcesContent() {
               items={
                 loading
                   ? Array.from({ length: 5 }, (_, i) =>
-                      createSkeletonCompanyResource(i)
-                    )
+                    createSkeletonCompanyResource(i)
+                  )
                   : resources
               }
               emptyContent="Chưa có tài nguyên nào"
@@ -284,7 +276,7 @@ export function CompanyResourcesContent() {
                       return (
                         <TableCell>
                           <span className="text-default-600">
-                            {typeLabels[item.type] ?? item.type}
+                            {RESOURCE_TYPE_LABELS[item.type] ?? item.type}
                           </span>
                         </TableCell>
                       );
@@ -346,24 +338,35 @@ export function CompanyResourcesContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button
-                              color="primary"
+                              isIconOnly
                               size="sm"
                               variant="light"
-                              startContent={<Edit size={16} />}
-                              onPress={() => openEditResource(item)}
+                              title="Xem chi tiết"
+                              onPress={() => openDetailModal(item)}
                             >
-                              Sửa
+                              <Eye size={18} />
                             </Button>
                             <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              color="primary"
+                              title="Sửa"
+                              onPress={() => openEditResource(item)}
+                            >
+                              <Edit size={18} />
+                            </Button>
+                            <Button
+                              isIconOnly
                               size="sm"
                               variant="light"
                               color="danger"
-                              startContent={<Trash2 size={16} />}
+                              title="Xóa"
                               onPress={() => openDeleteResource(item)}
                             >
-                              Xóa
+                              <Trash2 size={18} />
                             </Button>
                           </div>
                         </TableCell>
@@ -425,34 +428,24 @@ export function CompanyResourcesContent() {
         />
       )}
 
-      <Modal
-        isOpen={isNotesModalOpen}
-        onClose={closeNotesModal}
-        size="md"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          {() => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                <span className="text-default-500 text-sm font-normal">
-                  Ghi chú — {notesModalContent?.resourceName}
-                </span>
-              </ModalHeader>
-              <ModalBody>
-                <p className="text-default-700 whitespace-pre-wrap">
-                  {notesModalContent?.notes ?? ""}
-                </p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="primary" variant="light" onPress={closeNotesModal}>
-                  Đóng
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      {isNotesModalOpen && notesResource && (
+        <ResourceNotesModal
+          isOpen={isNotesModalOpen}
+          onClose={onNotesModalClose}
+          resourceName={notesResource.name}
+          notes={notesResource.notes ?? ""}
+        />
+      )}
+
+      {
+        isDetailModalOpen && detailResource && (
+          <ResourceDetailModal
+            isOpen={isDetailModalOpen}
+            onClose={onDetailModalClose}
+            resource={detailResource}
+          />
+        )
+      }
     </div>
   );
 }

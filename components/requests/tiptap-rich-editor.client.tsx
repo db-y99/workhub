@@ -43,6 +43,7 @@ export function TiptapRichEditor({
     ],
     content: value,
     editable: true,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange?.(editor.getHTML());
     },

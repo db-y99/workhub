@@ -90,3 +90,37 @@ export function stripHtml(html: string | null | undefined): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * Password utilities
+ */
+
+/**
+ * Generate password với 8 ký tự: chữ thường, chữ hoa, số, ký tự đặc biệt
+ * Đảm bảo có ít nhất 1 ký tự từ mỗi loại
+ */
+export function generatePassword(): string {
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*";
+
+  // Đảm bảo có ít nhất 1 ký tự từ mỗi loại
+  let password = "";
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+
+  // Thêm 4 ký tự ngẫu nhiên từ tất cả các loại
+  const allChars = lowercase + uppercase + numbers + special;
+  for (let i = 0; i < 4; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Shuffle password để không có pattern rõ ràng
+  return password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+}
