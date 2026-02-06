@@ -5,7 +5,7 @@ import { ROUTES } from "@/constants/routes";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import type { TRequestComment } from "@/types/requests.types";
-import { getProfileById } from "@/lib/db/profiles";
+import { getProfileById } from "@/lib/services/profiles.service";
 import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
 import { getBaseUrl } from "@/config/env";
 import { stripHtml } from "@/lib/functions";

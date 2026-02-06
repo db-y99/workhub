@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getProfileById } from "@/lib/db/profiles";
-import { getPermissionsByUserId } from "@/lib/db/permissions";
+import { getProfileById } from "@/lib/services/profiles.service";
+import { getPermissionsByUserId } from "@/lib/services/permissions.service";
 
 export async function GET() {
   const supabase = await createClient();

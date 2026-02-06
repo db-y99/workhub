@@ -1,12 +1,12 @@
-"use server";
-
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * Lấy danh sách permission codes của user dựa vào role_id (qua role_permissions).
- * Trả về [] nếu user không có role_id hoặc role không có permission nào.
+ * Server-side only. Trả về [] nếu user không có role_id hoặc role không có permission nào.
  */
-export async function getPermissionsByUserId(userId: string): Promise<string[]> {
+export async function getPermissionsByUserId(
+  userId: string
+): Promise<string[]> {
   try {
     const supabase = await createClient();
 
@@ -31,7 +31,9 @@ export async function getPermissionsByUserId(userId: string): Promise<string[]> 
       return [];
     }
 
-    const permissionIds = (rpRows ?? []).map((r) => r.permission_id).filter(Boolean);
+    const permissionIds = (rpRows ?? [])
+      .map((r) => r.permission_id)
+      .filter(Boolean);
     if (permissionIds.length === 0) {
       return [];
     }

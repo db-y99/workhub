@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import { ROUTES } from "@/constants/routes";
 import { getBaseUrl } from "@/config/env";
-import { getProfileById } from "@/lib/db/profiles";
-import { getDepartmentEmails } from "@/lib/db/departments";
+import { getProfileById } from "@/lib/services/profiles.service";
+import { getDepartmentEmails } from "@/lib/services/departments.service";
 import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
 
 type TAttachment = { name: string; fileId: string; size?: number };
