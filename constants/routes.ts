@@ -21,6 +21,7 @@ export const ROUTES = {
   PERMISSIONS: "/permissions",
   PERMISSIONS_LIST: "/permissions/list",
   ROLES: "/roles",
+  CALCULATOR: "/calculator",
 
   // Public (không cần đăng nhập)
   VISION: "/vision",
@@ -29,7 +30,12 @@ export const ROUTES = {
 
 export type RouteValue = (typeof ROUTES)[keyof typeof ROUTES];
 
-export const PUBLIC_ROUTES = [ROUTES.HOME, ROUTES.LOGIN, ROUTES.VISION] as const;
+export const PUBLIC_ROUTES = [
+  ROUTES.HOME,
+  ROUTES.LOGIN,
+  ROUTES.VISION,
+  ROUTES.CALCULATOR,
+] as const;
 
 export const PROTECTED_ROUTES = [
   ROUTES.APPROVE,

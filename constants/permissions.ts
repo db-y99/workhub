@@ -38,6 +38,7 @@ export const PERMISSION_PAGES = [
   { code: "permissions", name: "Phân quyền", description: "Quản lý phân quyền theo vai trò", sort_order: 10 },
   { code: "settings", name: "Cài đặt", description: "Cài đặt hệ thống", sort_order: 11 },
   { code: "vision", name: "Vision OCR", description: "Upload file và trích xuất text bằng OCR", sort_order: 12 },
+  { code: "calculator", name: "Calculator", description: "Công cụ tính toán quá hạn và thanh toán", sort_order: 13 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -54,6 +55,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/statistics": toPermissionCode("statistics", PERMISSION_ACTIONS.VIEW),
   "/settings": toPermissionCode("settings", PERMISSION_ACTIONS.VIEW),
   "/vision": toPermissionCode("vision", PERMISSION_ACTIONS.VIEW),
+  "/calculator": toPermissionCode("calculator", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];

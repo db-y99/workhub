@@ -1,4 +1,4 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
@@ -36,6 +36,12 @@ export const siteConfig = {
       href: ROUTES.LOANS_DISBURSEMENT_SUCCESS,
       icon: Banknote,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.LOANS_DISBURSEMENT_SUCCESS],
+    },
+    {
+      label: "Calculator",
+      href: ROUTES.CALCULATOR,
+      icon: Calculator,
+      // Trang public, không phân quyền
     },
     {
       label: "Vision OCR",
