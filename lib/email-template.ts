@@ -10,13 +10,14 @@ import {
 } from "@/types/email.types";
 import { formatCurrency, stripHtml, numberToVietnameseWords, formatDateDMY  } from "@/lib/functions";
 import { getBaseUrl } from "@/config/env";
+import { EMAIL_LOGO_URL } from "@/constants/email";
 
 
 
 /**
  * Render email HTML từ template và dữ liệu
  * @param data - Dữ liệu giải ngân
- * @param logoUrl - URL của logo (optional, mặc định sẽ dùng /logo.png với base URL từ env)
+ * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderEmailHTML(
     data: TLoanDisbursementData,
@@ -29,9 +30,8 @@ export function renderEmailHTML(
     const formattedLoanStartDate = formatDateDMY(data.loan_start_date);
     const formattedLoanEndDate = formatDateDMY(data.loan_end_date);
 
-    // Xác định logo URL - ưu tiên parameter, sau đó config env, cuối cùng là default
     // Trong email HTML cần absolute URL để logo hiển thị được
-    const logoImageUrl = logoUrl || `${getBaseUrl()}/logo.png`;
+    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
 
     return `
 <!DOCTYPE html>
@@ -289,13 +289,13 @@ export function getEmailSubject(contractCode: string): string {
 /**
  * Render email HTML cho thông tin tài khoản mới
  * @param data - Thông tin tài khoản (full_name, email, password)
- * @param logoUrl - URL của logo (optional, mặc định sẽ dùng /logo.png với base URL từ env)
+ * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderUserAccountEmailHTML(
     data: TUserAccountData,
     logoUrl?: string
 ): string {
-    const logoImageUrl = `${getBaseUrl()}/logo.png`;
+    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
     const loginUrl = `${getBaseUrl()}/login`;
 
     return `
@@ -468,13 +468,13 @@ export function getUserAccountEmailSubject(): string {
 /**
  * Render email HTML cho thông báo tạo request mới
  * @param data - Dữ liệu request
- * @param logoUrl - URL của logo (optional, mặc định sẽ dùng /logo.png với base URL từ env)
+ * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderRequestCreatedEmailHTML(
     data: TRequestCreatedData,
     logoUrl?: string
 ): string {
-    const logoImageUrl = logoUrl || `${getBaseUrl()}/logo.png`;
+    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
     const approveUrl = data.approveUrl;
 
     // Convert HTML description to plain text for email
@@ -740,13 +740,13 @@ export function getRequestCreatedEmailSubject(title: string): string {
 /**
  * Render email HTML cho thông báo tạo bulletin mới
  * @param data - Dữ liệu bulletin
- * @param logoUrl - URL của logo (optional, mặc định sẽ dùng /logo.png với base URL từ env)
+ * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderBulletinCreatedEmailHTML(
     data: TBulletinCreatedData,
     logoUrl?: string
 ): string {
-    const logoImageUrl = logoUrl || `${getBaseUrl()}/logo.png`;
+    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
     const bulletinUrl = data.bulletinUrl;
 
     // Convert HTML description to plain text for email

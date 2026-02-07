@@ -4,6 +4,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@herou
 import { Button } from "@heroui/button";
 import { TLoanDisbursementData } from "@/types/loan-disbursement";
 import { renderEmailHTML, getEmailSubject } from "@/lib/email-template";
+import { EMAIL_LOGO_URL } from "@/constants/email";
 
 type TEmailPreviewModalProps = {
     isOpen: boolean;
@@ -20,13 +21,7 @@ export function EmailPreviewModal({
 }: TEmailPreviewModalProps) {
     if (!data) return null;
 
-    // Sử dụng logo từ public folder - trong preview sẽ dùng relative path
-    const logoUrl =
-        typeof window !== "undefined"
-            ? `${window.location.origin}/logo.png`
-            : "/logo.png";
-
-    const emailHTML = renderEmailHTML(data, logoUrl);
+    const emailHTML = renderEmailHTML(data, EMAIL_LOGO_URL);
     const subject = getEmailSubject(data.contract_code);
 
     return (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import { ROUTES } from "@/constants/routes";
+import { EMAIL_LOGO_URL } from "@/constants/email";
 import { BULLETIN_GRADIENTS } from "@/constants/bulletins";
 import { getBaseUrl } from "@/config/env";
 import { getProfileById } from "@/lib/services/profiles.service";
@@ -92,10 +93,6 @@ export async function createBulletin(formData: FormData) {
         // Format email data
         const baseUrl = getBaseUrl();
         const bulletinUrl = `${baseUrl}${ROUTES.APPROVE}`;
-        const logoUrl = 
-          typeof window !== "undefined"
-            ? `${window.location.origin}/logo.png`
-            : "/logo.png";
 
         // Lấy tên các phòng ban để hiển thị
         let departmentNames: string | null = null;
@@ -121,8 +118,8 @@ export async function createBulletin(formData: FormData) {
           bulletinUrl,
         };
 
-        // Render HTML email template
-        const htmlBody = renderBulletinCreatedEmailHTML(emailData, logoUrl);
+        // Render HTML email template (logo từ EMAIL_LOGO_URL)
+        const htmlBody = renderBulletinCreatedEmailHTML(emailData, EMAIL_LOGO_URL);
         const emailSubject = getBulletinCreatedEmailSubject(title);
 
         // Plain text fallback (từ HTML)

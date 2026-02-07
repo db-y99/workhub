@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
+import { EMAIL_LOGO_URL } from "@/constants/email";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import type { TRequestComment } from "@/types/requests.types";
@@ -158,10 +159,6 @@ export async function createRequest(
         // Format email data
         const baseUrl = getBaseUrl();
         const approveUrl = `${baseUrl}${ROUTES.APPROVE}`;
-        const logoUrl = 
-          typeof window !== "undefined"
-            ? `${window.location.origin}/logo.png`
-            : "/logo.png";
 
         const emailData: TRequestCreatedData = {
           title,
@@ -173,8 +170,8 @@ export async function createRequest(
           approveUrl,
         };
 
-        // Render HTML email template
-        const htmlBody = renderRequestCreatedEmailHTML(emailData, logoUrl);
+        // Render HTML email template (logo từ EMAIL_LOGO_URL)
+        const htmlBody = renderRequestCreatedEmailHTML(emailData, EMAIL_LOGO_URL);
         const emailSubject = getRequestCreatedEmailSubject(title);
 
         // Plain text fallback (từ HTML)
