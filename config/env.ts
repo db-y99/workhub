@@ -28,6 +28,11 @@ const EnvSchema = z.object({
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
   /** Folder Drive cho file approve (khi có feature) */
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+
+  // Vision OCR – Google Apps Script (server-only, gọi qua API route)
+  VISION_OCR_SCRIPT_URL: z.string().url().optional(),
+  /** Folder Drive cho file Vision OCR (gửi lên script) */
+  VISION_OCR_FOLDER_ID: z.string().optional(),
 });
 
 type EnvOutput = z.infer<typeof EnvSchema>;
@@ -48,6 +53,8 @@ const envInput = {
     GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
+  VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
+  VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
 };
 
 let parsed: EnvOutput;
@@ -84,6 +91,8 @@ try {
     GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
     BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
     APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
+    VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
+    VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
   } as EnvOutput;
 }
 

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { ROUTES, PROTECTED_ROUTES, AUTH_ROUTES } from "@/constants/routes";
+import { ROUTES, PROTECTED_ROUTES, PUBLIC_ROUTES, AUTH_ROUTES } from "@/constants/routes";
 import { env } from "@/config/env";
 
 export async function updateSession(request: NextRequest) {
@@ -41,9 +41,16 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute = PROTECTED_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
   const isAuthRoute = AUTH_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
+
+  if (!user && isPublicRoute) {
+    return supabaseResponse;
+  }
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();

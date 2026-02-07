@@ -37,6 +37,7 @@ export const PERMISSION_PAGES = [
   { code: "roles", name: "Vai trò", description: "Quản lý vai trò", sort_order: 9 },
   { code: "permissions", name: "Phân quyền", description: "Quản lý phân quyền theo vai trò", sort_order: 10 },
   { code: "settings", name: "Cài đặt", description: "Cài đặt hệ thống", sort_order: 11 },
+  { code: "vision", name: "Vision OCR", description: "Upload file và trích xuất text bằng OCR", sort_order: 12 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -52,6 +53,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/company-resources": toPermissionCode("company-resources", PERMISSION_ACTIONS.VIEW),
   "/statistics": toPermissionCode("statistics", PERMISSION_ACTIONS.VIEW),
   "/settings": toPermissionCode("settings", PERMISSION_ACTIONS.VIEW),
+  "/vision": toPermissionCode("vision", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];
