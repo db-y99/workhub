@@ -27,7 +27,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
   const router = useRouter();
 
   return (
-    <HeroUIProvider navigate={router.push}>
+    <HeroUIProvider navigate={router.push} locale="vi-VN">
       <NextThemesProvider {...themeProps}>
         <AuthProvider>
           <SWRProvider>{children}</SWRProvider>

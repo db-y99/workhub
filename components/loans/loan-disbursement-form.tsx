@@ -8,124 +8,25 @@ import { DatePicker } from "@heroui/date-picker";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { VIETNAM_BANKS, type TBankItem } from "@/constants/banks";
 import type { DateValue } from "@internationalized/date";
-import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
+import { parseDate } from "@internationalized/date";
 import { TLoanDisbursementData } from "@/types/loan-disbursement";
+import type { TFormErrors } from "@/types/loan-disbursement-form.types";
+import {
+    getTodayDateString,
+    safeParseDateOrNull,
+    addMonthsToDate,
+    validateFormData,
+} from "./loan-disbursement-form.utils";
 import { EmailRecipientInput } from "./email-recipient-input";
-import { EMAIL_REGEX } from "@/constants/email";
 import { MAX_FILE_SIZE, ACCEPTED_FILE_TYPES } from "@/constants/files";
 import { formatCurrencyInput, parseCurrencyInput, parseCCEmailsRaw } from "@/lib/functions";
 
-type TLoanDisbursementFormProps = {
+export type TLoanDisbursementFormProps = {
     onSubmit: (data: TLoanDisbursementData) => void;
     onPreview: (data: TLoanDisbursementData) => void;
     onReset?: () => void;
     initialData?: Partial<TLoanDisbursementData>;
 };
-
-type TFormErrors = {
-    [key: string]: string | undefined;
-};
-
-/**
- * Helper function: Get today's date as ISO string (yyyy-MM-dd)
- */
-function getTodayDateString(): string {
-    return today(getLocalTimeZone()).toString();
-}
-
-/**
- * Safe parse date string → DateValue (CalendarDate) for HeroUI DatePicker.
- * HeroUI DatePicker accepts DateValue; CalendarDate avoids ZonedDateTime version conflicts.
- */
-function safeParseDateOrNull(dateStr: string | undefined): DateValue | null {
-    if (!dateStr) return null;
-    try {
-        return parseDate(dateStr);
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Hoist validation logic ra ngoài component (rule 5.5, 7.8)
- * Early return pattern để tránh unnecessary computation
- */
-function validateFormData(
-    formData: Partial<TLoanDisbursementData>,
-    toEmailsArray: string[],
-    ccEmailsArray: string[]
-): TFormErrors {
-    const errors: TFormErrors = {};
-
-    // Validate TO emails - early return pattern (rule 7.8)
-    if (toEmailsArray.length === 0) {
-        errors.customer_email = "Vui lòng nhập ít nhất một email TO";
-    } else {
-        const invalidEmails = toEmailsArray.filter(
-            (email) => !EMAIL_REGEX.test(email)
-        );
-        if (invalidEmails.length > 0) {
-            errors.customer_email = "Email TO không hợp lệ";
-        }
-    }
-
-    // Validate CC emails - optional but must be valid if provided
-    if (ccEmailsArray.length > 0) {
-        const invalidCCEmails = ccEmailsArray.filter(
-            (email) => !EMAIL_REGEX.test(email)
-        );
-        if (invalidCCEmails.length > 0) {
-            errors.cc_emails = "Một hoặc nhiều email CC không hợp lệ";
-        }
-    }
-
-    // Required fields validation - early return pattern
-    if (!formData.customer_name?.trim()) {
-        errors.customer_name = "Vui lòng nhập họ và tên khách hàng";
-    }
-    if (!formData.contract_code?.trim()) {
-        errors.contract_code = "Vui lòng nhập số hợp đồng";
-    }
-    if (!formData.disbursement_amount || formData.disbursement_amount <= 0) {
-        errors.disbursement_amount = "Vui lòng nhập số tiền giải ngân hợp lệ";
-    }
-    if (!formData.disbursement_date) {
-        errors.disbursement_date = "Vui lòng chọn ngày giải ngân";
-    }
-    if (!formData.total_loan_amount || formData.total_loan_amount <= 0) {
-        errors.total_loan_amount = "Vui lòng nhập tổng số vốn vay hợp lệ";
-    }
-    if (!formData.loan_term_months || formData.loan_term_months <= 0) {
-        errors.loan_term_months = "Vui lòng nhập thời hạn vay hợp lệ";
-    }
-    if (!formData.loan_start_date) {
-        errors.loan_start_date = "Vui lòng chọn ngày bắt đầu vay";
-    }
-    if (!formData.loan_end_date) {
-        errors.loan_end_date = "Vui lòng chọn ngày kết thúc vay";
-    }
-    if (
-        !formData.due_day_each_month ||
-        formData.due_day_each_month < 1 ||
-        formData.due_day_each_month > 31
-    ) {
-        errors.due_day_each_month =
-            "Vui lòng nhập ngày đến hạn hàng tháng (1-31)";
-    }
-    if (!formData.bank_name?.trim()) {
-        errors.bank_name = "Vui lòng nhập tên ngân hàng";
-    }
-    if (!formData.bank_account_number?.trim()) {
-        errors.bank_account_number = "Vui lòng nhập số tài khoản";
-    }
-    if (!formData.beneficiary_name?.trim()) {
-        errors.beneficiary_name = "Vui lòng nhập tên người thụ hưởng";
-    }
-
-    return errors;
-}
-
-
 export function LoanDisbursementForm({
     onSubmit,
     onPreview,
@@ -177,6 +78,40 @@ export function LoanDisbursementForm({
             }
         }
     }, [initialData]);
+
+    // Tự động tính ngày kết thúc vay và ngày đến hạn hàng tháng khi có ngày bắt đầu và thời hạn
+    useEffect(() => {
+        const startDate = formData.loan_start_date;
+        const termMonths = formData.loan_term_months;
+
+        if (!startDate) return;
+
+        try {
+            const parsed = parseDate(startDate);
+            const dayOfMonth = parsed.day; // 1-31
+
+            setFormData((prev) => {
+                let next = prev;
+                // Ngày đến hạn hàng tháng = ngày của ngày bắt đầu vay
+                if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+                    next =
+                        prev.due_day_each_month === dayOfMonth
+                            ? next
+                            : { ...next, due_day_each_month: dayOfMonth };
+                }
+                // Ngày kết thúc vay = ngày bắt đầu + thời hạn (tháng)
+                if (termMonths && termMonths > 0) {
+                    const endDate = addMonthsToDate(startDate, termMonths);
+                    if (endDate && prev.loan_end_date !== endDate) {
+                        next = { ...next, loan_end_date: endDate };
+                    }
+                }
+                return next;
+            });
+        } catch {
+            // parseDate failed, skip
+        }
+    }, [formData.loan_start_date, formData.loan_term_months]);
 
     // Update field helper - functional setState (rule 5.9)
     // Không cần errors dependency vì dùng functional update
@@ -253,6 +188,7 @@ export function LoanDisbursementForm({
             if (!validate()) return;
 
             onSubmit(buildSubmitData());
+            handleResetForm();
         },
         [validate, buildSubmitData, onSubmit]
     );
