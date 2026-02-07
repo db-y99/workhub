@@ -24,6 +24,7 @@ export const ROUTES = {
 
   // Public (không cần đăng nhập)
   VISION: "/vision",
+  SPONSOR: "/sponsor",
 } as const;
 
 export type RouteValue = (typeof ROUTES)[keyof typeof ROUTES];

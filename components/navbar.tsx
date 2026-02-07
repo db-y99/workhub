@@ -31,12 +31,16 @@ import { Avatar } from "@heroui/avatar";
 import { User } from "@heroui/user";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
-import { SearchIcon, LogOut, Menu } from "lucide-react";
+import { SearchIcon, LogOut, Menu, Heart } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
+import { ROUTES } from "@/constants/routes";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { signOut } from "@/lib/actions/auth";
+import { Button } from "@heroui/button";
+import NextLink from "next/link";
+import { HeartFilledIcon } from "./icons";
 
 export interface NavbarProps {
   /** Mở sidebar (drawer) trên mobile khi dùng dashboard layout */
@@ -211,6 +215,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
         className="hidden sm:flex gap-4"
         justify="end"
       >
+        <NavbarItem className="hidden md:flex">
+          <Button
+            as={NextLink}
+            className="text-sm font-normal text-default-600 bg-default-100"
+            href={siteConfig.links.sponsor}
+            startContent={<HeartFilledIcon className="text-danger" />}
+            variant="flat"
+          >
+            Sponsor
+          </Button>
+        </NavbarItem>
         <NavbarItem className="hidden sm:flex gap-2">
           <ThemeSwitch />
         </NavbarItem>

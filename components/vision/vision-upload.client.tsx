@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Textarea } from "@heroui/input";
-import { FileDown, FileText } from "lucide-react";
+import { FileDown, FileText, Copy, Trash2, Download, Check } from "lucide-react";
 import clsx from "clsx";
 
 const ACCEPT_TYPES = "image/*,application/pdf";
@@ -21,6 +21,7 @@ export function VisionUploadClient() {
   const [resultText, setResultText] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -103,6 +104,32 @@ export function VisionUploadClient() {
       setIsScanning(false);
     }
   }, [file]);
+
+  const handleCopyResult = useCallback(async () => {
+    if (!resultText) return;
+    try {
+      await navigator.clipboard.writeText(resultText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setErrorMessage("Không thể copy vào clipboard.");
+    }
+  }, [resultText]);
+
+  const handleClearResult = useCallback(() => {
+    setResultText("");
+  }, []);
+
+  const handleDownloadResult = useCallback(() => {
+    if (!resultText) return;
+    const blob = new Blob([resultText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ocr-result-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [resultText]);
 
   return (
     <Card className="w-full mx-auto" shadow="sm">
@@ -202,12 +229,46 @@ export function VisionUploadClient() {
 
           {/* Section 2: Kết quả text */}
           <div className="flex flex-col flex-1 min-w-0">
-
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-sm font-medium text-foreground">Kết quả text</span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isIconOnly
+                  aria-label={copied ? "Đã copy" : "Copy"}
+                  onPress={handleCopyResult}
+                  isDisabled={!resultText}
+                  color={copied ? "success" : "default"}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isIconOnly
+                  aria-label="Tải xuống file .txt"
+                  onPress={handleDownloadResult}
+                  isDisabled={!resultText}
+                  startContent={<Download className="w-4 h-4" />}
+                />
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="danger"
+                  isIconOnly
+                  aria-label="Xóa kết quả"
+                  onPress={handleClearResult}
+                  isDisabled={!resultText}
+                  startContent={<Trash2 className="w-4 h-4" />}
+                />
+              </div>
+            </div>
             <Textarea
               isReadOnly
               value={resultText}
               minRows={14}
-              maxRows={24}
+              maxRows={40}
               classNames={{
                 input: "resize-none whitespace-pre-wrap break-words",
                 inputWrapper: "min-h-[280px] flex-1",

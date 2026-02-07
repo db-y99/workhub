@@ -92,5 +92,7 @@ export const siteConfig = {
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.SETTINGS],
     },
   ] as NavMenuItem[],
-  links: {},
+  links: {
+    sponsor: ROUTES.SPONSOR,
+  },
 };
