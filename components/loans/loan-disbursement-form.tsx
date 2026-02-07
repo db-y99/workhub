@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef, type FormEvent, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo, type FormEvent, useEffect } from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { DatePicker } from "@heroui/date-picker";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+import { VIETNAM_BANKS, type TBankItem } from "@/constants/banks";
 import type { DateValue } from "@internationalized/date";
 import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import { TLoanDisbursementData } from "@/types/loan-disbursement";
@@ -153,6 +155,15 @@ export function LoanDisbursementForm({
     });
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Filter banks by search (bank_name) for Autocomplete - case-insensitive contains
+    const filteredBanks = useMemo(() => {
+        const query = (formData.bank_name || "").trim().toLowerCase();
+        if (!query) return [...VIETNAM_BANKS];
+        return VIETNAM_BANKS.filter((b) =>
+            b.name.toLowerCase().includes(query)
+        );
+    }, [formData.bank_name]);
 
     // Update form data when initialData changes
     useEffect(() => {
@@ -427,14 +438,37 @@ export function LoanDisbursementForm({
                     <h2 className="text-xl font-semibold">Thông tin ngân hàng</h2>
                 </CardHeader>
                 <CardBody className="space-y-4">
-                    <Input
+                    <Autocomplete
                         label="Tên ngân hàng"
-                        value={formData.bank_name || ""}
-                        onChange={(e) => updateField("bank_name", e.target.value)}
+                        placeholder="Nhập để tìm kiếm hoặc chọn ngân hàng"
+                        description="Click vào ô để mở danh sách, nhập để lọc"
+                        items={filteredBanks}
+                        allowsCustomValue
+                        menuTrigger="focus"
+                        inputValue={formData.bank_name || ""}
+                        onInputChange={(value) => updateField("bank_name", value)}
+                        selectedKey={
+                            VIETNAM_BANKS.find((b) => b.name === formData.bank_name)
+                                ?.id ?? null
+                        }
+                        onSelectionChange={(key) => {
+                            if (key == null) {
+                                updateField("bank_name", "");
+                                return;
+                            }
+                            const bank = VIETNAM_BANKS.find((b) => b.id === key);
+                            if (bank) updateField("bank_name", bank.name);
+                        }}
                         isInvalid={!!errors.bank_name}
                         errorMessage={errors.bank_name}
                         isRequired
-                    />
+                    >
+                        {(item: TBankItem) => (
+                            <AutocompleteItem key={item.id} textValue={item.name}>
+                                {item.name}
+                            </AutocompleteItem>
+                        )}
+                    </Autocomplete>
                     <Input
                         label="Số tài khoản"
                         value={formData.bank_account_number || ""}

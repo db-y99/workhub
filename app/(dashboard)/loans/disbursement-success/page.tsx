@@ -71,8 +71,8 @@ export default function DisbursementPage() {
                         description: `Email đã được gửi thành công đến ${data.customer_email}`,
                         color: "success",
                     });
-                    // Reset form sau khi gửi thành công
-                    window.location.reload();
+
+                    handleReset();
                 } else {
                     // Hiển thị lỗi từ Result pattern
                     const errorMessage = result.error?.message || "Đã có lỗi xảy ra khi gửi email";
@@ -113,43 +113,43 @@ export default function DisbursementPage() {
 
     return (
         <PermissionGuard requiredPermissions={[ROUTE_PERMISSION_MAP[ROUTES.LOANS_DISBURSEMENT_SUCCESS]]}>
-        <AppLayout>
-            <div className="max-w-4xl mx-auto py-8">
-                <div className="mb-8">
-                    <h1 className={title()}>Gửi email thông báo giải ngân khoản vay</h1>
-                    <p className="text-default-600 mt-4">
-                        Điền thông tin giải ngân khoản vay để gửi email thông báo cho khách hàng.
-                    </p>
+            <AppLayout>
+                <div className="max-w-4xl mx-auto py-8">
+                    <div className="mb-8">
+                        <h1 className={title()}>Gửi email thông báo giải ngân khoản vay</h1>
+                        <p className="text-default-600 mt-4">
+                            Điền thông tin giải ngân khoản vay để gửi email thông báo cho khách hàng.
+                        </p>
+                    </div>
+
+                    <div className="mb-4 flex justify-end">
+                        <Button
+                            variant="bordered"
+                            size="sm"
+                            onPress={handleLoadSample}
+                        >
+                            Tải dữ liệu mẫu
+                        </Button>
+                    </div>
+
+                    <LoanDisbursementForm
+                        onSubmit={handleSubmit}
+                        onPreview={handlePreview}
+                        onReset={handleReset}
+                        initialData={formData || undefined}
+                    />
+
+                    <EmailPreviewModal
+                        isOpen={isPreviewOpen}
+                        onClose={() => setIsPreviewOpen(false)}
+                        data={formData}
+                        onSend={handleSendFromPreview}
+                    />
+
+                    {/* Explicit conditional rendering (rule 6.8) - use ternary instead of && */}
+                    {isPending ? LoadingOverlay : null}
                 </div>
-
-                <div className="mb-4 flex justify-end">
-                    <Button
-                        variant="bordered"
-                        size="sm"
-                        onPress={handleLoadSample}
-                    >
-                        Tải dữ liệu mẫu
-                    </Button>
-                </div>
-
-                <LoanDisbursementForm
-                    onSubmit={handleSubmit}
-                    onPreview={handlePreview}
-                    onReset={handleReset}
-                    initialData={formData || undefined}
-                />
-
-                <EmailPreviewModal
-                    isOpen={isPreviewOpen}
-                    onClose={() => setIsPreviewOpen(false)}
-                    data={formData}
-                    onSend={handleSendFromPreview}
-                />
-
-                {/* Explicit conditional rendering (rule 6.8) - use ternary instead of && */}
-                {isPending ? LoadingOverlay : null}
-            </div>
-        </AppLayout>
+            </AppLayout>
         </PermissionGuard>
     );
 }
