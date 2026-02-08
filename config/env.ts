@@ -17,6 +17,7 @@ const EnvSchema = z.object({
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   FROM_EMAIL: z.string().default("onboarding@resend.dev"),
+  MAIL_CC: z.string().optional(),
 
   // Email via Google Apps Script
   NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL: z.string().url().optional(),
@@ -45,12 +46,13 @@ const envInput = {
   VERCEL_URL: process.env.VERCEL_URL,
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    FROM_EMAIL: process.env.FROM_EMAIL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  FROM_EMAIL: process.env.FROM_EMAIL,
+  MAIL_CC: process.env.MAIL_CC,
   NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL:
     process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL,
   SECRET_KEY_SEND_MAIL_APP_SCRIPT: process.env.SECRET_KEY_SEND_MAIL_APP_SCRIPT,
-    GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
   VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,

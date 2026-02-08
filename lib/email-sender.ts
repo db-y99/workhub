@@ -47,7 +47,7 @@ export async function sendLoanDisbursementEmail(
     const payload = {
       from: `Bộ phận Tài chính <${env.FROM_EMAIL}>`,
       to: data.customer_email,
-      cc: ccEmails.length > 0 ? [...ccEmails, env.FROM_EMAIL] : [env.FROM_EMAIL],
+      cc: ccEmails.length > 0 ? [...ccEmails, env.FROM_EMAIL, env.MAIL_CC] : [env.FROM_EMAIL, env.MAIL_CC],
       subject: subject,
       html: emailHTML,
       attachments: attachments,
