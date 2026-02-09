@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (!fileId || !bulletinId) {
       return NextResponse.json(
         { error: "Thiếu fileId hoặc bulletinId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,10 @@ export async function GET(request: Request) {
       .single();
 
     if (!bulletin) {
-      return NextResponse.json({ error: "Không tìm thấy bảng tin" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Không tìm thấy bảng tin" },
+        { status: 404 },
+      );
     }
 
     const { data: profile } = await supabase
@@ -48,29 +51,32 @@ export async function GET(request: Request) {
       .single();
 
     if (!profile) {
-      return NextResponse.json({ error: "Không tìm thấy profile" }, { status: 403 });
-    }
-
-    const roleCode = getRoleCode(profile);
-    const isAdmin = roleCode === ROLES.ADMIN;
-    const departmentIds = (bulletin.department_ids ?? []) as string[];
-    const canView =
-      isAdmin ||
-      departmentIds.length === 0 ||
-      (profile.department_id && departmentIds.includes(profile.department_id));
-
-    if (!canView) {
       return NextResponse.json(
-        { error: "Bạn không có quyền xem file này" },
-        { status: 403 }
+        { error: "Không tìm thấy profile" },
+        { status: 403 },
       );
     }
+
+    // const roleCode = getRoleCode(profile);
+    // const isAdmin = roleCode === ROLES.ADMIN;
+    // const departmentIds = (bulletin.department_ids ?? []) as string[];
+    // const canView =
+    //   isAdmin ||
+    //   departmentIds.length === 0 ||
+    //   (profile.department_id && departmentIds.includes(profile.department_id));
+
+    // if (!canView) {
+    //   return NextResponse.json(
+    //     { error: "Bạn không có quyền xem file này" },
+    //     { status: 403 }
+    //   );
+    // }
 
     const result = await streamFileFromDrive(fileId);
     if (!result) {
       return NextResponse.json(
         { error: "Không tìm thấy file" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -91,9 +97,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error("bulletin-files API error:", err);
-    return NextResponse.json(
-      { error: "Lỗi khi tải file" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Lỗi khi tải file" }, { status: 500 });
   }
 }
