@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (!fileId || !requestId) {
       return NextResponse.json(
         { error: "Thiếu fileId hoặc requestId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     if (!requestData) {
       return NextResponse.json(
         { error: "Không tìm thấy yêu cầu" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -54,34 +54,34 @@ export async function GET(request: Request) {
     if (!profile) {
       return NextResponse.json(
         { error: "Không tìm thấy profile" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    // Check quyền: người tạo request hoặc admin
-    const isRequester = requestData.requested_by === auth.user.id;
-    // getRoleCode đã được update để accept object chỉ có role field
-    const roleCode = getRoleCode(profile);
-    const isAdmin = roleCode === ROLES.ADMIN;
+    // // Check quyền: người tạo request hoặc admin
+    // const isRequester = requestData.requested_by === auth.user.id;
+    // // getRoleCode đã được update để accept object chỉ có role field
+    // const roleCode = getRoleCode(profile);
+    // const isAdmin = roleCode === ROLES.ADMIN;
 
-    // Nếu có department_id, check user có cùng department hoặc admin
-    let canView = isRequester || isAdmin;
-    if (!canView && requestData.department_id && profile.department_id) {
-      canView = requestData.department_id === profile.department_id;
-    }
+    // // Nếu có department_id, check user có cùng department hoặc admin
+    // let canView = isRequester || isAdmin;
+    // if (!canView && requestData.department_id && profile.department_id) {
+    //   canView = requestData.department_id === profile.department_id;
+    // }
 
-    if (!canView) {
-      return NextResponse.json(
-        { error: "Bạn không có quyền xem file này" },
-        { status: 403 }
-      );
-    }
+    // if (!canView) {
+    //   return NextResponse.json(
+    //     { error: "Bạn không có quyền xem file này" },
+    //     { status: 403 }
+    //   );
+    // }
 
     const result = await streamFileFromDrive(fileId);
     if (!result) {
       return NextResponse.json(
         { error: "Không tìm thấy file" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -102,9 +102,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error("request-files API error:", err);
-    return NextResponse.json(
-      { error: "Lỗi khi tải file" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Lỗi khi tải file" }, { status: 500 });
   }
 }
