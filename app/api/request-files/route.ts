@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { streamFileFromDrive } from "@/lib/google-drive";
 import { requireAuth } from "@/lib/api-auth";
-import { ROLES } from "@/constants/roles";
-import { getRoleCode } from "@/lib/profile-utils";
 
 /**
  * GET /api/request-files?fileId=xxx&requestId=yyy
@@ -57,25 +55,6 @@ export async function GET(request: Request) {
         { status: 403 },
       );
     }
-
-    // // Check quyền: người tạo request hoặc admin
-    // const isRequester = requestData.requested_by === auth.user.id;
-    // // getRoleCode đã được update để accept object chỉ có role field
-    // const roleCode = getRoleCode(profile);
-    // const isAdmin = roleCode === ROLES.ADMIN;
-
-    // // Nếu có department_id, check user có cùng department hoặc admin
-    // let canView = isRequester || isAdmin;
-    // if (!canView && requestData.department_id && profile.department_id) {
-    //   canView = requestData.department_id === profile.department_id;
-    // }
-
-    // if (!canView) {
-    //   return NextResponse.json(
-    //     { error: "Bạn không có quyền xem file này" },
-    //     { status: 403 }
-    //   );
-    // }
 
     const result = await streamFileFromDrive(fileId);
     if (!result) {
