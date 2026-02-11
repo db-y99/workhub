@@ -19,6 +19,7 @@ import { ROLES } from "@/constants/roles";
 import { getRoleCode } from "@/lib/profile-utils";
 import { stripHtml } from "@/lib/functions";
 import { Paperclip, ExternalLink } from "lucide-react";
+import { Link } from "@heroui/link";
 
 
 interface RequestDetailModalProps {
@@ -239,22 +240,15 @@ export function RequestDetailModal({
                             // Nếu có fileId (file mới từ Google Drive)
                             if (att.fileId) {
                               return (
-                                <li key={i}>
-                                  <a
-                                    href={`/api/request-files?fileId=${att.fileId}&requestId=${request.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-primary hover:underline"
-                                  >
-                                    <ExternalLink size={14} />
-                                    {att.name || `File ${i + 1}`}
-                                    {att.size != null && (
-                                      <span className="text-default-400 text-xs">
-                                        ({(att.size / 1024).toFixed(1)} KB)
-                                      </span>
-                                    )}
-                                  </a>
-                                </li>
+                                <Link isExternal key={i} href={`/api/request-files?fileId=${att.fileId}&requestId=${request.id}`}>
+                                  <ExternalLink size={14} />
+                                  {att.name || `File ${i + 1}`}
+                                  {att.size != null && (
+                                    <span className="text-default-400 text-xs">
+                                      ({(att.size / 1024).toFixed(1)} KB)
+                                    </span>
+                                  )}
+                                </Link>
                               );
                             }
                             // Nếu có url (file cũ, backward compatibility)

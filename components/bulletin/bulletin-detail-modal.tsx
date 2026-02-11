@@ -11,6 +11,7 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Paperclip, ExternalLink } from "lucide-react";
 import type { TBulletinItem } from "@/types/bulletin.types";
+import { Link } from "@heroui/link";
 
 interface BulletinDetailModalProps {
   isOpen: boolean;
@@ -83,22 +84,15 @@ export function BulletinDetailModal({
                     </p>
                     <ul className="flex flex-col gap-2">
                       {attachments.map((att, i) => (
-                        <li key={i}>
-                          <a
-                            href={`/api/bulletin-files?fileId=${att.fileId}&bulletinId=${bulletin.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-primary hover:underline text-center"
-                          >
-                            <ExternalLink size={14} />
-                            {att.name}
-                            {att.size != null && (
-                              <span className="text-default-400 text-xs">
-                                ({(att.size / 1024).toFixed(1)} KB)
-                              </span>
-                            )}
-                          </a>
-                        </li>
+                        <Link isExternal key={i} href={`/api/bulletin-files?fileId=${att.fileId}&bulletinId=${bulletin.id}`}>
+                          <ExternalLink size={14} />
+                          {att.name}
+                          {att.size != null && (
+                            <span className="text-default-400 text-xs">
+                              ({(att.size / 1024).toFixed(1)} KB)
+                            </span>
+                          )}
+                        </Link>
                       ))}
                     </ul>
                   </div>

@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     return new Response(webStream, {
       headers: {
         "Content-Type": mimeType,
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodedFileName}`,
+        "Content-Disposition": `inline; filename*=UTF-8''${encodedFileName}`,
         "Cache-Control": "private, no-cache",
       },
     });
