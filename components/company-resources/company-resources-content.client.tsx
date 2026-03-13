@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import useSWR from "swr";
 import {
@@ -70,6 +70,22 @@ const createSkeletonCompanyResource = (i: number): CompanyResourceRow => ({
   isSkeleton: true,
 });
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 interface ResourcesResponse {
   resources: CompanyResourceWithAssignee[];
   total: number;
@@ -83,6 +99,7 @@ export function CompanyResourcesContent() {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
   const [filterType, setFilterType] = useState<string>("all");
+  const [assignedTo, setAssignedTo] = useState<string>("");
   const rowsPerPage = 10;
 
   const {
@@ -120,30 +137,56 @@ export function CompanyResourcesContent() {
   const [notesResource, setNotesResource] =
     useState<CompanyResourceWithAssignee | null>(null);
 
+  // Reset page immediately when user changes search/filter (don't wait for debounce)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterType, assignedTo]); // Use search instead of debouncedSearch
+
+  // Calculate effective page for query to avoid double fetch
+  const pageForQuery = useMemo(() => {
+    // If there's active search/filter, always use page 1
+    if (debouncedSearch || filterType !== "all" || assignedTo) {
+      return 1;
+    }
+    return currentPage;
+  }, [debouncedSearch, filterType, assignedTo, currentPage]);
+
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/company-resources",
+    page: pageForQuery, // Use calculated page instead of currentPage
+    search: debouncedSearch,
+    type: filterType,
+    assigned_to: assignedTo,
+  }), [pageForQuery, debouncedSearch, filterType, assignedTo]);
+
+  // Build API URL from SWR key
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
-      page: currentPage.toString(),
+      page: swrKey.page.toString(),
       limit: rowsPerPage.toString(),
     });
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    if (filterType && filterType !== "all") params.set("type", filterType);
-    return `/api/company-resources?${params.toString()}`;
-  }, [debouncedSearch, currentPage, filterType]);
+    if (swrKey.search) params.set("search", swrKey.search);
+    if (swrKey.type && swrKey.type !== "all") params.set("type", swrKey.type);
+    if (swrKey.assigned_to) params.set("assigned_to", swrKey.assigned_to);
+    return `${swrKey.url}?${params.toString()}`;
+  }, [swrKey]);
 
   const {
     data,
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<ResourcesResponse>(apiUrl, {
+  } = useSWR<ResourcesResponse>(swrKey, () => fetch(apiUrl).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth pagination without skeleton flashing
   });
 
   const resources = data?.resources || [];
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 0;
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   const openEditResource = (resource: CompanyResourceWithAssignee) => {
@@ -178,8 +221,20 @@ export function CompanyResourcesContent() {
                 Tài nguyên công ty
               </h1>
               <p className="text-small text-default-500 mt-1">
-                Quản lý tài khoản, máy tính, thiết bị — khi nhân viên nghỉ việc dễ kiểm tra bàn giao. Tổng: {total} tài nguyên
-                {resources.length > 0 && ` (hiển thị ${resources.length})`}
+                Quản lý tài khoản, máy tính, thiết bị — khi nhân viên nghỉ việc dễ kiểm tra bàn giao. 
+                {total > 0 ? (
+                  <>
+                    Tổng: {total} tài nguyên
+                    {resources.length > 0 && currentPage > 1 && (
+                      <> (trang {currentPage}: {resources.length} tài nguyên)</>
+                    )}
+                    {resources.length > 0 && currentPage === 1 && total > resources.length && (
+                      <> (hiển thị {resources.length} đầu tiên)</>
+                    )}
+                  </>
+                ) : (
+                  "Chưa có tài nguyên nào"
+                )}
               </p>
             </div>
             <div className="flex gap-2">
@@ -209,7 +264,7 @@ export function CompanyResourcesContent() {
           <div className="flex flex-wrap gap-2 mb-4">
             <Input
               className="flex-1 min-w-[200px] max-w-[300px]"
-              placeholder="Tìm theo tên, mô tả, ghi chú..."
+              placeholder="Tìm theo tên, mô tả, ghi chú, người giữ..."
               value={search}
               onValueChange={setSearch}
               startContent={<Search className="text-default-400" size={18} />}
@@ -253,10 +308,27 @@ export function CompanyResourcesContent() {
                   )
                   : resources
               }
-              emptyContent="Chưa có tài nguyên nào"
+              emptyContent={
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Package className="text-default-300 mb-4" size={48} />
+                  <p className="text-default-500 mb-2">Chưa có tài nguyên nào</p>
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<Plus size={16} />}
+                    onPress={onAddModalOpen}
+                  >
+                    Thêm tài nguyên đầu tiên
+                  </Button>
+                </div>
+              }
             >
               {(item: CompanyResourceRow) => (
-                <TableRow key={item.id}>
+                <TableRow 
+                  key={item.id}
+                  className={!item.isSkeleton ? "cursor-pointer hover:bg-default-50" : ""}
+                  onClick={!item.isSkeleton ? () => openDetailModal(item) : undefined}
+                >
                   {(columnKey) => {
                     if (item.isSkeleton) {
                       return (
@@ -268,7 +340,9 @@ export function CompanyResourcesContent() {
                     if (columnKey === "name") {
                       return (
                         <TableCell>
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium">
+                            {highlightSearchText(item.name, debouncedSearch)}
+                          </span>
                         </TableCell>
                       );
                     }
@@ -287,9 +361,9 @@ export function CompanyResourcesContent() {
                         <TableCell>
                           {assignee ? (
                             <span>
-                              {assignee.full_name}
+                              {highlightSearchText(assignee.full_name, debouncedSearch)}
                               <span className="text-default-400 text-small ml-1">
-                                ({assignee.email})
+                                ({highlightSearchText(assignee.email, debouncedSearch)})
                               </span>
                             </span>
                           ) : (
@@ -338,7 +412,7 @@ export function CompanyResourcesContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button
                               isIconOnly
                               size="sm"
