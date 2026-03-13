@@ -142,23 +142,14 @@ export function CompanyResourcesContent() {
     setCurrentPage(1);
   }, [search, filterType, assignedTo]); // Use search instead of debouncedSearch
 
-  // Calculate effective page for query to avoid double fetch
-  const pageForQuery = useMemo(() => {
-    // If there's active search/filter, always use page 1
-    if (debouncedSearch || filterType !== "all" || assignedTo) {
-      return 1;
-    }
-    return currentPage;
-  }, [debouncedSearch, filterType, assignedTo, currentPage]);
-
   // SWR key as object for better cache management
   const swrKey = useMemo(() => ({
     url: "/api/company-resources",
-    page: pageForQuery, // Use calculated page instead of currentPage
+    page: currentPage, // Use actual page instead of pageForQuery
     search: debouncedSearch,
     type: filterType,
     assigned_to: assignedTo,
-  }), [pageForQuery, debouncedSearch, filterType, assignedTo]);
+  }), [currentPage, debouncedSearch, filterType, assignedTo]);
 
   // Build API URL from SWR key
   const apiUrl = useMemo(() => {

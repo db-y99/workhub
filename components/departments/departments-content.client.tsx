@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import useSWR from "swr";
 import {
@@ -52,6 +52,22 @@ const createSkeletonDepartment = (i: number): DepartmentRow => ({
   isSkeleton: true,
 });
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 const columns = [
   { key: "code", label: "MÃ" },
   { key: "name", label: "TÊN PHÒNG BAN" },
@@ -96,29 +112,43 @@ export function DepartmentsContent() {
   const [deletingDepartment, setDeletingDepartment] =
     useState<Department | null>(null);
 
+  // Reset page immediately when user changes search/filter (don't wait for debounce)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/departments",
+    page: currentPage, // Use actual page
+    search: debouncedSearch,
+  }), [currentPage, debouncedSearch]);
+
+  // Build API URL from SWR key
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
-      page: currentPage.toString(),
+      page: swrKey.page.toString(),
       limit: rowsPerPage.toString(),
     });
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    return `/api/departments?${params.toString()}`;
-  }, [debouncedSearch, currentPage]);
+    if (swrKey.search) params.set("search", swrKey.search);
+    return `${swrKey.url}?${params.toString()}`;
+  }, [swrKey]);
 
   const {
     data,
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<DepartmentsResponse>(apiUrl, {
+  } = useSWR<DepartmentsResponse>(swrKey, () => fetch(apiUrl).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth pagination without skeleton flashing
   });
 
   const departments = data?.departments || [];
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 0;
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   // Tạo items cho TableBody với type đúng
@@ -149,8 +179,19 @@ export function DepartmentsContent() {
                 Quản lý phòng ban
               </h1>
               <p className="text-small text-default-500 mt-1">
-                Tổng số: {total} phòng ban
-                {departments.length > 0 && ` (hiển thị ${departments.length})`}
+                {total > 0 ? (
+                  <>
+                    Tổng số: {total} phòng ban
+                    {departments.length > 0 && currentPage > 1 && (
+                      <> (trang {currentPage}: {departments.length} phòng ban)</>
+                    )}
+                    {departments.length > 0 && currentPage === 1 && total > departments.length && (
+                      <> (hiển thị {departments.length} đầu tiên)</>
+                    )}
+                  </>
+                ) : (
+                  "Chưa có phòng ban nào"
+                )}
               </p>
             </div>
             <div className="flex gap-2">
@@ -180,7 +221,7 @@ export function DepartmentsContent() {
           <div className="flex gap-2 mb-4">
             <Input
               className="flex-1 max-w-[300px]"
-              placeholder="Tìm kiếm phòng ban..."
+              placeholder="Tìm theo tên, mã, email, mô tả..."
               value={search}
               onValueChange={setSearch}
               startContent={<Search className="text-default-400" size={18} />}
@@ -204,10 +245,26 @@ export function DepartmentsContent() {
             </TableHeader>
             <TableBody
               items={tableItems}
-              emptyContent="Chưa có phòng ban nào"
+              emptyContent={
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Building2 className="text-default-300 mb-4" size={48} />
+                  <p className="text-default-500 mb-2">Chưa có phòng ban nào</p>
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<Plus size={16} />}
+                    onPress={onAddModalOpen}
+                  >
+                    Thêm phòng ban đầu tiên
+                  </Button>
+                </div>
+              }
             >
               {(item: DepartmentRow) => (
-                <TableRow key={item.id}>
+                <TableRow 
+                  key={item.id}
+                  className={!item.isSkeleton ? "cursor-pointer hover:bg-default-50" : ""}
+                >
                   {(columnKey) => {
                     if (item.isSkeleton) {
                       return (
@@ -220,7 +277,7 @@ export function DepartmentsContent() {
                       return (
                         <TableCell>
                           <span className="font-mono font-semibold text-primary">
-                            {item.code}
+                            {highlightSearchText(item.code, debouncedSearch)}
                           </span>
                         </TableCell>
                       );
@@ -228,7 +285,9 @@ export function DepartmentsContent() {
                     if (columnKey === "name") {
                       return (
                         <TableCell>
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium">
+                            {highlightSearchText(item.name, debouncedSearch)}
+                          </span>
                         </TableCell>
                       );
                     }
@@ -236,7 +295,7 @@ export function DepartmentsContent() {
                       return (
                         <TableCell>
                           <span className="text-default-600">
-                            {item.email || "-"}
+                            {item.email ? highlightSearchText(item.email, debouncedSearch) : "-"}
                           </span>
                         </TableCell>
                       );
@@ -245,7 +304,7 @@ export function DepartmentsContent() {
                       return (
                         <TableCell>
                           <span className="text-default-600">
-                            {item.description || "-"}
+                            {item.description ? highlightSearchText(item.description, debouncedSearch) : "-"}
                           </span>
                         </TableCell>
                       );
@@ -262,7 +321,7 @@ export function DepartmentsContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
                               color="primary"
                               size="sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import useSWR from "swr";
 import {
@@ -53,6 +53,22 @@ const createSkeletonRole = (i: number): RoleRow => ({
   isSkeleton: true,
 });
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 const columns = [
   { key: "code", label: "MÃ VAI TRÒ" },
   { key: "name", label: "TÊN VAI TRÒ" },
@@ -95,18 +111,24 @@ export function RolesContent() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
 
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/roles",
+  }), []);
+
   const {
     data,
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<RolesResponse>("/api/roles", fetcher, {
+  } = useSWR<RolesResponse>(swrKey, () => fetch(swrKey.url).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth transitions
   });
 
   const roles = data?.roles || [];
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   const filteredRoles = useMemo(() => {
@@ -152,7 +174,11 @@ export function RolesContent() {
                 Quản lý vai trò
               </h1>
               <p className="text-small text-default-500 mt-1">
-                Quản lý các vai trò trong hệ thống. Tổng: {filteredRoles.length} vai trò
+                {filteredRoles.length > 0 ? (
+                  <>Quản lý các vai trò trong hệ thống. Tổng: {filteredRoles.length} vai trò</>
+                ) : (
+                  "Chưa có vai trò nào"
+                )}
               </p>
             </div>
             <div className="flex gap-2">
@@ -207,10 +233,26 @@ export function RolesContent() {
             </TableHeader>
             <TableBody
               items={tableItems}
-              emptyContent="Chưa có vai trò nào"
+              emptyContent={
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Shield className="text-default-300 mb-4" size={48} />
+                  <p className="text-default-500 mb-2">Chưa có vai trò nào</p>
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<Plus size={16} />}
+                    onPress={onAddModalOpen}
+                  >
+                    Thêm vai trò đầu tiên
+                  </Button>
+                </div>
+              }
             >
               {(item: RoleRow) => (
-                <TableRow key={item.id}>
+                <TableRow 
+                  key={item.id}
+                  className={!item.isSkeleton ? "cursor-pointer hover:bg-default-50" : ""}
+                >
                   {(columnKey) => {
                     if (item.isSkeleton) {
                       return (
@@ -223,7 +265,7 @@ export function RolesContent() {
                       return (
                         <TableCell>
                           <span className="font-mono text-sm font-medium text-default-700">
-                            {item.code}
+                            {highlightSearchText(item.code, debouncedSearch)}
                           </span>
                         </TableCell>
                       );
@@ -231,7 +273,9 @@ export function RolesContent() {
                     if (columnKey === "name") {
                       return (
                         <TableCell>
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium">
+                            {highlightSearchText(item.name, debouncedSearch)}
+                          </span>
                         </TableCell>
                       );
                     }
@@ -239,7 +283,9 @@ export function RolesContent() {
                       return (
                         <TableCell>
                           <span className="text-default-600">
-                            {item.description || (
+                            {item.description ? (
+                              highlightSearchText(item.description, debouncedSearch)
+                            ) : (
                               <span className="text-default-400">—</span>
                             )}
                           </span>
@@ -267,7 +313,7 @@ export function RolesContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
                               isIconOnly
                               size="sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import useSWR from "swr";
 import {
@@ -80,6 +80,22 @@ const createSkeletonProfile = (i: number): ProfileRow => ({
   isSkeleton: true,
 });
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 /** Lấy label hiển thị của role (object hoặc string) */
 function getRoleDisplay(role: ProfileWithDepartment["role"]): string {
   if (!role) return "-";
@@ -148,21 +164,43 @@ export function UsersContent() {
   const [changingPasswordProfile, setChangingPasswordProfile] =
     useState<ProfileWithDepartment | null>(null);
 
+  // Reset page immediately when user changes search/filter (don't wait for debounce)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterDept]);
+
+  // Calculate effective page for query to avoid double fetch
+  const pageForQuery = useMemo(() => {
+    if (debouncedSearch || filterDept !== "all") {
+      return 1;
+    }
+    return currentPage;
+  }, [debouncedSearch, filterDept, currentPage]);
+
   const { data: deptData } = useSWR<{ departments: Department[] }>(
     "/api/departments",
     { revalidateOnFocus: false }
   );
   const departments = deptData?.departments || [];
 
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/profiles",
+    page: currentPage, // Use actual page instead of pageForQuery
+    search: debouncedSearch,
+    department_id: filterDept,
+  }), [currentPage, debouncedSearch, filterDept]);
+
+  // Build API URL from SWR key
   const profilesUrl = useMemo(() => {
     const params = new URLSearchParams({
-      page: currentPage.toString(),
+      page: swrKey.page.toString(),
       limit: rowsPerPage.toString(),
     });
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    if (filterDept && filterDept !== "all") params.set("department_id", filterDept);
-    return `/api/profiles?${params.toString()}`;
-  }, [debouncedSearch, filterDept, currentPage]);
+    if (swrKey.search) params.set("search", swrKey.search);
+    if (swrKey.department_id && swrKey.department_id !== "all") params.set("department_id", swrKey.department_id);
+    return `${swrKey.url}?${params.toString()}`;
+  }, [swrKey]);
 
   const {
     data,
@@ -170,15 +208,16 @@ export function UsersContent() {
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<ProfilesResponse>(profilesUrl, {
+  } = useSWR<ProfilesResponse>(swrKey, () => fetch(profilesUrl).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth pagination without skeleton flashing
   });
 
   const profiles = data?.employees || [];
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 0;
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   const openEditModal = (profile: ProfileWithDepartment) => {
@@ -240,7 +279,7 @@ export function UsersContent() {
               <Input
                 className="flex-1 max-w-[300px]"
                 classNames={{ inputWrapper: "bg-default-100" }}
-                placeholder="Tìm theo tên, email, SĐT..."
+                placeholder="Tìm theo tên, email, SĐT, phòng ban..."
                 startContent={<Search className="text-default-400" size={18} />}
                 endContent={
                   searchQuery && (
@@ -314,10 +353,26 @@ export function UsersContent() {
                   )
                   : profiles
               }
-              emptyContent="Chưa có người dùng nào"
+              emptyContent={
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Users className="text-default-300 mb-4" size={48} />
+                  <p className="text-default-500 mb-2">Chưa có người dùng nào</p>
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<Plus size={16} />}
+                    onPress={onAddModalOpen}
+                  >
+                    Thêm người dùng đầu tiên
+                  </Button>
+                </div>
+              }
             >
               {(item: ProfileRow) => (
-                <TableRow key={item.id}>
+                <TableRow 
+                  key={item.id}
+                  className={!item.isSkeleton ? "cursor-pointer hover:bg-default-50" : ""}
+                >
                   {(columnKey) => {
                     if (item.isSkeleton) {
                       return (
@@ -329,21 +384,25 @@ export function UsersContent() {
                     if (columnKey === "full_name") {
                       return (
                         <TableCell>
-                          <span className="font-medium">{item.full_name}</span>
+                          <span className="font-medium">
+                            {highlightSearchText(item.full_name, debouncedSearch)}
+                          </span>
                         </TableCell>
                       );
                     }
                     if (columnKey === "email") {
                       return (
                         <TableCell>
-                          <span className="text-default-600">{item.email}</span>
+                          <span className="text-default-600">
+                            {highlightSearchText(item.email, debouncedSearch)}
+                          </span>
                         </TableCell>
                       );
                     }
                     if (columnKey === "phone") {
                       return (
                         <TableCell>
-                          {item.phone || "-"}
+                          {item.phone ? highlightSearchText(item.phone, debouncedSearch) : "-"}
                         </TableCell>
                       );
                     }
@@ -351,7 +410,7 @@ export function UsersContent() {
                       return (
                         <TableCell>
                           <Chip size="sm" variant="flat" color="primary">
-                            {item.department?.name || "-"}
+                            {item.department?.name ? highlightSearchText(item.department.name, debouncedSearch) : "-"}
                           </Chip>
                         </TableCell>
                       );
@@ -393,7 +452,7 @@ export function UsersContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button
                               isIconOnly
                               size="sm"

@@ -65,6 +65,22 @@ import {
   APPROVE_DATE_FILTER_OPTIONS,
 } from "@/constants/approve";
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 export default function ApproveContent() {
   const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState(1);
@@ -103,47 +119,53 @@ export default function ApproveContent() {
     setMounted(true);
   }, []);
 
+  // Reset page immediately when user changes search/filters (don't wait for debounce)
+  useEffect(() => {
+    setPage(1);
+  }, [searchValue, filterDepartment, filterStatus, filterDate]);
+
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/requests",
+    page: page, // Use actual page, not calculated pageForQuery
+    search: debouncedSearchValue,
+    department: filterDepartment,
+    status: filterStatus,
+    dateFilter: filterDate,
+    sortColumn: sortDescriptor.column === "time" ? "created_at" : sortDescriptor.column,
+    sortDirection: sortDescriptor.direction === "ascending" ? "asc" : "desc",
+  }), [page, debouncedSearchValue, filterDepartment, filterStatus, filterDate, sortDescriptor]);
+
+  // Build API URL from SWR key
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
-      page: page.toString(),
+      page: swrKey.page.toString(),
       limit: APPROVE_ROWS_PER_PAGE.toString(),
     });
 
-    if (debouncedSearchValue) {
-      params.set("search", debouncedSearchValue);
+    if (swrKey.search) {
+      params.set("search", swrKey.search);
     }
 
-    if (filterDepartment && filterDepartment !== "all") {
-      params.set("department", filterDepartment);
+    if (swrKey.department && swrKey.department !== "all") {
+      params.set("department", swrKey.department);
     }
 
-    if (filterStatus && filterStatus !== "all") {
-      params.set("status", filterStatus);
+    if (swrKey.status && swrKey.status !== "all") {
+      params.set("status", swrKey.status);
     }
 
-    if (filterDate && filterDate !== "all") {
-      params.set("dateFilter", filterDate);
+    if (swrKey.dateFilter && swrKey.dateFilter !== "all") {
+      params.set("dateFilter", swrKey.dateFilter);
     }
 
-    if (sortDescriptor.column) {
-      const sortColumn =
-        sortDescriptor.column === "time" ? "created_at" : sortDescriptor.column;
-      params.set("sortColumn", sortColumn);
-      params.set(
-        "sortDirection",
-        sortDescriptor.direction === "ascending" ? "asc" : "desc"
-      );
+    if (swrKey.sortColumn) {
+      params.set("sortColumn", swrKey.sortColumn);
+      params.set("sortDirection", swrKey.sortDirection);
     }
 
-    return `/api/requests?${params.toString()}`;
-  }, [
-    page,
-    debouncedSearchValue,
-    filterDepartment,
-    filterStatus,
-    filterDate,
-    sortDescriptor,
-  ]);
+    return `${swrKey.url}?${params.toString()}`;
+  }, [swrKey]);
 
   const { mutate: globalMutate } = useSWRConfig();
 
@@ -152,9 +174,10 @@ export default function ApproveContent() {
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<TRequestsResponse>(mounted ? apiUrl : null, {
+  } = useSWR<TRequestsResponse>(mounted ? swrKey : null, () => fetch(apiUrl).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth pagination without skeleton flashing
   });
 
   // Mutate function cho bulletin data
@@ -167,7 +190,7 @@ export default function ApproveContent() {
   const totalPages = data?.totalPages || 0;
   const pages = totalPages;
   const items = requests;
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   const { data: deptData } = useSWR<{ departments: any[] }>("/api/departments", {
@@ -267,8 +290,19 @@ export default function ApproveContent() {
                 </div>
               </div>
               <p className="text-small text-default-500">
-                Tổng số: {total} yêu cầu
-                {requests.length > 0 && ` (hiển thị ${requests.length})`}
+                {total > 0 ? (
+                  <>
+                    Tổng số: {total} yêu cầu
+                    {requests.length > 0 && page > 1 && (
+                      <> (trang {page}: {requests.length} yêu cầu)</>
+                    )}
+                    {requests.length > 0 && page === 1 && total > requests.length && (
+                      <> (hiển thị {requests.length} đầu tiên)</>
+                    )}
+                  </>
+                ) : (
+                  "Chưa có yêu cầu nào"
+                )}
               </p>
             </div>
           </CardHeader>
@@ -280,7 +314,7 @@ export default function ApproveContent() {
                   classNames={{
                     inputWrapper: "bg-default-100",
                   }}
-                  placeholder="Tìm kiếm..."
+                  placeholder="Tìm theo mã, tiêu đề, mô tả, người gửi..."
                   startContent={
                     <Search className="text-default-400" size={18} />
                   }
@@ -568,20 +602,42 @@ export default function ApproveContent() {
                 <TableBody
                   items={items}
                   emptyContent={
-                    loading ? "Đang tải..." : "Không tìm thấy yêu cầu nào"
+                    loading ? (
+                      "Đang tải..."
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <List className="text-default-300 mb-4" size={48} />
+                        <p className="text-default-500 mb-2">Không tìm thấy yêu cầu nào</p>
+                        <Button
+                          color="primary"
+                          size="sm"
+                          startContent={<Plus size={16} />}
+                          onPress={onAddOpen}
+                        >
+                          Thêm yêu cầu đầu tiên
+                        </Button>
+                      </div>
+                    )
                   }
                 >
                   {(item: TApproveRequestItem) => (
-                    <TableRow key={item.id}>
+                    <TableRow 
+                      key={item.id}
+                      className="cursor-pointer hover:bg-default-50"
+                      onClick={() => {
+                        setSelectedRequest(item);
+                        onOpen();
+                      }}
+                    >
                       {(columnKey) => {
                         if (columnKey === "time") {
                           return (
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium text-foreground">
-                                  {formatRequestCode(
-                                    item.created_at,
-                                    item.id
+                                  {highlightSearchText(
+                                    formatRequestCode(item.created_at, item.id),
+                                    debouncedSearchValue
                                   )}
                                 </span>
                                 <span className="text-xs text-default-500">
@@ -599,10 +655,10 @@ export default function ApproveContent() {
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-sm font-medium">
-                                  {profile?.full_name || "-"}
+                                  {profile?.full_name ? highlightSearchText(profile.full_name, debouncedSearchValue) : "-"}
                                 </span>
                                 <span className="text-xs text-default-500">
-                                  {profile?.email || "-"}
+                                  {profile?.email ? highlightSearchText(profile.email, debouncedSearchValue) : "-"}
                                 </span>
                               </div>
                             </TableCell>
@@ -696,7 +752,7 @@ export default function ApproveContent() {
                             (item.metadata?.comment_count as number) ?? 0;
                           return (
                             <TableCell>
-                              <div className="flex flex-col gap-2 max-w-[280px]">
+                              <div className="flex flex-col gap-2 max-w-[280px]" onClick={(e) => e.stopPropagation()}>
                                 <p
                                   className="text-sm text-foreground line-clamp-2 cursor-pointer hover:text-primary hover:underline"
                                   role="button"
@@ -713,7 +769,10 @@ export default function ApproveContent() {
                                     onOpen();
                                   }}
                                 >
-                                  {item.title || item.description || "-"}
+                                  {item.title || item.description ? 
+                                    highlightSearchText(item.title || item.description || "-", debouncedSearchValue) : 
+                                    "-"
+                                  }
                                 </p>
                                 <Button
                                   color="primary"
