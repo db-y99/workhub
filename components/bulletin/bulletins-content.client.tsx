@@ -51,6 +51,22 @@ import {
 } from "@/constants/bulletins-table";
 import { PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
 
+// Helper để highlight search text
+const highlightSearchText = (text: string, search: string) => {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 export default function BulletinsContent() {
   const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState(1);
@@ -90,37 +106,52 @@ export default function BulletinsContent() {
     setMounted(true);
   }, []);
 
+  // Reset page immediately when user changes search/filters (don't wait for debounce)
+  useEffect(() => {
+    setPage(1);
+  }, [searchValue, filterDate]);
+
+  // SWR key as object for better cache management
+  const swrKey = useMemo(() => ({
+    url: "/api/bulletins",
+    page: page,
+    search: debouncedSearchValue,
+    dateFilter: filterDate,
+  }), [page, debouncedSearchValue, filterDate]);
+
+  // Build API URL from SWR key
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
-      page: page.toString(),
+      page: swrKey.page.toString(),
       limit: BULLETINS_ROWS_PER_PAGE.toString(),
     });
 
-    if (debouncedSearchValue) {
-      params.set("search", debouncedSearchValue);
+    if (swrKey.search) {
+      params.set("search", swrKey.search);
     }
 
-    if (filterDate && filterDate !== "all") {
-      params.set("dateFilter", filterDate);
+    if (swrKey.dateFilter && swrKey.dateFilter !== "all") {
+      params.set("dateFilter", swrKey.dateFilter);
     }
 
-    return `/api/bulletins?${params.toString()}`;
-  }, [page, debouncedSearchValue, filterDate]);
+    return `${swrKey.url}?${params.toString()}`;
+  }, [swrKey]);
 
   const {
     data,
     isLoading,
     isValidating,
     mutate,
-  } = useSWR<TBulletinsResponse>(mounted ? apiUrl : null, fetcher, {
+  } = useSWR<TBulletinsResponse>(mounted ? swrKey : null, () => fetch(apiUrl).then(res => res.json()), {
     revalidateOnFocus: false,
     revalidateOnMount: true,
+    keepPreviousData: true, // Smooth pagination without skeleton flashing
   });
 
   const bulletins = data?.bulletins || [];
   const total = data?.pagination?.total || 0;
   const totalPages = data?.pagination?.totalPages || 0;
-  const loading = isLoading;
+  const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
   const { data: deptData } = useSWR<{ departments: any[] }>("/api/departments", {
@@ -184,8 +215,19 @@ export default function BulletinsContent() {
                 </div>
               </div>
               <p className="text-small text-default-500">
-                Tổng số: {total} bảng tin
-                {bulletins.length > 0 && ` (hiển thị ${bulletins.length})`}
+                {total > 0 ? (
+                  <>
+                    Tổng số: {total} bảng tin
+                    {bulletins.length > 0 && page > 1 && (
+                      <> (trang {page}: {bulletins.length} bảng tin)</>
+                    )}
+                    {bulletins.length > 0 && page === 1 && total > bulletins.length && (
+                      <> (hiển thị {bulletins.length} đầu tiên)</>
+                    )}
+                  </>
+                ) : (
+                  "Chưa có bảng tin nào"
+                )}
               </p>
             </div>
           </CardHeader>
@@ -197,7 +239,7 @@ export default function BulletinsContent() {
                   classNames={{
                     inputWrapper: "bg-default-100",
                   }}
-                  placeholder="Tìm kiếm tiêu đề, mô tả..."
+                  placeholder="Tìm theo tiêu đề, mô tả, nội dung..."
                   startContent={
                     <Search className="text-default-400" size={18} />
                   }
@@ -381,11 +423,32 @@ export default function BulletinsContent() {
                 <TableBody
                   items={bulletins}
                   emptyContent={
-                    loading ? "Đang tải..." : "Không tìm thấy bảng tin nào"
+                    loading ? (
+                      "Đang tải..."
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <List className="text-default-300 mb-4" size={48} />
+                        <p className="text-default-500 mb-2">Không tìm thấy bảng tin nào</p>
+                        {canCreate && (
+                          <Button
+                            color="primary"
+                            size="sm"
+                            startContent={<Plus size={16} />}
+                            onPress={onAddOpen}
+                          >
+                            Thêm bảng tin đầu tiên
+                          </Button>
+                        )}
+                      </div>
+                    )
                   }
                 >
                   {(item: TBulletinItem) => (
-                    <TableRow key={item.id}>
+                    <TableRow 
+                      key={item.id}
+                      className="cursor-pointer hover:bg-default-50"
+                      onClick={() => handleViewDetail(item)}
+                    >
                       {(columnKey) => {
                         if (columnKey === "date") {
                           return (
@@ -399,7 +462,9 @@ export default function BulletinsContent() {
                         if (columnKey === "title") {
                           return (
                             <TableCell>
-                              <span className="font-medium">{item.title}</span>
+                              <span className="font-medium">
+                                {highlightSearchText(item.title, debouncedSearchValue)}
+                              </span>
                             </TableCell>
                           );
                         }
@@ -407,7 +472,7 @@ export default function BulletinsContent() {
                           return (
                             <TableCell>
                               <span className="text-sm text-default-600 line-clamp-2">
-                                {item.description || "-"}
+                                {item.description ? highlightSearchText(item.description, debouncedSearchValue) : "-"}
                               </span>
                             </TableCell>
                           );
@@ -479,7 +544,7 @@ export default function BulletinsContent() {
                         if (columnKey === "actions") {
                           return (
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                 <Tooltip content="Xem chi tiết">
                                   <Button
                                     isIconOnly
