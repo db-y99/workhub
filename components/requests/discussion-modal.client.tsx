@@ -202,7 +202,7 @@ export function DiscussionModal({
                             </span>
                           </div>
                           <div
-                            className={`rounded-lg px-3 py-2 text-sm ${isOwn(c)
+                            className={`rounded-lg px-3 py-2 text-sm min-w-0 break-all ${isOwn(c)
                               ? "bg-primary text-primary-foreground"
                               : "bg-default-100"
                               }`}
