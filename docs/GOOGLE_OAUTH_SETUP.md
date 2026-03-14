@@ -1,6 +1,23 @@
 # Hướng dẫn thiết lập Google OAuth với Supabase
 
-## Bước 1: Cấu hình Google OAuth trong Google Cloud Console
+## Supabase local (development)
+
+Khi chạy `supabase start`, cấu hình Google đã bật trong `supabase/config.toml`. Bạn cần:
+
+1. **Google Cloud Console**: Tạo OAuth client (Web application), thêm **Authorized redirect URI**:
+   ```
+   http://127.0.0.1:54321/auth/v1/callback
+   ```
+2. **Biến môi trường** (trong `.env` ở thư mục gốc project, Supabase CLI đọc khi chạy):
+   ```
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=<Client ID từ Google>
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=<Client Secret từ Google>
+   ```
+3. Restart Supabase: `supabase stop && supabase start`
+
+---
+
+## Bước 1: Cấu hình Google OAuth trong Google Cloud Console (hosted + local)
 
 1. Truy cập [Google Cloud Console](https://console.cloud.google.com/)
 2. Tạo hoặc chọn một dự án
@@ -8,9 +25,8 @@
 4. Click **Create Credentials** > **OAuth client ID**
 5. Chọn **Web application** làm loại ứng dụng
 6. Thêm **Authorized redirect URIs**:
-   ```
-   https://[your-project-ref].supabase.co/auth/v1/callback
-   ```
+   - **Hosted Supabase:** `https://[your-project-ref].supabase.co/auth/v1/callback`
+   - **Local:** `http://127.0.0.1:54321/auth/v1/callback`
    Thay `[your-project-ref]` bằng Project Reference của bạn trong Supabase
 7. Lưu **Client ID** và **Client Secret**
 

@@ -1,0 +1,11 @@
+<html>
+  <body style="font-family: sans-serif; line-height: 1.5;">
+    <h2>Mã đăng nhập một lần</h2>
+    <p>Xin chào,</p>
+    <p>Mã OTP của bạn là: <strong>{{ .Token }}</strong></p>
+    <p>Mã có hiệu lực trong 1 giờ. Không chia sẻ mã này với bất kỳ ai.</p>
+    <p>Hoặc đăng nhập bằng link sau:</p>
+    <p><a href="{{ .ConfirmationURL }}">Đăng nhập bằng link</a></p>
+    <p style="color: #666; font-size: 12px;">Nếu bạn không yêu cầu email này, hãy bỏ qua.</p>
+  </body>
+</html>

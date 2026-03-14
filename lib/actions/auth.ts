@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getProfileByEmail, getProfileById } from "@/lib/services/profiles.service";
 import { USER_STATUS } from "@/lib/constants";
 import { ROUTES } from "@/constants/routes";
 import { env } from "@/config/env";
@@ -108,6 +109,76 @@ export async function resetPasswordForEmail(email: string) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Gửi mã OTP đến email (passwordless login).
+ * Chỉ gửi khi email đã tồn tại trong bảng profiles.
+ * Cần bật Email OTP trong Supabase Dashboard và dùng template có {{ .Token }}.
+ */
+export async function sendOtpToEmail(email: string) {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    return { error: "Vui lòng nhập email." };
+  }
+
+  const profile = await getProfileByEmail(trimmedEmail);
+  if (!profile) {
+    return {
+      error:
+        "Email chưa được đăng ký trong hệ thống. Vui lòng liên hệ Admin nếu bạn cần truy cập.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: trimmedEmail,
+    options: {
+      shouldCreateUser: false,
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Xác thực mã OTP và tạo session (passwordless login).
+ * Chỉ cho đăng nhập khi user có profile trong hệ thống.
+ */
+export async function verifyEmailOtp(email: string, token: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.verifyOtp({
+    email: email.trim(),
+    token: token.trim(),
+    type: "email",
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!session?.user) {
+    return { error: "Xác thực OTP thất bại" };
+  }
+
+  const profile = await getProfileById(session.user.id);
+  if (!profile) {
+    return {
+      error:
+        "Tài khoản chưa được cấp trong hệ thống. Vui lòng liên hệ Admin.",
+    };
   }
 
   return { success: true };
