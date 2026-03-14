@@ -33,6 +33,7 @@ import { formatDate } from "@/lib/functions";
 import { AddDepartmentModal } from "@/components/settings/departments/add-department-modal";
 import { EditDepartmentModal } from "@/components/settings/departments/edit-department-modal";
 import { DeleteDepartmentModal } from "@/components/settings/departments/delete-department-modal";
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 // Type cho table row (Department + optional isSkeleton)
 type DepartmentRow = Department & {
@@ -51,22 +52,6 @@ const createSkeletonDepartment = (i: number): DepartmentRow => ({
   deleted_at: null,
   isSkeleton: true,
 });
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
 
 const columns = [
   { key: "code", label: "MÃ" },

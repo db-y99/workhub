@@ -37,6 +37,7 @@ import { ChangePasswordModal } from "./change-password-modal";
 import { EditEmployeeModal } from "@/components/settings/employees/edit-employee-modal";
 import { DeleteEmployeeModal } from "@/components/settings/employees/delete-employee-modal";
 import { USER_STATUS } from "@/lib/constants";
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 const columns = [
   { key: "full_name", label: "HỌ TÊN" },
@@ -79,22 +80,6 @@ const createSkeletonProfile = (i: number): ProfileRow => ({
   role: { id: "", code: "user", name: "" },
   isSkeleton: true,
 });
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
 
 /** Lấy label hiển thị của role (object hoặc string) */
 function getRoleDisplay(role: ProfileWithDepartment["role"]): string {

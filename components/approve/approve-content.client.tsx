@@ -64,22 +64,7 @@ import {
   APPROVE_STATUS_FILTER_OPTIONS,
   APPROVE_DATE_FILTER_OPTIONS,
 } from "@/constants/approve";
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 export default function ApproveContent() {
   const [mounted, setMounted] = useState(false);

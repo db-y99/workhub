@@ -40,6 +40,7 @@ import { EditResourceModal } from "@/components/company-resources/edit-resource-
 import { DeleteResourceModal } from "@/components/company-resources/delete-resource-modal";
 import { ResourceNotesModal } from "@/components/company-resources/resource-notes-modal";
 import { ResourceDetailModal } from "@/components/company-resources/resource-detail-modal";
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 const columns = [
   { key: "name", label: "TÊN TÀI NGUYÊN" },
@@ -69,22 +70,6 @@ const createSkeletonCompanyResource = (i: number): CompanyResourceRow => ({
   assignee: null,
   isSkeleton: true,
 });
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
 
 interface ResourcesResponse {
   resources: CompanyResourceWithAssignee[];

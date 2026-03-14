@@ -41,7 +41,6 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { BulletinDetailModal } from "./bulletin-detail-modal";
 import { EditBulletinModal } from "./edit-bulletin-modal";
 import { AddBulletinModal } from "./add-bulletin-modal";
-import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/lib/contexts/auth-context";
 import type { TBulletinItem, TBulletinsResponse } from "@/types/bulletin.types";
 import {
@@ -50,22 +49,7 @@ import {
   BULLETINS_DATE_FILTER_OPTIONS,
 } from "@/constants/bulletins-table";
 import { PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 export default function BulletinsContent() {
   const [mounted, setMounted] = useState(false);
@@ -444,7 +428,7 @@ export default function BulletinsContent() {
                   }
                 >
                   {(item: TBulletinItem) => (
-                    <TableRow 
+                    <TableRow
                       key={item.id}
                       className="cursor-pointer hover:bg-default-50"
                       onClick={() => handleViewDetail(item)}

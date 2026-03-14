@@ -34,6 +34,7 @@ import { formatDate } from "@/lib/functions";
 import { AddRoleModal } from "@/components/roles/add-role-modal";
 import { EditRoleModal } from "@/components/roles/edit-role-modal";
 import { DeleteRoleModal } from "@/components/roles/delete-role-modal";
+import { highlightSearchText } from "@/lib/utils/highlight-text";
 
 // Type cho table row (Role + optional isSkeleton)
 type RoleRow = Role & {
@@ -52,22 +53,6 @@ const createSkeletonRole = (i: number): RoleRow => ({
   deleted_at: null,
   isSkeleton: true,
 });
-
-// Helper để highlight search text
-const highlightSearchText = (text: string, search: string) => {
-  if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  
-  return parts.map((part, index) => 
-    regex.test(part) ? (
-      <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
-        {part}
-      </mark>
-    ) : part
-  );
-};
 
 const columns = [
   { key: "code", label: "MÃ VAI TRÒ" },
