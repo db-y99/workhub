@@ -227,7 +227,6 @@ export default function LoginForm() {
                         isRequired
                         autoComplete="email"
                         isDisabled={isPending}
-                        placeholder="email@company.com"
                       />
 
                       <Button
@@ -303,7 +302,7 @@ export default function LoginForm() {
 
           <CardFooter className="justify-center pb-6">
             <p className="text-xs text-default-400">
-              © 2025 {siteConfig.name}. All rights reserved.
+              © 2026 {siteConfig.name}. All rights reserved.
             </p>
           </CardFooter>
         </Card>
