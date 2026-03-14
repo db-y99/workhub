@@ -8,11 +8,9 @@ import { Divider } from "@heroui/divider";
 import { Tabs, Tab } from "@heroui/tabs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { siteConfig } from "@/config/site";
-import { GoogleIcon } from "@/components/icons";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/lib/contexts/auth-context";
 import {
-  signInWithGoogle,
   signInWithEmailPassword,
   sendOtpToEmail,
   verifyEmailOtp,
@@ -49,14 +47,6 @@ export default function LoginForm() {
       setError(ERROR_MESSAGES[errorParam]);
     }
   }, [searchParams]);
-
-  const handleGoogleLogin = () => {
-    startTransition(async () => {
-      setError(null);
-      const result = await signInWithGoogle();
-      if (result?.error) setError(result.error);
-    });
-  };
 
   const handleEmailPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +152,7 @@ export default function LoginForm() {
             <div className="text-center mb-2">
               <h2 className="text-xl font-semibold mb-1">Đăng nhập</h2>
               <p className="text-sm text-default-500">
-                Email & mật khẩu, email & mã OTP, hoặc Google
+                Email & mật khẩu hoặc email & mã OTP
               </p>
             </div>
 
@@ -301,25 +291,6 @@ export default function LoginForm() {
                 </div>
               </Tab>
             </Tabs>
-
-            <Divider className="my-2" />
-
-            <div className="text-center text-sm text-default-500">hoặc</div>
-
-            <Button
-              fullWidth
-              size="lg"
-              variant="bordered"
-              startContent={
-                <GoogleIcon className="text-default-700 dark:text-default-300" />
-              }
-              isLoading={isPending}
-              isDisabled={isPending}
-              onPress={handleGoogleLogin}
-              className="border-2 font-medium"
-            >
-              Đăng nhập với Google
-            </Button>
 
             <Divider className="my-2" />
 

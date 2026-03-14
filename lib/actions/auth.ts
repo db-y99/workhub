@@ -185,35 +185,6 @@ export async function verifyEmailOtp(email: string, token: string) {
 }
 
 /**
- * Sign in with Google OAuth
- */
-export async function signInWithGoogle() {
-  const supabase = await createClient();
-  const origin = env.NEXT_PUBLIC_SITE_URL;
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}${ROUTES.AUTH_CALLBACK}`,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
-    },
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  if (data.url) {
-    redirect(data.url);
-  }
-
-  return { error: "Failed to generate OAuth URL" };
-}
-
-/**
  * Sign out
  */
 export async function signOut() {
