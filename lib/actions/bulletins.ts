@@ -33,7 +33,7 @@ export async function createBulletin(formData: FormData) {
     // Check permission
     const permissions = await getPermissionsByUserId(user.id);
     const canCreate = permissions.includes(
-      toPermissionCode("bulletins", PERMISSION_ACTIONS.CREATE)
+      toPermissionCode("bulletins", PERMISSION_ACTIONS.CREATE),
     );
     if (!canCreate) {
       return { error: "Bạn không có quyền tạo bảng tin" };
@@ -59,7 +59,9 @@ export async function createBulletin(formData: FormData) {
       : [];
 
     const gradient =
-      BULLETIN_GRADIENTS[Math.floor(Math.random() * BULLETIN_GRADIENTS.length)] ?? BULLETIN_GRADIENTS[0];
+      BULLETIN_GRADIENTS[
+        Math.floor(Math.random() * BULLETIN_GRADIENTS.length)
+      ] ?? BULLETIN_GRADIENTS[0];
 
     // Đảm bảo department_ids luôn là array (empty array [] nếu không chọn department nào)
     // Empty array [] = toàn công ty, sẽ hiển thị cho tất cả user
@@ -87,7 +89,8 @@ export async function createBulletin(formData: FormData) {
       if (recipientEmails.length > 0) {
         // Lấy thông tin người tạo để hiển thị trong email
         const creatorProfile = await getProfileById(user.id);
-        const creatorName = creatorProfile?.full_name || user.email || "Người dùng";
+        const creatorName =
+          creatorProfile?.full_name || user.email || "Người dùng";
         const creatorEmail = creatorProfile?.email || user.email || "";
 
         // Format email data
@@ -119,7 +122,10 @@ export async function createBulletin(formData: FormData) {
         };
 
         // Render HTML email template (logo từ EMAIL_LOGO_URL)
-        const htmlBody = renderBulletinCreatedEmailHTML(emailData, EMAIL_LOGO_URL);
+        const htmlBody = renderBulletinCreatedEmailHTML(
+          emailData,
+          EMAIL_LOGO_URL,
+        );
         const emailSubject = getBulletinCreatedEmailSubject(title);
 
         // Plain text fallback (từ HTML)
@@ -132,12 +138,14 @@ export async function createBulletin(formData: FormData) {
           `👤 Người đăng: ${creatorName}${creatorEmail ? ` (${creatorEmail})` : ""}`,
           departmentNames ? `🏢 Phòng ban: ${departmentNames}` : "",
           description ? `📝 Nội dung:\n${stripHtml(description)}` : "",
-          attachments.length > 0 ? `📎 File đính kèm: ${attachments.length} file` : "",
+          attachments.length > 0
+            ? `📎 File đính kèm: ${attachments.length} file`
+            : "",
           "",
           `🔗 Xem chi tiết: ${bulletinUrl}`,
           "",
           "Trân trọng,",
-          "Hệ thống Easy Approve",
+          "Hệ thống Workhub",
         ]
           .filter(Boolean)
           .join("\n");
@@ -149,7 +157,7 @@ export async function createBulletin(formData: FormData) {
             subject: emailSubject,
             htmlBody,
             textBody,
-          })
+          }),
         );
 
         // Chờ tất cả email được gửi (không throw error nếu thất bại)
@@ -158,15 +166,25 @@ export async function createBulletin(formData: FormData) {
         // Log kết quả gửi email
         emailResults.forEach((result, index) => {
           if (result.status === "rejected") {
-            console.error(`Failed to send bulletin email to ${recipientEmails[index]}:`, result.reason);
+            console.error(
+              `Failed to send bulletin email to ${recipientEmails[index]}:`,
+              result.reason,
+            );
           } else if (result.value.ok === false) {
-            console.error(`Failed to send bulletin email to ${recipientEmails[index]}:`, result.value.error);
+            console.error(
+              `Failed to send bulletin email to ${recipientEmails[index]}:`,
+              result.value.error,
+            );
           } else {
-            console.log(`Bulletin email sent successfully to ${recipientEmails[index]}`);
+            console.log(
+              `Bulletin email sent successfully to ${recipientEmails[index]}`,
+            );
           }
         });
 
-        console.log(`Bulletin notification sent to ${recipientEmails.length} recipients`);
+        console.log(
+          `Bulletin notification sent to ${recipientEmails.length} recipients`,
+        );
       }
     } catch (emailError) {
       // Log error nhưng không block response
@@ -195,7 +213,7 @@ export async function updateBulletin(bulletinId: string, formData: FormData) {
     // Check permission
     const permissions = await getPermissionsByUserId(user.id);
     const canEdit = permissions.includes(
-      toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT)
+      toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT),
     );
     if (!canEdit) {
       return { error: "Bạn không có quyền sửa bảng tin" };
@@ -258,7 +276,9 @@ export async function updateBulletin(bulletinId: string, formData: FormData) {
     console.error("updateBulletin error:", err);
     return {
       error:
-        err instanceof Error ? err.message : "Đã xảy ra lỗi khi cập nhật bảng tin",
+        err instanceof Error
+          ? err.message
+          : "Đã xảy ra lỗi khi cập nhật bảng tin",
     };
   }
 }
