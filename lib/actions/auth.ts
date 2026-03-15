@@ -146,7 +146,16 @@ export async function sendOtpToEmail(email: string) {
     return { error: error.message };
   }
 
-  return { success: true };
+  return { success: true, message: "Mã OTP đã gửi đến email." };
+}
+
+/**
+ * Gửi lại mã OTP (gọi lại sendOtpToEmail).
+ */
+export async function resendOtp(email: string) {
+  const result = await sendOtpToEmail(email);
+  if (result?.error) return result;
+  return { success: true, message: "Mã OTP mới đã được gửi." };
 }
 
 /**
