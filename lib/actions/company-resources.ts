@@ -9,6 +9,7 @@ import type {
   CreateCompanyResourceInput,
   UpdateCompanyResourceInput,
 } from "@/types/company-resource.types";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const VALID_TYPES = Object.values(RESOURCE_TYPE);
 
@@ -105,11 +106,34 @@ export async function updateCompanyResource(
   }
 }
 
+export async function restoreCompanyResource(id: string) {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { error } = await adminSupabase
+      .from("company_resources")
+      .update({ deleted_at: null, updated_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error restoring company_resource:", error);
+      return { error: "Không thể khôi phục tài nguyên" };
+    }
+
+    revalidatePath(ROUTES.COMPANY_RESOURCES);
+    revalidatePath(ROUTES.COMPANY_RESOURCES_DELETED);
+    return { success: true };
+  } catch (error) {
+    console.error("Error restoring company resource:", error);
+    return { error: "Đã xảy ra lỗi khi khôi phục tài nguyên" };
+  }
+}
+
 export async function deleteCompanyResource(id: string) {
   try {
-    const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from("company_resources")
       .update({
         deleted_at: new Date().toISOString(),
@@ -123,6 +147,7 @@ export async function deleteCompanyResource(id: string) {
     }
 
     revalidatePath(ROUTES.COMPANY_RESOURCES);
+    revalidatePath(ROUTES.COMPANY_RESOURCES_DELETED);
     return { success: true };
   } catch (error) {
     console.error("Error deleting company resource:", error);

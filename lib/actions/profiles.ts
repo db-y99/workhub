@@ -6,6 +6,7 @@ import {
   createProfileService,
   updateProfileService,
   deleteProfileService,
+  restoreProfileService,
   updateProfileStatusService,
   updateUserPasswordService,
 } from "@/lib/services/profiles.service";
@@ -157,6 +158,26 @@ export async function updateProfile(
 
   revalidatePath(ROUTES.USERS);
   return { success: true, data: result.data };
+}
+
+/**
+ * Restore a soft-deleted profile
+ */
+export async function restoreProfile(id: string) {
+  if (!id || typeof id !== "string" || id.length === 0) {
+    return { error: "ID không hợp lệ" };
+  }
+
+  const result = await restoreProfileService(id);
+
+  if (isErr(result)) {
+    console.error("[restoreProfile] Service error:", result.error);
+    return { error: "Không thể khôi phục người dùng" };
+  }
+
+  revalidatePath(ROUTES.USERS);
+  revalidatePath(ROUTES.USERS_DELETED);
+  return { success: true };
 }
 
 /**

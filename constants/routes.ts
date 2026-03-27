@@ -13,14 +13,18 @@ export const ROUTES = {
   APPROVE: "/approve",
   BULLETINS: "/bulletins",
   USERS: "/users",
+  USERS_DELETED: "/users/deleted",
   DEPARTMENTS: "/departments",
+  DEPARTMENTS_DELETED: "/departments/deleted",
   SETTINGS: "/settings",
   STATISTICS: "/statistics",
   LOANS_DISBURSEMENT_SUCCESS: "/loans/disbursement-success",
   COMPANY_RESOURCES: "/company-resources",
+  COMPANY_RESOURCES_DELETED: "/company-resources/deleted",
   PERMISSIONS: "/permissions",
   PERMISSIONS_LIST: "/permissions/list",
   ROLES: "/roles",
+  ROLES_DELETED: "/roles/deleted",
   CALCULATOR: "/calculator",
 
   // Public (không cần đăng nhập)

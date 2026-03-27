@@ -11,6 +11,8 @@ export interface NavMenuItem {
   adminOnly?: boolean;
   /** Permission code cần có để hiển thị (VD: approve:view). Nếu không set, dùng ROUTE_PERMISSION_MAP[href]. */
   permissionCode?: string;
+  /** Sub-items hiển thị dưới dạng expandable trong sidebar */
+  children?: { href: string; label: string }[];
 }
 
 export type SiteConfig = typeof siteConfig;
@@ -54,6 +56,10 @@ export const siteConfig = {
       href: ROUTES.COMPANY_RESOURCES,
       icon: Package,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.COMPANY_RESOURCES],
+      children: [
+        { href: ROUTES.COMPANY_RESOURCES, label: "Tất cả" },
+        { href: ROUTES.COMPANY_RESOURCES_DELETED, label: "Đã xóa" },
+      ],
     },
     {
       label: "Thống kê",
@@ -66,18 +72,30 @@ export const siteConfig = {
       href: ROUTES.USERS,
       icon: Users,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.USERS],
+      children: [
+        { href: ROUTES.USERS, label: "Tất cả" },
+        { href: ROUTES.USERS_DELETED, label: "Đã xóa" },
+      ],
     },
     {
       label: "Phòng ban",
       href: ROUTES.DEPARTMENTS,
       icon: Building2,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.DEPARTMENTS],
+      children: [
+        { href: ROUTES.DEPARTMENTS, label: "Tất cả" },
+        { href: ROUTES.DEPARTMENTS_DELETED, label: "Đã xóa" },
+      ],
     },
     {
       label: "Vai trò",
       href: ROUTES.ROLES,
       icon: Shield,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.ROLES],
+      children: [
+        { href: ROUTES.ROLES, label: "Tất cả" },
+        { href: ROUTES.ROLES_DELETED, label: "Đã xóa" },
+      ],
     },
     {
       label: "Phân quyền",

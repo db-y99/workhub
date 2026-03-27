@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Department } from "@/types";
 
 /**
@@ -126,6 +127,32 @@ export async function updateDepartment(
 }
 
 /**
+ * Restore a soft-deleted department
+ */
+export async function restoreDepartment(id: string) {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { error } = await adminSupabase
+      .from("departments")
+      .update({ deleted_at: null, updated_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error restoring department:", error);
+      return { error: "Không thể khôi phục phòng ban" };
+    }
+
+    revalidatePath(ROUTES.DEPARTMENTS);
+    revalidatePath(ROUTES.DEPARTMENTS_DELETED);
+    return { success: true };
+  } catch (error) {
+    console.error("Error restoring department:", error);
+    return { error: "Đã xảy ra lỗi khi khôi phục phòng ban" };
+  }
+}
+
+/**
  * Delete a department (soft delete)
  */
 export async function deleteDepartment(id: string) {
@@ -168,6 +195,7 @@ export async function deleteDepartment(id: string) {
     }
 
     revalidatePath(ROUTES.DEPARTMENTS);
+    revalidatePath(ROUTES.DEPARTMENTS_DELETED);
     return {
       success: true,
     };

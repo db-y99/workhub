@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Role } from "@/types/role.types";
 
 export interface CreateRoleInput {
@@ -116,9 +117,33 @@ export async function updateRole(id: string, formData: UpdateRoleInput) {
   }
 }
 
+export async function restoreRole(id: string) {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { error } = await adminSupabase
+      .from("roles")
+      .update({ deleted_at: null, updated_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error restoring role:", error);
+      return { error: "Không thể khôi phục vai trò" };
+    }
+
+    revalidatePath(ROUTES.ROLES);
+    revalidatePath(ROUTES.ROLES_DELETED);
+    return { success: true };
+  } catch (error) {
+    console.error("Error restoring role:", error);
+    return { error: "Đã xảy ra lỗi khi khôi phục vai trò" };
+  }
+}
+
 export async function deleteRole(id: string) {
   try {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
     // Check if role is being used by any profiles
     const { data: profilesUsingRole, error: checkError } = await supabase
@@ -137,7 +162,7 @@ export async function deleteRole(id: string) {
       return { error: "Không thể xóa vai trò đang được gán cho người dùng" };
     }
 
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from("roles")
       .update({
         deleted_at: new Date().toISOString(),
@@ -151,6 +176,7 @@ export async function deleteRole(id: string) {
     }
 
     revalidatePath(ROUTES.ROLES);
+    revalidatePath(ROUTES.ROLES_DELETED);
     return { success: true };
   } catch (error) {
     console.error("Error deleting role:", error);

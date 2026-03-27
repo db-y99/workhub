@@ -170,6 +170,24 @@ export async function updateProfileService(
 }
 
 /**
+ * Restore soft-deleted profile.
+ */
+export async function restoreProfileService(id: string): Promise<Result<true>> {
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ deleted_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    return err(createError.database("RESTORE_PROFILE_FAILED"));
+  }
+
+  return ok(true);
+}
+
+/**
  * Soft delete profile.
  */
 export async function deleteProfileService(id: string): Promise<Result<true>> {
