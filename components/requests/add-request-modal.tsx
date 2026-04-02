@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition, useMemo } from "react";
+import { useState, useRef, useTransition, useMemo, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
 import { useDebounceValue } from "usehooks-ts";
@@ -13,22 +13,150 @@ import {
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { EmailRecipientInput } from "@/components/loans/email-recipient-input";
+import { Chip } from "@heroui/chip";
+import { Spinner } from "@heroui/spinner";
 import { createRequest } from "@/lib/actions/requests";
-import { Plus, X, Send, Trash2 } from "lucide-react";
+import { Plus, X, Send, Trash2, Search } from "lucide-react";
 
 const TiptapRichEditor = dynamic(
   () => import("./tiptap-rich-editor.client").then((mod) => ({ default: mod.TiptapRichEditor })),
   { ssr: false }
 );
 
-type ProfilesResponse = { employees?: { email?: string }[] };
+type Employee = { id: string; full_name: string; email: string };
+type ProfilesResponse = { employees?: Employee[] };
 
 interface AddRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   departments?: unknown[];
   onSuccess: () => void;
+}
+
+/** CC Picker: search by name/email, show chip tags, select from dropdown */
+function CcEmailPicker({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (emails: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [debouncedSearch] = useDebounceValue(search, 250);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data, isLoading } = useSWR<ProfilesResponse>(
+    `/api/profiles?limit=20&page=1&search=${encodeURIComponent(debouncedSearch)}`,
+    { revalidateOnFocus: false }
+  );
+
+  const suggestions = useMemo(
+    () => (data?.employees ?? []).filter((e) => e.email && !value.includes(e.email)),
+    [data?.employees, value]
+  );
+
+  const addEmail = useCallback(
+    (email: string) => {
+      if (!value.includes(email)) onChange([...value, email]);
+      setSearch("");
+      setOpen(false);
+      inputRef.current?.focus();
+    },
+    [value, onChange]
+  );
+
+  const removeEmail = useCallback(
+    (email: string) => onChange(value.filter((e) => e !== email)),
+    [value, onChange]
+  );
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="w-full" ref={containerRef}>
+      <label className="block text-sm font-semibold mb-1.5">CC EMAILS (NGƯỜI THEO DÕI)</label>
+
+      {/* Selected chips */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {value.map((email) => (
+            <Chip
+              key={email}
+              onClose={() => removeEmail(email)}
+              variant="flat"
+              color="primary"
+              size="sm"
+            >
+              {email}
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {/* Search input */}
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          size="md"
+          placeholder="Tìm theo tên hoặc email..."
+          value={search}
+          onValueChange={(v) => {
+            setSearch(v);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          startContent={<Search size={15} className="text-default-400 shrink-0" />}
+          endContent={isLoading ? <Spinner size="sm" /> : null}
+          classNames={{ inputWrapper: "bg-default-100" }}
+          autoComplete="off"
+        />
+
+        {/* Dropdown */}
+        {open && (
+          <div className="absolute z-50 w-full mt-1 bg-content1 border border-default-200 rounded-lg shadow-lg max-h-56 overflow-auto">
+            {isLoading && suggestions.length === 0 ? (
+              <div className="flex items-center justify-center py-4 text-sm text-default-400">
+                <Spinner size="sm" className="mr-2" /> Đang tìm...
+              </div>
+            ) : suggestions.length === 0 ? (
+              <div className="py-4 text-center text-sm text-default-400">
+                {search ? "Không tìm thấy kết quả" : "Nhập tên hoặc email để tìm kiếm"}
+              </div>
+            ) : (
+              suggestions.map((emp) => (
+                <button
+                  key={emp.id}
+                  type="button"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-default-100 transition-colors"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // prevent blur before click
+                    addEmail(emp.email);
+                  }}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium truncate">{emp.full_name}</span>
+                    <span className="text-xs text-default-400 truncate">{emp.email}</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-default-400 mt-1.5">Chọn từ danh sách nhân viên</p>
+    </div>
+  );
 }
 
 export function AddRequestModal({
@@ -40,30 +168,11 @@ export function AddRequestModal({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
-    ccEmails: [] as string[],
+    ccEmails: ["nguyen.quyen@y99.vn"] as string[],
     description: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [ccSearchQuery, setCcSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [debouncedCcSearch] = useDebounceValue(ccSearchQuery, 300);
-  const { data: profilesData } = useSWR<ProfilesResponse>(
-    isOpen
-      ? `/api/profiles?limit=20&page=1&search=${encodeURIComponent(debouncedCcSearch)}`
-      : null
-  );
-  const ccEmailSuggestions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          (profilesData?.employees ?? [])
-            .map((e) => e.email?.trim())
-            .filter((e): e is string => !!e)
-        )
-      ).sort((a, b) => a.localeCompare(b)),
-    [profilesData?.employees]
-  );
 
   const isEmptyHtml = (html: string) => {
     const tmp = document.createElement("div");
@@ -145,7 +254,7 @@ export function AddRequestModal({
       }
 
       if (result.success) {
-        setFormData({ title: "", ccEmails: [], description: "" });
+        setFormData({ title: "", ccEmails: ["nguyen.quyen@y99.vn"], description: "" });
         setSelectedFiles([]);
         onSuccess();
         onClose();
@@ -154,9 +263,8 @@ export function AddRequestModal({
   };
 
   const handleClose = () => {
-    setFormData({ title: "", ccEmails: [], description: "" });
+    setFormData({ title: "", ccEmails: ["nguyen.quyen@y99.vn"], description: "" });
     setSelectedFiles([]);
-    setCcSearchQuery("");
     setError(null);
     onClose();
   };
@@ -231,17 +339,9 @@ export function AddRequestModal({
                     label: "font-semibold text-sm",
                   }}
                 />
-                <EmailRecipientInput
-                  label="CC EMAILS (NGƯỜI THEO DÕI)"
+                <CcEmailPicker
                   value={formData.ccEmails}
-                  onChange={(emails) =>
-                    setFormData({ ...formData, ccEmails: emails })
-                  }
-                  suggestions={ccEmailSuggestions}
-                  onSearchChange={setCcSearchQuery}
-                  allowCustomEmail={false}
-                  placeholder="Tìm kiếm và chọn từ danh sách"
-                  description="Chỉ thêm CC bằng cách chọn từ danh sách (tối đa 20 kết quả)."
+                  onChange={(emails) => setFormData({ ...formData, ccEmails: emails })}
                 />
                 <div>
                   <label className="block font-semibold text-sm mb-2">
