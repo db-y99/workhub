@@ -65,6 +65,8 @@ import {
   APPROVE_DATE_FILTER_OPTIONS,
 } from "@/constants/approve";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export default function ApproveContent() {
   const [mounted, setMounted] = useState(false);
@@ -84,6 +86,9 @@ export default function ApproveContent() {
   const [selectedRequest, setSelectedRequest] =
     useState<TApproveRequestItem | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { hasPermission } = useAuth();
+  const canViewBulletins = hasPermission(PERMISSIONS.BULLETINS_VIEW);
+  const canCreateRequest = hasPermission(PERMISSIONS.APPROVE_CREATE);
   const {
     isOpen: isAddOpen,
     onOpen: onAddOpen,
@@ -236,24 +241,26 @@ export default function ApproveContent() {
   return (
     <AppLayout>
       <div className="w-full min-w-0">
-        <div className="mb-6 w-full max-w-full">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Megaphone className="text-default-500" size={24} />
-              Bảng tin công ty
-            </h2>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              onPress={refreshBulletins}
-              title="Làm mới bảng tin"
-            >
-              <RefreshCw size={18} />
-            </Button>
+        {canViewBulletins && (
+          <div className="mb-6 w-full max-w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Megaphone className="text-default-500" size={24} />
+                Bảng tin công ty
+              </h2>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                onPress={refreshBulletins}
+                title="Làm mới bảng tin"
+              >
+                <RefreshCw size={18} />
+              </Button>
+            </div>
+            <BulletinBoard onAddNews={handleAddNews} showTitle={false} />
           </div>
-          <BulletinBoard onAddNews={handleAddNews} showTitle={false} />
-        </div>
+        )}
         <Card>
           <CardHeader className="flex gap-3">
             <div className="flex flex-col flex-1">
@@ -264,14 +271,16 @@ export default function ApproveContent() {
                 </h1>
                 <div className="flex items-center gap-2">
 
-                  <Button
-                    color="primary"
-                    size="md"
-                    startContent={<Plus className="text-white" size={18} />}
-                    onPress={onAddOpen}
-                  >
-                    Thêm yêu cầu
-                  </Button>
+                  {canCreateRequest && (
+                    <Button
+                      color="primary"
+                      size="md"
+                      startContent={<Plus className="text-white" size={18} />}
+                      onPress={onAddOpen}
+                    >
+                      Thêm yêu cầu
+                    </Button>
+                  )}
                 </div>
               </div>
               <p className="text-small text-default-500">
@@ -593,14 +602,16 @@ export default function ApproveContent() {
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <List className="text-default-300 mb-4" size={48} />
                         <p className="text-default-500 mb-2">Không tìm thấy yêu cầu nào</p>
-                        <Button
+                       {
+                        canCreateRequest && ( <Button
                           color="primary"
                           size="sm"
                           startContent={<Plus size={16} />}
                           onPress={onAddOpen}
                         >
                           Thêm yêu cầu đầu tiên
-                        </Button>
+                        </Button>)
+                       }
                       </div>
                     )
                   }

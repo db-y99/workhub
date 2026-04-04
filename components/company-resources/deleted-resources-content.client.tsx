@@ -20,6 +20,8 @@ import { RESOURCE_TYPE, RESOURCE_TYPE_LABELS } from "@/constants/resources";
 import { formatDate } from "@/lib/functions";
 import { restoreCompanyResource } from "@/lib/actions/company-resources";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const columns = [
   { key: "name", label: "TÊN TÀI NGUYÊN" },
@@ -54,6 +56,8 @@ interface ResourcesResponse {
 }
 
 export function DeletedResourcesContent() {
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission(PERMISSIONS.COMPANY_RESOURCES_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
@@ -202,14 +206,16 @@ export function DeletedResourcesContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <Button
-                            size="sm" variant="flat" color="success"
-                            startContent={<RotateCcw size={16} />}
-                            isLoading={restoringId === item.id}
-                            onPress={() => handleRestore(item.id)}
-                          >
-                            Khôi phục
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              size="sm" variant="flat" color="success"
+                              startContent={<RotateCcw size={16} />}
+                              isLoading={restoringId === item.id}
+                              onPress={() => handleRestore(item.id)}
+                            >
+                              Khôi phục
+                            </Button>
+                          )}
                         </TableCell>
                       );
                     }

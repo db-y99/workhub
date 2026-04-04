@@ -16,34 +16,38 @@ INSERT INTO public.departments (name, code, description, email) VALUES
   ('Manager', 'Manager', 'Bộ phận Manager', 'manager@y99.vn')
 ON CONFLICT (code) DO NOTHING;
 
--- Permissions: đảm bảo có page "permissions" (trang Phân quyền)
-INSERT INTO public.permissions (code)
-SELECT p.code
-FROM (VALUES
-  ('permissions:view'),
-  ('permissions:create'),
-  ('permissions:edit'),
-  ('permissions:delete')
-) AS p(code)
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.permissions
-  WHERE permissions.code = p.code AND (permissions.deleted_at IS NULL)
-);
-
--- Permissions: đảm bảo có page "bulletins" (bảng tin)
-INSERT INTO public.permissions (code, name, sort_order)
-SELECT p.code, p.name, p.sort_order
-FROM (VALUES
-  ('bulletins:view', 'Xem Bảng tin', 37),
-  ('bulletins:create', 'Tạo Bảng tin', 38),
-  ('bulletins:edit', 'Sửa Bảng tin', 39),
-  ('bulletins:delete', 'Xóa Bảng tin', 40)
-) AS p(code, name, sort_order)
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.permissions
-  WHERE permissions.code = p.code AND (permissions.deleted_at IS NULL)
-)
-ON CONFLICT (code) DO NOTHING;
+-- Permissions: seed đầy đủ các trang chính
+INSERT INTO public.permissions (code, name, sort_order) VALUES
+  ('approve:view', 'Xem Duyệt yêu cầu', 1),
+  ('approve:create', 'Tạo Duyệt yêu cầu', 2),
+  ('approve:approve', 'Duyệt yêu cầu', 3),
+  ('send-email:view', 'Xem Send email', 4),
+  ('calculator:view', 'Xem Calculator', 5),
+  ('vision:view', 'Xem Vision OCR', 6),
+  ('bulletins:view', 'Xem Bảng tin', 7),
+  ('bulletins:create', 'Tạo Bảng tin', 8),
+  ('bulletins:edit', 'Sửa Bảng tin', 9),
+  ('company-resources:view', 'Xem Tài nguyên công ty', 10),
+  ('company-resources:create', 'Tạo Tài nguyên công ty', 11),
+  ('company-resources:edit', 'Sửa Tài nguyên công ty', 12),
+  ('company-resources:delete', 'Xóa Tài nguyên công ty', 13),
+  ('statistics:view', 'Xem Thống kê', 14),
+  ('users:view', 'Xem Người dùng', 15),
+  ('users:create', 'Tạo Người dùng', 16),
+  ('users:edit', 'Sửa Người dùng', 17),
+  ('users:delete', 'Xóa Người dùng', 18),
+  ('departments:view', 'Xem Phòng ban', 19),
+  ('departments:create', 'Tạo Phòng ban', 20),
+  ('departments:edit', 'Sửa Phòng ban', 21),
+  ('departments:delete', 'Xóa Phòng ban', 22),
+  ('roles:view', 'Xem Vai trò', 23),
+  ('roles:create', 'Tạo Vai trò', 24),
+  ('roles:edit', 'Sửa Vai trò', 25),
+  ('roles:delete', 'Xóa Vai trò', 26),
+  ('settings:view', 'Xem Cài đặt', 27)
+ON CONFLICT (code) DO UPDATE SET
+  name = EXCLUDED.name,
+  sort_order = EXCLUDED.sort_order;
 
 -- Role Permissions: Phân quyền cho từng role
 -- Admin: Toàn quyền (tất cả permissions)
@@ -78,9 +82,8 @@ WHERE r.code = 'staff'
      AND p.code NOT LIKE 'departments:%'
      AND p.code NOT LIKE 'roles:%'
      AND p.code NOT LIKE 'settings:%')
-    -- Hoặc create/edit cho approve và loans
+    -- Hoặc create/edit cho approve
     OR (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete')
-    OR (p.code LIKE 'loans:%' AND p.code NOT LIKE '%:delete')
     OR (p.code LIKE 'company-resources:%' AND p.code NOT LIKE '%:delete')
     OR (p.code LIKE 'statistics:%' AND p.code NOT LIKE '%:delete')
     -- Bulletins: view, create, edit (không delete)
@@ -99,8 +102,6 @@ WHERE r.code = 'cs'
     p.code LIKE 'home:%'
     -- Approve: view, create, edit (không delete)
     OR (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete')
-    -- Loans: view, create, edit (không delete)
-    OR (p.code LIKE 'loans:%' AND p.code NOT LIKE '%:delete')
     -- Xem statistics
     OR p.code LIKE 'statistics:view'
     -- Bulletins: view, create, edit (không delete)
@@ -118,7 +119,6 @@ WHERE r.code = 'user'
     -- Chỉ xem
     p.code LIKE 'home:view'
     OR p.code LIKE 'approve:view'
-    OR p.code LIKE 'loans:view'
     OR p.code LIKE 'company-resources:view'
     OR p.code LIKE 'statistics:view'
     OR p.code LIKE 'bulletins:view'

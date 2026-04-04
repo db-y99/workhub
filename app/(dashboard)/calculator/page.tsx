@@ -3,26 +3,30 @@
 import { Tabs, Tab } from "@heroui/tabs";
 import { Calculator } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import { OverdueCalculator } from "@/components/calculator/overdue-calculator.client";
 import { SettlementCalculator } from "@/components/calculator/settlement-calculator.client";
 import { title } from "@/components/primitives";
+import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
+import { ROUTES } from "@/constants/routes";
 
 const calculatorTabs = [
   {
     id: "overdue",
-    label: "Overdue Calculator",
+    label: "Tính quá hạn",
     content: <OverdueCalculator />,
   },
   {
     id: "settlement",
-    label: "Settlement Calculator",
+    label: "Tính thanh toán",
     content: <SettlementCalculator />,
   },
 ];
 
 export default function CalculatorPage() {
   return (
-    <AppLayout>
+    <PermissionGuard requiredPermissions={[ROUTE_PERMISSION_MAP[ROUTES.CALCULATOR]]}>
+      <AppLayout>
         <div className="max-w-4xl mx-auto py-8">
           <div className="mb-8">
             <h1 className={title()}>Calculator</h1>
@@ -57,5 +61,6 @@ export default function CalculatorPage() {
           </Tabs>
         </div>
       </AppLayout>
+    </PermissionGuard>
   );
 }

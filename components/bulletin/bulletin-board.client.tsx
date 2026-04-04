@@ -15,7 +15,7 @@ import { fetcher } from "@/lib/fetcher";
 import { BULLETIN_GRADIENTS } from "@/constants/bulletins";
 import { ROUTES } from "@/constants/routes";
 import type { TBulletinItem, TBulletinsResponse } from "@/types/bulletin.types";
-import { PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
+import { PERMISSIONS, PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
 
 type BulletinBoardProps = {
   items?: TBulletinItem[];
@@ -32,10 +32,10 @@ export function BulletinBoard({
   const [detailOpen, setDetailOpen] = useState(false);
   const [editBulletin, setEditBulletin] = useState<TBulletinItem | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const { isAdmin, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const router = useRouter();
   
-  // Permission checks
+  const canCreate = hasPermission(PERMISSIONS.BULLETINS_CREATE);
   const canEdit = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT));
 
   // Fetch 12 items đầu cho carousel
@@ -137,6 +137,7 @@ export function BulletinBoard({
     }
   }, []);
 
+
   return (
     <section className="mb-6 w-full max-w-full">
       {showTitle && (
@@ -179,20 +180,22 @@ export function BulletinBoard({
         }}
       >
         <div className="flex flex-nowrap gap-4 w-max">
-          <Card
-            isPressable
-            onPress={onAddNews}
-            className="w-[260px] min-w-[260px] h-[180px] shrink-0 border-2 border-dashed border-default-300 bg-default-50/50 hover:border-primary hover:bg-default-100/80 transition-colors"
-          >
-            <CardBody className="flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Plus className="text-primary" size={24} />
+          {canCreate && (
+            <Card
+              isPressable
+              onPress={onAddNews}
+              className="w-[260px] min-w-[260px] h-[180px] shrink-0 border-2 border-dashed border-default-300 bg-default-50/50 hover:border-primary hover:bg-default-100/80 transition-colors"
+            >
+              <CardBody className="flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Plus className="text-primary" size={24} />
+                  </div>
+                  <span className="text-primary font-medium">Thêm Tin</span>
                 </div>
-                <span className="text-primary font-medium">Thêm Tin</span>
-              </div>
-            </CardBody>
-          </Card>
+              </CardBody>
+            </Card>
+          )}
 
           {displayedItems.map((item) => (
             <div

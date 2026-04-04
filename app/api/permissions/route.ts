@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
     const { data: permRows, error: permError } = await supabase
       .from("permissions")
-      .select("code")
+      .select("id, code")
       .in("id", permissionIds)
       .is("deleted_at", null);
 
@@ -49,8 +49,10 @@ export async function GET(request: Request) {
       );
     }
 
+    // Return both codes (for backward compat) and ids
     const permissions = (permRows ?? []).map((p) => p.code);
-    return NextResponse.json({ permissions });
+    const permissionIds2 = (permRows ?? []).map((p) => p.id);
+    return NextResponse.json({ permissions, grantedIds: permissionIds2 });
   } catch (error) {
     console.error("Error in permissions API:", error);
     return NextResponse.json(

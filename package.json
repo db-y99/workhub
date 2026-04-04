@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint --fix",
     "seed:admin": "tsx scripts/seed-admin.ts",
-    "seed:bulletins": "tsx scripts/seed-bulletins.ts"
+    "seed:bulletins": "tsx scripts/seed-bulletins.ts",
+    "seed:test-user": "tsx scripts/seed-test-user.ts"
   },
   "dependencies": {
     "@heroui/accordion": "2.2.27",

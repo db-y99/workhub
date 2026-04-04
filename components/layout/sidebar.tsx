@@ -151,7 +151,7 @@ export function Sidebar({
   onCollapsedChange,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const collapsed =
     typeof controlledCollapsed === "boolean" ? controlledCollapsed : internalCollapsed;
@@ -159,6 +159,7 @@ export function Sidebar({
     onCollapsedChange ? onCollapsedChange(!collapsed) : setInternalCollapsed((c) => !c);
 
   const navItems = siteConfig.navMenuItems.filter((item) => {
+    if (item.adminOnly) return isAdmin;
     const perm = item.permissionCode ?? null;
     if (perm && !hasPermission(perm)) return false;
     return true;

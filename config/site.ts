@@ -7,10 +7,10 @@ export interface NavMenuItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** @deprecated Dùng permissionCode thay thế. Giữ để backward compat. */
-  adminOnly?: boolean;
   /** Permission code cần có để hiển thị (VD: approve:view). Nếu không set, dùng ROUTE_PERMISSION_MAP[href]. */
   permissionCode?: string;
+  /** Chỉ hiển thị cho admin */
+  adminOnly?: boolean;
   /** Sub-items hiển thị dưới dạng expandable trong sidebar */
   children?: { href: string; label: string }[];
 }
@@ -37,7 +37,7 @@ export const siteConfig = {
       label: "Send email",
       href: ROUTES.LOANS_DISBURSEMENT_SUCCESS,
       icon: Banknote,
-      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.LOANS_DISBURSEMENT_SUCCESS],
+      // Hiển thị cho tất cả user đã đăng nhập
     },
     {
       label: "Calculator",
@@ -101,13 +101,13 @@ export const siteConfig = {
       label: "Phân quyền",
       href: ROUTES.PERMISSIONS,
       icon: KeyRound,
-      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS],
+      adminOnly: true,
     },
     {
       label: "Danh sách quyền",
       href: ROUTES.PERMISSIONS_LIST,
       icon: List,
-      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS_LIST],
+      adminOnly: true,
     },
     {
       label: "Cài đặt",

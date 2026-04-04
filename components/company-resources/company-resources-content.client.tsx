@@ -41,6 +41,8 @@ import { DeleteResourceModal } from "@/components/company-resources/delete-resou
 import { ResourceNotesModal } from "@/components/company-resources/resource-notes-modal";
 import { ResourceDetailModal } from "@/components/company-resources/resource-detail-modal";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const columns = [
   { key: "name", label: "TÊN TÀI NGUYÊN" },
@@ -80,6 +82,10 @@ interface ResourcesResponse {
 }
 
 export function CompanyResourcesContent() {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(PERMISSIONS.COMPANY_RESOURCES_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.COMPANY_RESOURCES_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.COMPANY_RESOURCES_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
@@ -214,14 +220,11 @@ export function CompanyResourcesContent() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                color="primary"
-                size="sm"
-                startContent={<Plus size={18} />}
-                onPress={onAddModalOpen}
-              >
-                Thêm tài nguyên
-              </Button>
+              {canCreate && (
+                <Button color="primary" size="sm" startContent={<Plus size={18} />} onPress={onAddModalOpen}>
+                  Thêm tài nguyên
+                </Button>
+              )}
               <Button
                 isIconOnly
                 size="sm"
@@ -288,14 +291,11 @@ export function CompanyResourcesContent() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Package className="text-default-300 mb-4" size={48} />
                   <p className="text-default-500 mb-2">Chưa có tài nguyên nào</p>
-                  <Button
-                    color="primary"
-                    size="sm"
-                    startContent={<Plus size={16} />}
-                    onPress={onAddModalOpen}
-                  >
-                    Thêm tài nguyên đầu tiên
-                  </Button>
+                  {canCreate && (
+                    <Button color="primary" size="sm" startContent={<Plus size={16} />} onPress={onAddModalOpen}>
+                      Thêm tài nguyên đầu tiên
+                    </Button>
+                  )}
                 </div>
               }
             >
@@ -389,35 +389,19 @@ export function CompanyResourcesContent() {
                       return (
                         <TableCell>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              title="Xem chi tiết"
-                              onPress={() => openDetailModal(item)}
-                            >
+                            <Button isIconOnly size="sm" variant="light" title="Xem chi tiết" onPress={() => openDetailModal(item)}>
                               <Eye size={18} />
                             </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="primary"
-                              title="Sửa"
-                              onPress={() => openEditResource(item)}
-                            >
-                              <Edit size={18} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="danger"
-                              title="Xóa"
-                              onPress={() => openDeleteResource(item)}
-                            >
-                              <Trash2 size={18} />
-                            </Button>
+                            {canEdit && (
+                              <Button isIconOnly size="sm" variant="light" color="primary" title="Sửa" onPress={() => openEditResource(item)}>
+                                <Edit size={18} />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button isIconOnly size="sm" variant="light" color="danger" title="Xóa" onPress={() => openDeleteResource(item)}>
+                                <Trash2 size={18} />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       );

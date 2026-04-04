@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Card, CardBody, CardFooter } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -42,6 +43,7 @@ export default function LoginForm() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSentMessage, setOtpSentMessage] = useState<string | null>(null);
   const [showResendTimer, setShowResendTimer] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -209,13 +211,26 @@ export default function LoginForm() {
                     isDisabled={isPending}
                   />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     label="Mật khẩu"
                     value={password}
                     onValueChange={setPassword}
                     isRequired
                     autoComplete="current-password"
                     isDisabled={isPending}
+                    endContent={
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        className="min-w-0"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    }
                   />
                   <Button
                     type="submit"

@@ -10,10 +10,8 @@ export type PermissionFormRow = {
   page_code: string;
   page_name: string;
   page_description: string | null;
-  can_view: boolean;
-  can_create: boolean;
-  can_edit: boolean;
-  can_delete: boolean;
+  /** action -> { permissionId, checked } */
+  actions: Record<string, { id: string; name: string | null; checked: boolean }>;
 };
 
 export interface Permission {

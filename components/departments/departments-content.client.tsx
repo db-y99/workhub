@@ -34,6 +34,8 @@ import { AddDepartmentModal } from "@/components/settings/departments/add-depart
 import { EditDepartmentModal } from "@/components/settings/departments/edit-department-modal";
 import { DeleteDepartmentModal } from "@/components/settings/departments/delete-department-modal";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 // Type cho table row (Department + optional isSkeleton)
 type DepartmentRow = Department & {
@@ -71,6 +73,10 @@ interface DepartmentsResponse {
 }
 
 export function DepartmentsContent() {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(PERMISSIONS.DEPARTMENTS_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.DEPARTMENTS_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.DEPARTMENTS_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
@@ -180,14 +186,16 @@ export function DepartmentsContent() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                color="primary"
-                size="sm"
-                startContent={<Plus size={18} />}
-                onPress={onAddModalOpen}
-              >
-                Thêm phòng ban
-              </Button>
+              {canCreate && (
+                <Button
+                  color="primary"
+                  size="sm"
+                  startContent={<Plus size={18} />}
+                  onPress={onAddModalOpen}
+                >
+                  Thêm phòng ban
+                </Button>
+              )}
               <Button
                 isIconOnly
                 size="sm"
@@ -234,14 +242,16 @@ export function DepartmentsContent() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Building2 className="text-default-300 mb-4" size={48} />
                   <p className="text-default-500 mb-2">Chưa có phòng ban nào</p>
-                  <Button
-                    color="primary"
-                    size="sm"
-                    startContent={<Plus size={16} />}
-                    onPress={onAddModalOpen}
-                  >
-                    Thêm phòng ban đầu tiên
-                  </Button>
+                  {canCreate && (
+                    <Button
+                      color="primary"
+                      size="sm"
+                      startContent={<Plus size={16} />}
+                      onPress={onAddModalOpen}
+                    >
+                      Thêm phòng ban đầu tiên
+                    </Button>
+                  )}
                 </div>
               }
             >
@@ -307,24 +317,24 @@ export function DepartmentsContent() {
                       return (
                         <TableCell>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              color="primary"
-                              size="sm"
-                              variant="light"
-                              startContent={<Edit size={16} />}
-                              onPress={() => openEditDepartment(item)}
-                            >
-                              Sửa
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="light"
-                              color="danger"
-                              startContent={<Trash2 size={16} />}
-                              onPress={() => openDeleteDepartment(item)}
-                            >
-                              Xóa
-                            </Button>
+                            {canEdit && (
+                              <Button
+                                color="primary" size="sm" variant="light"
+                                startContent={<Edit size={16} />}
+                                onPress={() => openEditDepartment(item)}
+                              >
+                                Sửa
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm" variant="light" color="danger"
+                                startContent={<Trash2 size={16} />}
+                                onPress={() => openDeleteDepartment(item)}
+                              >
+                                Xóa
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       );

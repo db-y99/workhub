@@ -38,6 +38,8 @@ import { EditEmployeeModal } from "@/components/settings/employees/edit-employee
 import { DeleteEmployeeModal } from "@/components/settings/employees/delete-employee-modal";
 import { USER_STATUS } from "@/lib/constants";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const columns = [
   { key: "full_name", label: "HỌ TÊN" },
@@ -115,6 +117,10 @@ function getStatusConfig(status: string) {
 }
 
 export function UsersContent() {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(PERMISSIONS.USERS_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.USERS_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.USERS_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch] = useDebounceValue(searchQuery, 300);
@@ -236,14 +242,16 @@ export function UsersContent() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                color="primary"
-                size="sm"
-                startContent={<Plus size={18} />}
-                onPress={onAddModalOpen}
-              >
-                Thêm người dùng
-              </Button>
+              {canCreate && (
+                <Button
+                  color="primary"
+                  size="sm"
+                  startContent={<Plus size={18} />}
+                  onPress={onAddModalOpen}
+                >
+                  Thêm người dùng
+                </Button>
+              )}
               <Button
                 isIconOnly
                 size="sm"
@@ -342,14 +350,16 @@ export function UsersContent() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Users className="text-default-300 mb-4" size={48} />
                   <p className="text-default-500 mb-2">Chưa có người dùng nào</p>
-                  <Button
-                    color="primary"
-                    size="sm"
-                    startContent={<Plus size={16} />}
-                    onPress={onAddModalOpen}
-                  >
-                    Thêm người dùng đầu tiên
-                  </Button>
+                  {canCreate && (
+                    <Button
+                      color="primary"
+                      size="sm"
+                      startContent={<Plus size={16} />}
+                      onPress={onAddModalOpen}
+                    >
+                      Thêm người dùng đầu tiên
+                    </Button>
+                  )}
                 </div>
               }
             >
@@ -438,35 +448,30 @@ export function UsersContent() {
                       return (
                         <TableCell>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="primary"
-                              title="Sửa"
-                              onPress={() => openEditModal(item)}
-                            >
-                              <Edit size={18} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              title="Đổi mật khẩu"
-                              onPress={() => openChangePasswordModal(item)}
-                            >
-                              <KeyRound size={18} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="danger"
-                              title="Xóa"
-                              onPress={() => openDeleteModal(item)}
-                            >
-                              <Trash2 size={18} />
-                            </Button>
+                            {canEdit && (
+                              <Button
+                                isIconOnly size="sm" variant="light" color="primary"
+                                title="Sửa" onPress={() => openEditModal(item)}
+                              >
+                                <Edit size={18} />
+                              </Button>
+                            )}
+                            {canEdit && (
+                              <Button
+                                isIconOnly size="sm" variant="light"
+                                title="Đổi mật khẩu" onPress={() => openChangePasswordModal(item)}
+                              >
+                                <KeyRound size={18} />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                isIconOnly size="sm" variant="light" color="danger"
+                                title="Xóa" onPress={() => openDeleteModal(item)}
+                              >
+                                <Trash2 size={18} />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       );

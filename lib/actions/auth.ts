@@ -21,6 +21,9 @@ export async function signInWithEmailPassword(email: string, password: string) {
 
   if (error) {
     console.error("Error signing in with email and password:", error);
+    if (error.message?.toLowerCase().includes("invalid login credentials")) {
+      return { error: "Email hoặc mật khẩu không đúng" };
+    }
     return { error: error.message };
   }
 

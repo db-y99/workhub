@@ -35,6 +35,8 @@ import { AddRoleModal } from "@/components/roles/add-role-modal";
 import { EditRoleModal } from "@/components/roles/edit-role-modal";
 import { DeleteRoleModal } from "@/components/roles/delete-role-modal";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 // Type cho table row (Role + optional isSkeleton)
 type RoleRow = Role & {
@@ -74,6 +76,10 @@ async function fetcher(url: string): Promise<RolesResponse> {
 }
 
 export function RolesContent() {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(PERMISSIONS.ROLES_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.ROLES_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.ROLES_DELETE);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
 
@@ -167,14 +173,11 @@ export function RolesContent() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                color="primary"
-                size="sm"
-                startContent={<Plus size={18} />}
-                onPress={onAddModalOpen}
-              >
-                Thêm vai trò
-              </Button>
+              {canCreate && (
+                <Button color="primary" size="sm" startContent={<Plus size={18} />} onPress={onAddModalOpen}>
+                  Thêm vai trò
+                </Button>
+              )}
               <Button
                 isIconOnly
                 size="sm"
@@ -222,14 +225,11 @@ export function RolesContent() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Shield className="text-default-300 mb-4" size={48} />
                   <p className="text-default-500 mb-2">Chưa có vai trò nào</p>
-                  <Button
-                    color="primary"
-                    size="sm"
-                    startContent={<Plus size={16} />}
-                    onPress={onAddModalOpen}
-                  >
-                    Thêm vai trò đầu tiên
-                  </Button>
+                  {canCreate && (
+                    <Button color="primary" size="sm" startContent={<Plus size={16} />} onPress={onAddModalOpen}>
+                      Thêm vai trò đầu tiên
+                    </Button>
+                  )}
                 </div>
               }
             >
@@ -299,26 +299,16 @@ export function RolesContent() {
                       return (
                         <TableCell>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="primary"
-                              onPress={() => openEditRole(item)}
-                              title="Sửa"
-                            >
-                              <Edit size={16} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              color="danger"
-                              onPress={() => openDeleteRole(item)}
-                              title="Xóa"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+                            {canEdit && (
+                              <Button isIconOnly size="sm" variant="light" color="primary" onPress={() => openEditRole(item)} title="Sửa">
+                                <Edit size={16} />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => openDeleteRole(item)} title="Xóa">
+                                <Trash2 size={16} />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       );

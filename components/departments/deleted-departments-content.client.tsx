@@ -18,6 +18,8 @@ import type { Department } from "@/types";
 import { formatDate } from "@/lib/functions";
 import { restoreDepartment } from "@/lib/actions/departments";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const columns = [
   { key: "code", label: "MÃ" },
@@ -50,6 +52,8 @@ interface DepartmentsResponse {
 }
 
 export function DeletedDepartmentsContent() {
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission(PERMISSIONS.DEPARTMENTS_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
@@ -169,14 +173,16 @@ export function DeletedDepartmentsContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <Button
-                            size="sm" variant="flat" color="success"
-                            startContent={<RotateCcw size={16} />}
-                            isLoading={restoringId === item.id}
-                            onPress={() => handleRestore(item.id)}
-                          >
-                            Khôi phục
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              size="sm" variant="flat" color="success"
+                              startContent={<RotateCcw size={16} />}
+                              isLoading={restoringId === item.id}
+                              onPress={() => handleRestore(item.id)}
+                            >
+                              Khôi phục
+                            </Button>
+                          )}
                         </TableCell>
                       );
                     }

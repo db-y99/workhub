@@ -18,6 +18,8 @@ import type { Role } from "@/types/role.types";
 import { formatDate } from "@/lib/functions";
 import { restoreRole } from "@/lib/actions/roles";
 import { highlightSearchText } from "@/lib/utils/highlight-text";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const columns = [
   { key: "code", label: "MÃ" },
@@ -50,6 +52,8 @@ interface RolesResponse {
 }
 
 export function DeletedRolesContent() {
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission(PERMISSIONS.ROLES_DELETE);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
@@ -169,14 +173,16 @@ export function DeletedRolesContent() {
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
-                          <Button
-                            size="sm" variant="flat" color="success"
-                            startContent={<RotateCcw size={16} />}
-                            isLoading={restoringId === item.id}
-                            onPress={() => handleRestore(item.id)}
-                          >
-                            Khôi phục
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              size="sm" variant="flat" color="success"
+                              startContent={<RotateCcw size={16} />}
+                              isLoading={restoringId === item.id}
+                              onPress={() => handleRestore(item.id)}
+                            >
+                              Khôi phục
+                            </Button>
+                          )}
                         </TableCell>
                       );
                     }

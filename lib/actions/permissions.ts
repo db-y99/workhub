@@ -3,19 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { createClient } from "@/lib/supabase/server";
-import { PERMISSION_ACTIONS, toPermissionCode } from "@/constants/permissions";
 import type { PermissionFormRow } from "@/types/permission.types";
-
-function formRowsToPermissionCodes(rows: PermissionFormRow[]): string[] {
-  const codes: string[] = [];
-  for (const row of rows) {
-    if (row.can_view) codes.push(toPermissionCode(row.page_code, PERMISSION_ACTIONS.VIEW));
-    if (row.can_create) codes.push(toPermissionCode(row.page_code, PERMISSION_ACTIONS.CREATE));
-    if (row.can_edit) codes.push(toPermissionCode(row.page_code, PERMISSION_ACTIONS.EDIT));
-    if (row.can_delete) codes.push(toPermissionCode(row.page_code, PERMISSION_ACTIONS.DELETE));
-  }
-  return codes;
-}
 
 export async function saveRolePermissions(
   roleId: string,
@@ -23,7 +11,14 @@ export async function saveRolePermissions(
 ) {
   try {
     const supabase = await createClient();
-    const permissionCodes = formRowsToPermissionCodes(rows);
+
+    // Collect all checked permission IDs
+    const checkedIds: string[] = [];
+    for (const row of rows) {
+      for (const action of Object.values(row.actions)) {
+        if (action.checked) checkedIds.push(action.id);
+      }
+    }
 
     const { error: deleteError } = await supabase
       .from("role_permissions")
@@ -35,24 +30,13 @@ export async function saveRolePermissions(
       return { error: "Không thể lưu phân quyền" };
     }
 
-    if (permissionCodes.length > 0) {
-      const { data: permissionRows, error: fetchError } = await supabase
-        .from("permissions")
-        .select("id")
-        .in("code", permissionCodes)
-        .is("deleted_at", null);
-
-      if (fetchError || !permissionRows?.length) {
-        console.error("Error fetching permission ids:", fetchError);
-        return { error: "Không thể lưu phân quyền" };
-      }
-
+    if (checkedIds.length > 0) {
       const { error: insertError } = await supabase
         .from("role_permissions")
         .insert(
-          permissionRows.map((p) => ({
+          checkedIds.map((id) => ({
             role_id: roleId,
-            permission_id: p.id,
+            permission_id: id,
             updated_at: new Date().toISOString(),
           }))
         );

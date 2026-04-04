@@ -63,12 +63,11 @@ export default function BulletinsContent() {
   );
   const [selectedBulletin, setSelectedBulletin] =
     useState<TBulletinItem | null>(null);
-  const { isAdmin, hasPermission } = useAuth();
+  const {  hasPermission } = useAuth();
 
   // Permission checks
   const canCreate = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.CREATE));
   const canEdit = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.EDIT));
-  const canDelete = hasPermission(toPermissionCode("bulletins", PERMISSION_ACTIONS.DELETE));
 
   const {
     isOpen: isDetailOpen,

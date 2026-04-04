@@ -15,8 +15,7 @@ import { updateRequestStatus } from "@/lib/actions/requests";
 import { formatDate } from "@/lib/functions";
 import { REQUEST_STATUS } from "@/lib/constants";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { ROLES } from "@/constants/roles";
-import { getRoleCode } from "@/lib/profile-utils";
+import { PERMISSIONS } from "@/constants/permissions";
 import { stripHtml } from "@/lib/functions";
 import { Paperclip, ExternalLink } from "lucide-react";
 import { Link } from "@heroui/link";
@@ -35,9 +34,10 @@ export function RequestDetailModal({
   request,
   onUpdate,
 }: RequestDetailModalProps) {
-  const { profile, isAdmin: isAdminFromContext } = useAuth();
-  const roleCode = getRoleCode(profile);
-  const isAdmin = roleCode === ROLES.ADMIN || isAdminFromContext;
+  const { hasPermission, currentUser, isAdmin } = useAuth();
+  const canApprove = hasPermission(PERMISSIONS.APPROVE_APPROVE);
+  const isOwner = currentUser?.id === request?.requested_by;
+  const canManageOwn = isAdmin || isOwner;
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
@@ -294,7 +294,7 @@ export function RequestDetailModal({
               <Button color="danger" variant="light" onPress={onClose}>
                 Đóng
               </Button>
-              {isAdmin && (
+              {canApprove && (
                 <div className="flex gap-2">
                   {request.status === REQUEST_STATUS.PENDING && (
                     <>
@@ -302,9 +302,7 @@ export function RequestDetailModal({
                         color="success"
                         isDisabled={isPending}
                         isLoading={loadingAction === REQUEST_STATUS.APPROVED}
-                        onPress={() =>
-                          handleStatusUpdate(REQUEST_STATUS.APPROVED)
-                        }
+                        onPress={() => handleStatusUpdate(REQUEST_STATUS.APPROVED)}
                       >
                         Duyệt
                       </Button>
@@ -313,23 +311,23 @@ export function RequestDetailModal({
                         variant="flat"
                         isDisabled={isPending}
                         isLoading={loadingAction === REQUEST_STATUS.REJECTED}
-                        onPress={() =>
-                          handleStatusUpdate(REQUEST_STATUS.REJECTED)
-                        }
+                        onPress={() => handleStatusUpdate(REQUEST_STATUS.REJECTED)}
                       >
                         Từ chối
                       </Button>
                     </>
                   )}
+                </div>
+              )}
+              {canManageOwn && (
+                <div className="flex gap-2">
                   {request.status === REQUEST_STATUS.APPROVED && (
                     <Button
                       color="danger"
                       variant="flat"
                       isDisabled={isPending}
                       isLoading={loadingAction === REQUEST_STATUS.CANCELLED}
-                      onPress={() =>
-                        handleStatusUpdate(REQUEST_STATUS.CANCELLED)
-                      }
+                      onPress={() => handleStatusUpdate(REQUEST_STATUS.CANCELLED)}
                     >
                       Hủy yêu cầu
                     </Button>

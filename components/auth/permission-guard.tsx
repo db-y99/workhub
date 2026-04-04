@@ -14,15 +14,18 @@ interface PermissionGuardProps {
   /** Permission code cần có (VD: users:view). User cần có ít nhất 1 trong số này. */
   requiredPermissions?: string[];
   fallbackPath?: string;
+  /** Chỉ cho phép admin (role = admin) truy cập */
+  adminOnly?: boolean;
 }
 
 export function PermissionGuard({
   children,
   requiredPermissions = [],
   fallbackPath = ROUTES.APPROVE,
+  adminOnly = false,
 }: PermissionGuardProps) {
   const router = useRouter();
-  const { currentUser, profile, hasPermission } = useAuth();
+  const { currentUser, profile, hasPermission, isAdmin } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
@@ -38,8 +41,8 @@ export function PermissionGuard({
         if (!profile) return;
 
         const ok =
-          requiredPermissions.length === 0 ||
-          requiredPermissions.some((p) => hasPermission(p));
+          (adminOnly && isAdmin) ||
+          (!adminOnly && (requiredPermissions.length === 0 || requiredPermissions.some((p) => hasPermission(p))));
 
         setAllowed(ok);
         setIsChecking(false);
