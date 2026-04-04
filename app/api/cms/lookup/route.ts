@@ -130,14 +130,20 @@ export async function GET(request: Request) {
       ? await fetchCollateralDetail(cmsUrl, login, collateralCode).catch((e) => { console.error("Collateral detail error:", e); return null; })
       : null;
 
+    const application = applicationData?.rows?.[0] ?? null;
+    const loan = loanData?.rows?.[0] ?? null;
+
+    if (!application || !loan) {
+      return NextResponse.json({ error: "Không tìm thấy hồ sơ" }, { status: 404 });
+    }
+
     return NextResponse.json<LookupResponse>({
-      application: applicationData.rows[0],
-      loan: loanData.rows[0],
-      collateral: {
-        ...collateralDetailData?.rows?.[0],
-        ...collateralLoanData?.rows?.[0],
-      },
-      customer: customerData.rows[0],
+      application,
+      loan,
+      collateral: collateralLoanData?.rows?.[0]
+        ? { ...collateralDetailData?.rows?.[0], ...collateralLoanData.rows[0] }
+        : null,
+      customer: customerData?.rows?.[0] ?? null,
     });
   } catch (error) {
     console.error("Error in CMS lookup:", error);
