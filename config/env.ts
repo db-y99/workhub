@@ -34,6 +34,10 @@ const EnvSchema = z.object({
   VISION_OCR_SCRIPT_URL: z.string().url().optional(),
   /** Folder Drive cho file Vision OCR (gửi lên script) */
   VISION_OCR_FOLDER_ID: z.string().optional(),
+
+  // CMS API
+  CMS_API_URL: z.string().url().optional(),
+  CMS_API_LOGIN: z.string().optional(),
 });
 
 type EnvOutput = z.infer<typeof EnvSchema>;
@@ -57,6 +61,8 @@ const envInput = {
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
   VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
   VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
+  CMS_API_URL: process.env.CMS_API_URL,
+  CMS_API_LOGIN: process.env.CMS_API_LOGIN,
 };
 
 let parsed: EnvOutput;
@@ -95,6 +101,8 @@ try {
     APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
     VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
     VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
+    CMS_API_URL: process.env.CMS_API_URL,
+    CMS_API_LOGIN: process.env.CMS_API_LOGIN,
   } as EnvOutput;
 }
 
