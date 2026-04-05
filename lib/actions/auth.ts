@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfileByEmail, getProfileById } from "@/lib/services/profiles.service";
 import { USER_STATUS } from "@/lib/constants";
 import { ROUTES } from "@/constants/routes";
@@ -28,6 +29,15 @@ export async function signInWithEmailPassword(email: string, password: string) {
   }
 
   if (data.user) {
+    const profile = await getProfileById(data.user.id);
+    if (!profile) {
+      // Dùng admin client để sign out tránh conflict cookie với server action
+      try {
+        const admin = createAdminClient();
+        await admin.auth.admin.signOut(data.session!.access_token);
+      } catch (_) {}
+      return { error: "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Admin." };
+    }
     return { success: true };
   }
 
