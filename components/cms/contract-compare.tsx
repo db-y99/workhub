@@ -347,7 +347,7 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
         </div>
         <input
           ref={inputRef} type="file" multiple accept="image/*,.pdf"
-          className="hidden" onChange={(e) => addFiles(e.target.files)}
+          className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
         />
       </CardHeader>
 
