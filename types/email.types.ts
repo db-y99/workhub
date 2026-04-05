@@ -25,6 +25,18 @@ export type TRequestCreatedData = {
 };
 
 /**
+ * Dữ liệu cho email thông báo yêu cầu được duyệt
+ */
+export type TRequestApprovedData = {
+  title: string;
+  requesterName: string;
+  approverName: string;
+  departmentName?: string | null;
+  approvedAt: string;
+  requestUrl: string;
+};
+
+/**
  * Dữ liệu cho email thông báo tạo bulletin
  */
 export type TBulletinCreatedData = {

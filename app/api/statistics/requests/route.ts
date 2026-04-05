@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     const approved = requestList.filter((r) => r.status === REQUEST_STATUS.APPROVED).length;
     const rejected = requestList.filter((r) => r.status === REQUEST_STATUS.REJECTED).length;
     const cancelled = requestList.filter((r) => r.status === REQUEST_STATUS.CANCELLED).length;
+    const completed = requestList.filter((r) => r.status === REQUEST_STATUS.COMPLETED).length;
 
     const approvalRate =
       approved + rejected > 0
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.PENDING], value: pending, status: REQUEST_STATUS.PENDING },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.REJECTED], value: rejected, status: REQUEST_STATUS.REJECTED },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.CANCELLED], value: cancelled, status: REQUEST_STATUS.CANCELLED },
+      { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.COMPLETED], value: completed, status: REQUEST_STATUS.COMPLETED },
     ].filter((item) => item.value > 0);
 
     const departmentStats = requestList.reduce<
@@ -78,6 +80,7 @@ export async function GET(request: NextRequest) {
           pending: number;
           rejected: number;
           cancelled: number;
+          completed: number;
         }
       >
     >((acc, req) => {
@@ -89,6 +92,7 @@ export async function GET(request: NextRequest) {
           pending: 0,
           rejected: 0,
           cancelled: 0,
+          completed: 0,
         };
       }
       acc[deptId].total++;
@@ -96,6 +100,7 @@ export async function GET(request: NextRequest) {
       if (req.status === REQUEST_STATUS.PENDING) acc[deptId].pending++;
       if (req.status === REQUEST_STATUS.REJECTED) acc[deptId].rejected++;
       if (req.status === REQUEST_STATUS.CANCELLED) acc[deptId].cancelled++;
+      if (req.status === REQUEST_STATUS.COMPLETED) acc[deptId].completed++;
       return acc;
     }, {});
 
@@ -112,6 +117,7 @@ export async function GET(request: NextRequest) {
         approved,
         rejected,
         cancelled,
+        completed,
         approvalRate,
       },
       statusDistribution,

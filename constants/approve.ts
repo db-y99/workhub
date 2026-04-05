@@ -16,6 +16,7 @@ export const APPROVE_STATUS_FILTER_OPTIONS = [
   { value: "approved", label: "Đã duyệt" },
   { value: "rejected", label: "Từ chối" },
   { value: "cancelled", label: "Đã hủy" },
+  { value: "completed", label: "Hoàn thành" },
 ] as const;
 
 export const APPROVE_DATE_FILTER_OPTIONS = [

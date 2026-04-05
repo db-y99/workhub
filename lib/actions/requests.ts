@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { EMAIL_LOGO_URL } from "@/constants/email";
+import { REQUEST_STATUS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import type { TRequestComment } from "@/types/requests.types";
@@ -13,8 +14,10 @@ import { stripHtml } from "@/lib/functions";
 import {
   renderRequestCreatedEmailHTML,
   getRequestCreatedEmailSubject,
+  renderRequestApprovedEmailHTML,
+  getRequestApprovedEmailSubject,
 } from "@/lib/email-template";
-import { type TRequestCreatedData } from "@/types/email.types";
+import { type TRequestCreatedData, type TRequestApprovedData } from "@/types/email.types";
 
 type TAttachment = { name: string; fileId: string; size?: number };
 
@@ -304,7 +307,7 @@ export async function updateRequest(
  */
 export async function updateRequestStatus(
   id: string,
-  status: "pending" | "approved" | "rejected" | "cancelled",
+  status: "pending" | "approved" | "rejected" | "cancelled" | "completed",
   comment?: string
 ) {
   try {
@@ -333,7 +336,7 @@ export async function updateRequestStatus(
     };
 
     // If approving or rejecting, set approved_by and approved_at
-    if (status === "approved" || status === "rejected") {
+    if (status === REQUEST_STATUS.APPROVED || status === REQUEST_STATUS.REJECTED) {
       updateData.approved_by = user.id;
       updateData.approved_at = new Date().toISOString();
     }
@@ -361,7 +364,55 @@ export async function updateRequestStatus(
     }
 
     revalidatePath(ROUTES.APPROVE);
-    
+
+    // Gửi email thông báo cho người gửi khi yêu cầu được duyệt
+    if (status === REQUEST_STATUS.APPROVED) {
+      try {
+        const requesterProfile = await getProfileById(existing.requested_by);
+        const approverProfile = await getProfileById(user.id);
+
+        const requesterEmail = requesterProfile?.email;
+        if (requesterEmail) {
+          const baseUrl = getBaseUrl();
+          const approvedAt = new Date().toLocaleString("vi-VN", {
+            timeZone: "Asia/Ho_Chi_Minh",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          const emailData: TRequestApprovedData = {
+            title: existing.title,
+            requesterName: requesterProfile?.full_name || requesterEmail,
+            approverName: approverProfile?.full_name || user.email || "Admin",
+            departmentName: null,
+            approvedAt,
+            requestUrl: `${baseUrl}${ROUTES.APPROVE}`,
+          };
+
+          // Lấy tên phòng ban nếu có
+          if (existing.department_id) {
+            const supabaseClient = await createClient();
+            const { data: dept } = await supabaseClient
+              .from("departments")
+              .select("name")
+              .eq("id", existing.department_id)
+              .single();
+            if (dept) emailData.departmentName = dept.name;
+          }
+
+          const htmlBody = renderRequestApprovedEmailHTML(emailData, EMAIL_LOGO_URL);
+          const subject = getRequestApprovedEmailSubject(existing.title);
+          const textBody = `Kính gửi ${emailData.requesterName},\n\nYêu cầu "${existing.title}" của bạn đã được phê duyệt bởi ${emailData.approverName} lúc ${approvedAt}.\n\nXem chi tiết: ${emailData.requestUrl}\n\nTrân trọng,\nHệ thống Easy Approve`;
+
+          await sendEmailViaAppScript({ to: requesterEmail, subject, htmlBody, textBody });
+        }
+      } catch (emailError) {
+        console.error("Error sending approval email:", emailError);
+      }
+    }
 
     return {
       success: true,

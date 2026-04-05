@@ -22,7 +22,7 @@ export function getDepartmentChipColor(
 }
 
 type TStatusConfig = {
-  color: "warning" | "success" | "danger" | "secondary" | "default";
+  color: "warning" | "success" | "danger" | "secondary" | "primary" | "default";
   label: string;
 };
 
@@ -36,6 +36,8 @@ export function getStatusConfig(status: RequestStatus): TStatusConfig {
       return { color: "danger", label: "Từ chối" };
     case REQUEST_STATUS.CANCELLED:
       return { color: "secondary", label: "Đã hủy" };
+    case REQUEST_STATUS.COMPLETED:
+      return { color: "primary", label: "Hoàn thành" };
     default:
       return { color: "default", label: String(status) };
   }

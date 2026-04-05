@@ -20,6 +20,7 @@ export const REQUEST_STATUS = {
   APPROVED: "approved",
   REJECTED: "rejected",
   CANCELLED: "cancelled",
+  COMPLETED: "completed",
 } as const;
 
 /** Nhãn hiển thị cho trạng thái yêu cầu (thống kê, UI) */
@@ -31,6 +32,7 @@ export const REQUEST_STATUS_LABELS: Record<
   [REQUEST_STATUS.PENDING]: "Chờ duyệt",
   [REQUEST_STATUS.REJECTED]: "Từ chối",
   [REQUEST_STATUS.CANCELLED]: "Đã hủy",
+  [REQUEST_STATUS.COMPLETED]: "Hoàn thành",
 } as const;
 
 /** Nhãn hiển thị cho trạng thái nhân sự (thống kê, UI) */

@@ -734,7 +734,7 @@ export function renderRequestCreatedEmailHTML(
  * Tạo subject line cho email thông báo tạo request
  */
 export function getRequestCreatedEmailSubject(title: string): string {
-    return `[Easy Approve] Yêu cầu phê duyệt mới: ${title}`;
+    return `[Workhub] Yêu cầu phê duyệt mới: ${title}`;
 }
 
 /**
@@ -1006,5 +1006,164 @@ export function renderBulletinCreatedEmailHTML(
  * Tạo subject line cho email thông báo tạo bulletin
  */
 export function getBulletinCreatedEmailSubject(title: string): string {
-    return `[Easy Approve] Bảng tin mới: ${title}`;
+    return `[Workhub] Bảng tin mới: ${title}`;
+}
+
+/**
+ * Render email HTML thông báo yêu cầu đã được duyệt
+ */
+export function renderRequestApprovedEmailHTML(
+    data: import("@/types/email.types").TRequestApprovedData,
+    logoUrl?: string
+): string {
+    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+
+    return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yêu cầu đã được duyệt</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #252525;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+            background-color: #f0f2f5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .email-container {
+            background-color: #ffffff;
+            padding: 36px 32px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .badge {
+            display: inline-block;
+            background-color: #17c964;
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            letter-spacing: 0.04em;
+        }
+        .greeting {
+            margin-bottom: 18px;
+            font-size: 16px;
+        }
+        .announcement {
+            font-weight: 600;
+            margin-bottom: 24px;
+            font-size: 16px;
+            line-height: 1.65;
+            color: #1a1a1a;
+        }
+        .detail-box {
+            background-color: #f0fdf4;
+            border-left: 4px solid #17c964;
+            padding: 18px 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+        .detail-label {
+            font-weight: 600;
+            display: inline-block;
+            min-width: 160px;
+            color: #2d2d2d;
+        }
+        .view-button {
+            display: inline-block;
+            margin-top: 24px;
+            padding: 12px 28px;
+            background-color: #17c964;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .closing {
+            margin-top: 32px;
+            margin-bottom: 24px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .no-reply-notice {
+            font-size: 13px;
+            color: #6b7280;
+            font-style: italic;
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 1px solid #e5e7eb;
+            line-height: 1.6;
+        }
+        .company-signature {
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 2px solid #e5e7eb;
+            display: flex;
+            align-items: stretch;
+            gap: 20px;
+        }
+        .vertical-divider { width: 1px; background-color: #e5e7eb; margin: 0 10px; }
+        .company-logo img { max-width: 120px; height: auto; display: block; }
+        .company-name { font-weight: 600; font-size: 16px; margin-bottom: 16px; color: #1a1a1a; }
+        .contact-info { font-size: 14px; line-height: 1.85; color: #374151; }
+        .contact-info div { margin-bottom: 6px; }
+        .contact-label { font-weight: 600; display: inline-block; min-width: 80px; color: #2d2d2d; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="badge">✅ ĐÃ DUYỆT</div>
+        <div class="greeting">Kính gửi <strong>${data.requesterName}</strong>,</div>
+        <div class="announcement">
+            Yêu cầu của bạn đã được phê duyệt thành công.
+        </div>
+        <div class="detail-box">
+            <div><span class="detail-label">📋 Tiêu đề:</span><strong>${data.title}</strong></div>
+            ${data.departmentName ? `<div><span class="detail-label">🏢 Phòng ban:</span>${data.departmentName}</div>` : ""}
+            <div><span class="detail-label">👤 Người duyệt:</span>${data.approverName}</div>
+            <div><span class="detail-label">🕐 Thời gian duyệt:</span>${data.approvedAt}</div>
+        </div>
+        <div style="text-align: center;">
+            <a href="${data.requestUrl}" class="view-button">Xem chi tiết yêu cầu</a>
+        </div>
+        <div class="closing">Trân trọng,<br>Hệ thống Easy Approve</div>
+        <div class="no-reply-notice">
+            Địa chỉ hộp thư này chỉ được sử dụng để gửi thông báo, không có chức năng tiếp nhận phản hồi.
+        </div>
+        <div class="company-signature">
+            <div class="company-logo"><img src="${logoImageUrl}" alt="Y99 Logo" /></div>
+            <div class="vertical-divider"></div>
+            <div class="company-info">
+                <div class="company-name">CÔNG TY CỔ PHẦN CẦM ĐỒ Y99</div>
+                <div class="contact-info">
+                    <div><span class="contact-label">📞 Điện thoại:</span>1900 575 792</div>
+                    <div><span class="contact-label">✉️ Email:</span>cskh@y99.vn</div>
+                    <div><span class="contact-label">🌐 Website:</span>https://y99.vn/</div>
+                    <div><span class="contact-label">📍 Địa chỉ:</span>99B Nguyễn Trãi, Ninh Kiều, Cần Thơ</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+  `.trim();
+}
+
+/**
+ * Subject line cho email thông báo yêu cầu được duyệt
+ */
+export function getRequestApprovedEmailSubject(title: string): string {
+    return `[Workhub] Yêu cầu đã được duyệt: ${title}`;
 }

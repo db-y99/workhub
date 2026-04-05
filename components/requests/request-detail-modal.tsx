@@ -67,6 +67,12 @@ export function RequestDetailModal({
           label: "Đã hủy",
           dotClass: "bg-secondary",
         };
+      case REQUEST_STATUS.COMPLETED:
+        return {
+          color: "primary" as const,
+          label: "Hoàn thành",
+          dotClass: "bg-primary",
+        };
       default:
         return {
           color: "default" as const,
@@ -317,21 +323,20 @@ export function RequestDetailModal({
                       </Button>
                     </>
                   )}
+                  {request.status === REQUEST_STATUS.APPROVED && (
+                    <Button
+                      color="primary"
+                      isDisabled={isPending}
+                      isLoading={loadingAction === REQUEST_STATUS.COMPLETED}
+                      onPress={() => handleStatusUpdate(REQUEST_STATUS.COMPLETED)}
+                    >
+                      Hoàn thành
+                    </Button>
+                  )}
                 </div>
               )}
               {canManageOwn && (
                 <div className="flex gap-2">
-                  {request.status === REQUEST_STATUS.APPROVED && (
-                    <Button
-                      color="danger"
-                      variant="flat"
-                      isDisabled={isPending}
-                      isLoading={loadingAction === REQUEST_STATUS.CANCELLED}
-                      onPress={() => handleStatusUpdate(REQUEST_STATUS.CANCELLED)}
-                    >
-                      Hủy yêu cầu
-                    </Button>
-                  )}
                   {request.status === REQUEST_STATUS.REJECTED && (
                     <Button
                       color="warning"
