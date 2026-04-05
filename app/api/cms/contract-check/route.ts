@@ -137,7 +137,7 @@ function compareField(
 
 // ── Main extract function ─────────────────────────────────────────────────────
 
-export function checkContract(
+function checkContract(
   rawText: string,
   cmsData: Partial<CleanResult>
 ): ContractCheckResponse {
