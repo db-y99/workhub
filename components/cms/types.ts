@@ -1,0 +1,24 @@
+export type CleanResult = {
+  application_code: string | null;
+  fullname: string | null;
+  phone: string | null;
+  address: string | null;
+  legal_code: string | null;
+  issue_date: string | null;
+  issue_place: string | null;
+  approve_amount: number | null;
+  approve_term: number | null;
+  loan_code: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  rate: number | null;
+  beneficiary_account: string | null;
+  beneficiary_bank: string | null;
+  dob: string | null;
+  zalo: string | null;
+  collateral__code: string | null;
+  collateral__type__name: string | null;
+  collat_value: number | null;
+  seri_number: string | null;
+  detail: string | null;
+};

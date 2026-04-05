@@ -7,32 +7,8 @@ import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Search, FileSearch } from "lucide-react";
-
-
-type CleanResult = {
-  application_code: string | null;
-  fullname: string | null;
-  phone: string | null;
-  address: string | null;
-  legal_code: string | null;
-  issue_date: string | null;
-  issue_place: string | null;
-  approve_amount: number | null;
-  approve_term: number | null;
-  loan_code: string | null;
-  valid_from: string | null;
-  valid_to: string | null;
-  rate: number | null;
-  beneficiary_account: string | null;
-  beneficiary_bank: string | null;
-  dob: string | null;
-  zalo: string | null;
-  collateral__code: string | null;
-  collateral__type__name: string | null;
-  collat_value: number | null;
-  seri_number: string | null;
-  detail: string | null;
-};
+import { ContractCompare } from "@/components/cms/contract-compare";
+import type { CleanResult } from "@/components/cms/types";
 
 const APPLICATION_FIELDS: { key: keyof CleanResult; label: string }[] = [
   { key: "application_code", label: "Mã hồ sơ" },
@@ -68,12 +44,25 @@ const COLLATERAL_FIELDS: { key: keyof CleanResult; label: string }[] = [
   { key: "detail", label: "Mô tả tình trạng" },
 ];
 
+const DATE_KEYS = new Set<keyof CleanResult>(["issue_date", "valid_from", "valid_to", "dob"]);
+
+function formatDate(value: string): string {
+  // Hỗ trợ ISO (2024-12-31) và dd/mm/yyyy
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return value;
+}
+
 function formatValue(key: keyof CleanResult, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if ((key === "approve_amount" || key === "collat_value") && typeof value === "number") {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
   }
-  if (key === "rate" && typeof value === "number") return `${value}%`;
+  if (key === "rate" && typeof value === "number") {
+    const monthly = value / 12;
+    return `${value}%/năm (${monthly}%/tháng)`;
+  }
+  if (DATE_KEYS.has(key) && typeof value === "string") return formatDate(value);
   return String(value);
 }
 
@@ -114,9 +103,7 @@ export default function CmsLookupPage() {
 
       const { application, loan, collateral, customer } = data;
       if (application && loan) {
-        const collaterals = Array.isArray(collateral?.data) ? collateral.data
-          : Array.isArray(collateral?.results) ? collateral.results
-          : Array.isArray(collateral) ? collateral : [];
+
 
         setResult({
           // Application
@@ -144,7 +131,8 @@ export default function CmsLookupPage() {
           collateral__type__name: collateral?.collateral__type__name ?? null,
           collat_value: collateral?.collat_value ?? collateral?.appraisal_value ?? null,
           seri_number: collateral?.seri_number ?? null,
-          detail: collateral?.detail ?? null,        });
+          detail: collateral?.detail ?? null,        
+        });
       }
     });
   };
@@ -153,7 +141,7 @@ export default function CmsLookupPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto max-w-4xl px-6 py-8 flex flex-col gap-4">
+      <div className="container mx-auto max-w-7xl px-6 py-8 flex flex-col gap-4">
         <Card className="w-full">
           <CardHeader>
             <div>
@@ -191,48 +179,53 @@ export default function CmsLookupPage() {
 
         {result && rawData && (
           <>
-            {/* Clean view */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Thông tin hồ sơ</h2>
-              </CardHeader>
-              <CardBody className="flex flex-col gap-0">
-                <p className="text-xs font-semibold text-primary uppercase mb-2">Application</p>
-                {APPLICATION_FIELDS.map(({ key, label }) => (
-                  <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
-                ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              {/* Clean view */}
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Thông tin hồ sơ</h2>
+                </CardHeader>
+                <CardBody className="flex flex-col gap-0">
+                  <p className="text-xs font-semibold text-primary uppercase mb-2">Application</p>
+                  {APPLICATION_FIELDS.map(({ key, label }) => (
+                    <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
+                  ))}
 
-                {result.loan_code && (
-                  <>
-                    <Divider className="my-3" />
-                    <p className="text-xs font-semibold text-primary uppercase mb-2">Khoản vay</p>
-                    {LOAN_FIELDS.map(({ key, label }) => (
-                      <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
-                    ))}
-                  </>
-                )}
+                  {result.loan_code && (
+                    <>
+                      <Divider className="my-3" />
+                      <p className="text-xs font-semibold text-primary uppercase mb-2">Khoản vay</p>
+                      {LOAN_FIELDS.map(({ key, label }) => (
+                        <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
+                      ))}
+                    </>
+                  )}
 
-                {(result.dob || result.zalo) && (
-                  <>
-                    <Divider className="my-3" />
-                    <p className="text-xs font-semibold text-primary uppercase mb-2">Khách hàng</p>
-                    {CUSTOMER_FIELDS.map(({ key, label }) => (
-                      <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
-                    ))}
-                  </>
-                )}
+                  {(result.dob || result.zalo) && (
+                    <>
+                      <Divider className="my-3" />
+                      <p className="text-xs font-semibold text-primary uppercase mb-2">Khách hàng</p>
+                      {CUSTOMER_FIELDS.map(({ key, label }) => (
+                        <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
+                      ))}
+                    </>
+                  )}
 
-                {result.collateral__code && (
-                  <>
-                    <Divider className="my-3" />
-                    <p className="text-xs font-semibold text-primary uppercase mb-2">Tài sản đảm bảo</p>
-                    {COLLATERAL_FIELDS.map(({ key, label }) => (
-                      <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
-                    ))}
-                  </>
-                )}
-              </CardBody>
-            </Card>
+                  {result.collateral__code && (
+                    <>
+                      <Divider className="my-3" />
+                      <p className="text-xs font-semibold text-primary uppercase mb-2">Tài sản đảm bảo</p>
+                      {COLLATERAL_FIELDS.map(({ key, label }) => (
+                        <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
+                      ))}
+                    </>
+                  )}
+                </CardBody>
+              </Card>
+
+              {/* Contract compare */}
+              <ContractCompare cmsResult={result} />
+            </div>
 
             {/* Raw toggle */}
             <div>
