@@ -16,7 +16,7 @@ import {
 import type { CleanResult } from "@/components/cms/types";
 import type { HighlightSpan, FieldResult } from "@/app/api/cms/contract-check/route";
 
-type FileStatus = "idle" | "ocr" | "checking" | "done" | "error";
+type FileStatus = "idle" | "ocr" | "checking" | "done" | "error" | "warning";
 
 type ContractFile = {
   id: string;
@@ -29,6 +29,7 @@ type ContractFile = {
   highlights?: HighlightSpan[];
   fields?: FieldResult[];
   error?: string;
+  skipped?: boolean;
 };
 
 const fmtCurrency = (v: string) => {
@@ -214,6 +215,7 @@ function FileStatusChip({ status }: { status: FileStatus }) {
     checking: { label: "Đang kiểm tra...",  color: "primary" },
     done:     { label: "Hoàn thành",        color: "success" },
     error:    { label: "Lỗi",              color: "danger" },
+    warning:  { label: "Tên file không đúng", color: "warning" },
   };
   const { label, color } = map[status];
   return (
@@ -224,6 +226,17 @@ function FileStatusChip({ status }: { status: FileStatus }) {
       {label}
     </Chip>
   );
+}
+
+const VALID_SUFFIXES = ["_confirmation", "_authorization", "_agreement", "_contract"] as const;
+
+function validateFileName(fileName: string, appCode: string | null): string | null {
+  if (!appCode) return null; // không có mã thì bỏ qua
+  const nameWithoutExt = fileName.replace(/\.[^.]+$/, "");
+  const isValid = VALID_SUFFIXES.some(
+    (suffix) => nameWithoutExt.toLowerCase() === `${appCode.toLowerCase()}${suffix}`
+  );
+  return isValid ? null : `Tên file phải có dạng ${appCode}_contract, ${appCode}_agreement, ${appCode}_authorization hoặc ${appCode}_confirmation`;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -242,13 +255,17 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
     if (!list) return;
     setFiles((prev) => [
       ...prev,
-      ...Array.from(list).map((f) => ({
-        id: `${f.name}-${Date.now()}-${Math.random()}`,
-        file: f,
-        objectUrl: URL.createObjectURL(f),
-        isPdf: f.type === "application/pdf",
-        status: "idle" as FileStatus,
-      })),
+      ...Array.from(list).map((f) => {
+        const nameError = validateFileName(f.name, cmsResult.application_code);
+        return {
+          id: `${f.name}-${Date.now()}-${Math.random()}`,
+          file: f,
+          objectUrl: URL.createObjectURL(f),
+          isPdf: f.type === "application/pdf",
+          status: (nameError ? "warning" : "idle") as FileStatus,
+          error: nameError ?? undefined,
+        };
+      }),
     ]);
   };
 
@@ -264,6 +281,11 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 
   const processFile = async (cf: ContractFile) => {
+    const nameError = validateFileName(cf.file.name, cmsResult.application_code);
+    if (nameError) {
+      update(cf.id, { status: "warning", error: nameError });
+      return;
+    }
     update(cf.id, { status: "ocr", error: undefined });
     try {
       // 1. OCR
@@ -291,6 +313,7 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
         highlights:     checkData.highlights ?? [],
         fields:         checkData.fields ?? [],
         normalizedText: checkData.normalizedText ?? ocrData.text,
+        skipped:        checkData.skipped ?? false,
       });
     } catch (e) {
       update(cf.id, { status: "error", error: e instanceof Error ? e.message : "Lỗi xử lý" });
@@ -370,7 +393,17 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
               <p className="text-xs text-danger px-2">{cf.error}</p>
             )}
 
-            {cf.status === "done" && cf.fields && (
+            {cf.status === "warning" && (
+              <p className="text-xs text-warning-600 px-2">{cf.error}</p>
+            )}
+
+            {cf.status === "done" && cf.skipped && (
+              <p className="text-xs text-default-400 italic px-2">
+                Loại tài liệu này không cần kiểm tra.
+              </p>
+            )}
+
+            {cf.status === "done" && !cf.skipped && cf.fields && (
               <div className="flex flex-col gap-3">
                 <ResultTable fields={cf.fields} />
                 {cf.normalizedText && (

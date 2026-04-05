@@ -23,7 +23,25 @@ export type ContractCheckResponse = {
   highlights: HighlightSpan[];
   fields: FieldResult[];
   normalizedText: string;
+  skipped?: boolean;
+  docType?: string;
 };
+
+// ── Document type detection ───────────────────────────────────────────────────
+
+const SUPPORTED_DOC_TYPES = [
+  { key: "pledge",        pattern: /hợp\s*đồng\s*cầm\s*cố|asset\s*pledge\s*agreement/i },
+  { key: "lease",         pattern: /hợp\s*đồng\s*thuê|asset\s*lease\s*agreement/i },
+  { key: "authorization", pattern: /giấy\s*ủy\s*quyền\s*xử\s*lý|authorization\s*for\s*disposal/i },
+  { key: "confirmation",  pattern: /giấy\s*xác\s*nhận\s*đã\s*nhận\s*đủ|confirmation\s*of\s*full\s*receipt/i },
+] as const;
+
+function detectDocType(text: string): string | null {
+  for (const { key, pattern } of SUPPORTED_DOC_TYPES) {
+    if (pattern.test(text)) return key;
+  }
+  return null;
+}
 
 // ── Normalize ─────────────────────────────────────────────────────────────────
 
@@ -332,6 +350,16 @@ export async function POST(request: NextRequest) {
   if (!body.cmsData || typeof body.cmsData !== "object")
     return NextResponse.json({ error: "Thiếu cmsData" }, { status: 400 });
 
+  const docType = detectDocType(body.ocrText);
+  if (!docType) {
+    return NextResponse.json({
+      highlights: [],
+      fields: [],
+      normalizedText: body.ocrText,
+      skipped: true,
+    });
+  }
+
   const result = checkContract(body.ocrText, body.cmsData);
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, docType });
 }
