@@ -29,11 +29,13 @@ export type ContractCheckResponse = {
 
 // ── Document type detection ───────────────────────────────────────────────────
 
+// Thứ tự quan trọng: giấy XN / ủy quyền thường trích "Hợp đồng cầm cố…" trong nội dung —
+// nếu kiểm tra pledge trước sẽ nhận nhầm và bỏ qua các trường chỉ có ở checker confirmation (Số TK, NH).
 const SUPPORTED_DOC_TYPES = [
-  { key: "pledge",        pattern: /hợp\s*đồng\s*cầm\s*cố|asset\s*pledge\s*agreement/i },
-  { key: "lease",         pattern: /hợp\s*đồng\s*thuê|asset\s*lease\s*agreement/i },
-  { key: "authorization", pattern: /giấy\s*ủy\s*quyền\s*xử\s*lý|authorization\s*for\s*disposal/i },
   { key: "confirmation",  pattern: /giấy\s*xác\s*nhận\s*đã\s*nhận\s*đủ|confirmation\s*of\s*full\s*receipt/i },
+  { key: "authorization", pattern: /giấy\s*ủy\s*quyền\s*xử\s*lý|authorization\s*for\s*disposal/i },
+  { key: "lease",         pattern: /hợp\s*đồng\s*thuê|asset\s*lease\s*agreement/i },
+  { key: "pledge",        pattern: /hợp\s*đồng\s*cầm\s*cố|asset\s*pledge\s*agreement/i },
 ] as const;
 
 function detectDocType(text: string): string | null {
@@ -113,15 +115,26 @@ function compareField(key: keyof CleanResult, cmsRaw: unknown, extracted: string
     return extN !== null && Number(cmsRaw) === extN ? "match" : "mismatch";
   }
   if (key === "rate") {
-    const cmsN = Number(cmsRaw);
-    const extN = parseFloat(extracted.replace(",", "."));
-    if (isNaN(extN)) return "mismatch";
-    const monthly = parseFloat((cmsN / 12).toFixed(3));
-    if (Math.abs(extN - monthly) < 0.001 || Math.abs(extN - cmsN) < 0.001) return "match";
+    // CMS: thường lưu %/năm (VD 13.188). HĐ cầm cố hay ghi %/tháng (VD 1,099% / tháng) → so với cms/12.
+    // HĐ thuê có thể ghi %/năm trên văn bản → vẫn khớp nếu ext ≈ cms.
+    const cmsN = Number(String(cmsRaw).trim().replace(",", "."));
+    const extN = parseFloat(String(extracted).trim().replace(",", "."));
+    if (!Number.isFinite(cmsN) || !Number.isFinite(extN)) return "mismatch";
+    const monthlyFromCms = cmsN / 12;
+    const tol = 0.008; // dung sai làm tròn (VD 13.188/12)
+    if (Math.abs(extN - monthlyFromCms) <= tol) return "match";
+    if (Math.abs(extN - cmsN) <= tol) return "match";
     return "mismatch";
   }
   if (key === "approve_term")
     return String(cmsRaw) === extracted.replace(/\D/g, "") ? "match" : "mismatch";
+  if (key === "beneficiary_account") {
+    const cmsDigits = String(cmsRaw).replace(/\D/g, "");
+    const extDigits = extracted.replace(/\D/g, "");
+    return cmsDigits.length > 0 && extDigits.length > 0 && cmsDigits === extDigits
+      ? "match"
+      : "mismatch";
+  }
   return normalizeStr(String(cmsRaw)) === normalizeStr(extracted) ? "match" : "mismatch";
 }
 
@@ -134,30 +147,94 @@ function containsField(cmsRaw: unknown, extracted: string): "match" | "mismatch"
 
 // ── Check runner ──────────────────────────────────────────────────────────────
 
-function makeChecker(text: string, cmsData: Partial<CleanResult>, highlights: HighlightSpan[], fields: FieldResult[]) {
+type TTextSegment = { start: number; end: number };
+
+/**
+ * Giấy xác nhận: CMS là khách — Bên nhận tiền (Bên cầm cố). Phần I thường là công ty bên giao;
+ * nếu regex chạy trên cả văn bản sẽ khớp nhầm "tại:", "địa chỉ" của công ty.
+ */
+function findConfirmationReceivingPartySegment(fullText: string): TTextSegment | null {
+  const text = fullText;
+  let start = -1;
+
+  const sectionHeader =
+    /(?:^|[\r\n])\s*(?:II\.|2\.)\s*[^\r\n]*BÊN\s+NH[ẬA]N\s+TI[ỀE]N/im.exec(text);
+  if (sectionHeader) start = sectionHeader.index;
+
+  if (start < 0) {
+    const benNhan = /BÊN\s+NH[ẬA]N\s+TI[ỀE]N\s*(?:\([^)]{0,120}\))?\s*\/?\s*THE\s+RECEIVING\s+PARTY/gi.exec(
+      text
+    );
+    if (benNhan) start = benNhan.index;
+  }
+  if (start < 0) {
+    const receiving = /THE\s+RECEIVING\s+PARTY\s*(?:\([^)]{0,120}\))?/gi.exec(text);
+    if (receiving) start = receiving.index;
+  }
+  // OCR mất dấu
+  if (start < 0) {
+    const asciiBen = /BEN\s+NHAN\s+TIEN/gi.exec(text);
+    if (asciiBen) start = asciiBen.index;
+  }
+  if (start < 0) return null;
+
+  const fromStart = text.slice(start);
+  let relEnd = fromStart.length;
+
+  const endVi = /[\r\n]\s*(?:III\.|3\.)\s*[^\r\n]*TH[ÔO]NG\s+TIN\s+GIAO\s+D[ỊI]CH/gi.exec(
+    fromStart
+  );
+  if (endVi && endVi.index >= 0) relEnd = Math.min(relEnd, endVi.index);
+
+  const endVi2 = /TH[ÔO]NG\s+TIN\s+GIAO\s+D[ỊI]CH\s*\/\s*TRANSACTION\s+INFORMATION/gi.exec(fromStart);
+  if (endVi2 && endVi2.index >= 0) relEnd = Math.min(relEnd, endVi2.index);
+
+  const endEn = /[\r\n]\s*(?:III\.|3\.)\s*[^\r\n]*TRANSACTION\s+INFORMATION/gi.exec(fromStart);
+  if (endEn && endEn.index >= 0) relEnd = Math.min(relEnd, endEn.index);
+
+  const end = start + relEnd;
+  if (end <= start) return null;
+  return { start, end };
+}
+
+function makeChecker(
+  text: string,
+  cmsData: Partial<CleanResult>,
+  highlights: HighlightSpan[],
+  fields: FieldResult[],
+  segment?: TTextSegment
+) {
+  const searchSlice = segment ? text.slice(segment.start, segment.end) : text;
+  const posOffset = segment ? segment.start : 0;
+
   return function check(
     key: keyof CleanResult,
     label: string,
-    patterns: readonly RegExp[],
-    options?: { extractOnly?: boolean }
+    patterns: readonly RegExp[]
   ) {
     const cmsRaw = cmsData[key];
     const cmsValue = cmsRaw != null ? String(cmsRaw) : "";
-    if (!cmsValue && !options?.extractOnly) return;
-    const res = extractPos(text, patterns);
+    if (!cmsValue) return;
+    const res = extractPos(searchSlice, patterns);
     const extractedValue = res?.value ?? null;
     let status: "match" | "mismatch" | "missing";
     if (!extractedValue) {
       status = "missing";
-    } else if (options?.extractOnly) {
-      status = "match"; // không so sánh, chỉ hiển thị
     } else {
       status = (key === "issue_place" || key === "address" || key === "beneficiary_bank")
         ? containsField(cmsRaw, extractedValue)
         : compareField(key, cmsRaw, extractedValue);
     }
     fields.push({ field: key, label, cmsValue, extractedValue, status });
-    if (res) highlights.push({ start: res.start, end: res.end, field: key, label, extracted: res.value, status });
+    if (res)
+      highlights.push({
+        start: res.start + posOffset,
+        end: res.end + posOffset,
+        field: key,
+        label,
+        extracted: res.value,
+        status,
+      });
   };
 }
 
@@ -268,6 +345,9 @@ const P = {
     /(?:kỳ\s*hạn(?:\s*vay)?)\s*[:\-–]?\s*(\d+)\s*(?:tháng|months?)/i,
   ],
   rate: [
+    // HĐ cầm cố: "Lãi suất (Interest rate): 1,099% / tháng" — ưu tiên khớp dòng có /tháng
+    /lãi\s*suất\s*[\s\S]{0,35}?interest\s*rate\s*\)\s*[:\-–]?\s*([\d.,]+)\s*%\s*\/\s*(?:tháng|months?)/i,
+    /(?:lãi\s*suất|interest\s*rate)\s*\)?\s*[:\-–]?\s*([\d.,]+)\s*%\s*\/\s*(?:tháng|months?)/i,
     /(?:lãi\s*suất(?:\s*\(interest\s*rate\))?|interest\s*rate)\s*[:\-–]?\s*([\d.,]+)\s*%/i,
   ],
   valid_from: [
@@ -286,16 +366,19 @@ const P = {
   beneficiary_account: [
     // Giấy XN: "Số tài khoản/ Account Number: 19040014873018"
     /số\s*tài\s*khoản\s*\/\s*account\s*(?:no\.?|number)\s*[:\-–]?\s*(\d{6,20})/i,
-    // OCR xuống dòng: "Số tài khoản\n/ Account Number: ..."
-    /số\s*tài\s*khoản\s*[\s\S]{0,20}?account\s*(?:no\.?|number)\s*[:\-–]?\s*(\d{6,20})/i,
-    /(?:số\s*tài\s*khoản\s*(?:\/\s*account\s*(?:no\.?|number))?|account\s*(?:no\.?|number))\s*[:\-–]?\s*(\d{6,20})/i,
+    // OCR xuống dòng hoặc normalizeText chèn \n
+    /số\s*tài\s*khoản[\s\S]{0,30}?account\s*(?:no\.?|number)\s*[:\-–]?\s*(\d{6,20})/i,
+    // Fallback: chỉ cần "số tài khoản" rồi đến số
+    /số\s*tài\s*khoản[^0-9]{0,30}(\d{10,20})/i,
+    /account\s*(?:no\.?|number)\s*[:\-–]?\s*(\d{6,20})/i,
   ],
   beneficiary_bank: [
-    // Giấy XN: "Ngân hàng/ Bank: TechcomBank"
-    /ngân\s*hàng\s*\/\s*bank\s*[:\-–]?\s*(.{2,40}?)(?:\n|$)/i,
-    // OCR xuống dòng
-    /ngân\s*hàng\s*[\s\S]{0,15}?bank\s*[:\-–]?\s*(.{2,40}?)(?:\n|$)/i,
-    /(?:ngân\s*hàng\s*(?:\/\s*bank)?|bank\s*name?)\s*[:\-–]?\s*(.{2,40}?)(?:\n|$)/i,
+    // Giấy XN: "Ngân hàng/ Bank: TechcomBank" — bắt buộc : hoặc - sau "bank"
+    // (tránh khớp "… bank transfer …" khi [:\-–]? optional làm bắt nhầm "transfer")
+    /ngân\s*hàng\s*\/\s*bank\s*[:\-–]\s*(.{2,40}?)(?:\n|$)/i,
+    /ngân\s*hàng[\s\S]{0,30}?bank\s*[:\-–]\s*(.{2,40}?)(?:\n|$)/i,
+    // Chỉ nhãn tiếng Việt
+    /ngân\s*hàng\s*[:\-–]\s*(.{2,40}?)(?:\n|$)/i,
   ],
   loan_code: [
     /(?:khoản\s*vay\s*số|loan\s*no\.?)\s*[:\-–]?\s*(LN\d+)/i,
@@ -386,8 +469,8 @@ const P = {
 /**
  * HỢP ĐỒNG CẦM CỐ TÀI SẢN / ASSET PLEDGE AGREEMENT
  * Fields: Mã hồ sơ, Họ tên, Ngày sinh, CCCD, Ngày cấp, Nơi cấp,
- *         Địa chỉ, SĐT, Số tiền vay, Thời hạn vay, Loại tài sản,
- *         IMEI/Serial, Giá trị tài sản, Mã tài sản, Mã khoản vay
+ *         Địa chỉ, SĐT, Số tiền vay, Thời hạn vay, Lãi suất (HĐ ghi %/tháng; CMS %/năm),
+ *         Loại tài sản, IMEI/Serial, Giá trị tài sản, Mã tài sản, Mã khoản vay
  */
 function checkPledge(text: string, cmsData: Partial<CleanResult>): ContractCheckResponse {
   const highlights: HighlightSpan[] = [];
@@ -404,6 +487,7 @@ function checkPledge(text: string, cmsData: Partial<CleanResult>): ContractCheck
   check("phone",            "Số điện thoại",      P.phone);
   check("approve_amount",   "Số tiền vay",        P.approve_amount);
   check("approve_term",     "Kỳ hạn",             P.approve_term);
+  check("rate",             "Lãi suất",           P.rate);
   check("collateral__type__name", "Loại tài sản", P.collateral__type__name);
   check("seri_number",      "IMEI/Serial",        P.seri_number);
   check("collat_value",     "Giá trị tài sản",    P.collat_value);
@@ -485,23 +569,28 @@ function checkAuthorization(text: string, cmsData: Partial<CleanResult>): Contra
 function checkConfirmation(text: string, cmsData: Partial<CleanResult>): ContractCheckResponse {
   const highlights: HighlightSpan[] = [];
   const fields: FieldResult[] = [];
-  const check = makeChecker(text, cmsData, highlights, fields);
+  const receiverSeg = findConfirmationReceivingPartySegment(text);
+  const checkFull = makeChecker(text, cmsData, highlights, fields);
+  const checkReceiver =
+    receiverSeg != null ? makeChecker(text, cmsData, highlights, fields, receiverSeg) : checkFull;
 
-  check("application_code",   "Mã hồ sơ",       [...P.application_code_confirm, ...P.application_code]);
-  check("fullname",           "Họ tên",          [...P.fullname_confirm, ...P.fullname]);
-  check("dob",                "Ngày sinh",        P.dob);
-  check("legal_code",         "CMND/CCCD",        P.legal_code);
-  check("issue_date",         "Ngày cấp",         [...P.issue_date_confirm, ...P.issue_date]);
-  check("issue_place",        "Nơi cấp",          [...P.issue_place_confirm, ...P.issue_place]);
-  check("address",            "Địa chỉ thường trú", P.address);
-  check("phone",              "Số điện thoại",    [...P.phone_confirm, ...P.phone]);
-  check("approve_amount",     "Số tiền vay",      P.approve_amount);
-  check("beneficiary_account","Số tài khoản",     P.beneficiary_account, { extractOnly: true });
-  check("beneficiary_bank",   "Ngân hàng",        P.beneficiary_bank,    { extractOnly: true });
-  check("collateral__type__name", "Loại tài sản", [...P.collateral_type_confirm, ...P.collateral__type__name]);
-  check("collat_value",       "Giá trị tài sản",  P.collat_value);
-  check("collateral__code",   "Mã tài sản",       P.collateral__code);
-  check("loan_code",          "Mã khoản vay",     P.loan_code);
+  // Mã HĐ, số tiền, NH, tài sản… nằm mục giao dịch — trên toàn văn bản
+  checkFull("application_code", "Mã hồ sơ", [...P.application_code_confirm, ...P.application_code]);
+  // Họ tên, CCCD, địa chỉ, nơi cấp… của khách — chỉ khối Bên nhận tiền / Receiving party
+  checkReceiver("fullname", "Họ tên", [...P.fullname_confirm, ...P.fullname]);
+  checkReceiver("dob", "Ngày sinh", P.dob);
+  checkReceiver("legal_code", "CMND/CCCD", P.legal_code);
+  checkReceiver("issue_date", "Ngày cấp", [...P.issue_date_confirm, ...P.issue_date]);
+  checkReceiver("issue_place", "Nơi cấp", [...P.issue_place_confirm, ...P.issue_place]);
+  checkReceiver("address", "Địa chỉ thường trú", P.address);
+  checkReceiver("phone", "Số điện thoại", [...P.phone_confirm, ...P.phone]);
+  checkFull("approve_amount", "Số tiền vay", P.approve_amount);
+  checkFull("beneficiary_account", "Số tài khoản", P.beneficiary_account);
+  checkFull("beneficiary_bank", "Ngân hàng", P.beneficiary_bank);
+  checkFull("collateral__type__name", "Loại tài sản", [...P.collateral_type_confirm, ...P.collateral__type__name]);
+  checkFull("collat_value", "Giá trị tài sản", P.collat_value);
+  checkFull("collateral__code", "Mã tài sản", P.collateral__code);
+  checkFull("loan_code", "Mã khoản vay", P.loan_code);
 
   highlights.sort((a, b) => a.start - b.start);
   return { highlights, fields, normalizedText: text };
