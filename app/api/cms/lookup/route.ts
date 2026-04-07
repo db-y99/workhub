@@ -133,7 +133,7 @@ export async function GET(request: Request) {
     const loan = loanData?.rows?.[0] ?? null;
 
 
-    if (!application) {
+    if (!application && !loan) {
       return NextResponse.json({ error: "Không tìm thấy hồ sơ" }, { status: 404 });
     }
 
