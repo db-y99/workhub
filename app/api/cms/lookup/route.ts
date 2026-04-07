@@ -52,7 +52,6 @@ async function fetchApplication(baseUrl: string, login: string, code: string) {
 async function fetchLoan(baseUrl: string, login: string, applicationCode: string) {
   const filter = encodeURIComponent(JSON.stringify({
     deleted: 0,
-    status__gt: "1",
     create_time__date__gte: "1927-04-06",
     application__code: applicationCode,
   }));
@@ -133,7 +132,8 @@ export async function GET(request: Request) {
     const application = applicationData?.rows?.[0] ?? null;
     const loan = loanData?.rows?.[0] ?? null;
 
-    if (!application || !loan) {
+
+    if (!application) {
       return NextResponse.json({ error: "Không tìm thấy hồ sơ" }, { status: 404 });
     }
 
