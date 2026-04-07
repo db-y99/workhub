@@ -74,6 +74,9 @@ export const PERMISSIONS = {
 
   // Vision
   VISION_VIEW: "vision:view",
+
+  // CMS Lookup
+  CMS_LOOKUP_VIEW: "cms-lookup:view",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -92,6 +95,7 @@ export const PERMISSION_PAGES = [
   { code: "settings", name: "Cài đặt", description: "Cài đặt hệ thống", sort_order: 10 },
   { code: "vision", name: "Vision OCR", description: "Upload file và trích xuất text bằng OCR", sort_order: 11 },
   { code: "calculator", name: "Calculator", description: "Công cụ tính toán quá hạn và thanh toán", sort_order: 12 },
+  { code: "cms-lookup", name: "Tra cứu CMS", description: "Tra cứu hồ sơ và kiểm tra hợp đồng từ CMS", sort_order: 13 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -107,6 +111,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/settings": toPermissionCode("settings", PERMISSION_ACTIONS.VIEW),
   "/vision": toPermissionCode("vision", PERMISSION_ACTIONS.VIEW),
   "/calculator": toPermissionCode("calculator", PERMISSION_ACTIONS.VIEW),
+  "/cms-lookup": toPermissionCode("cms-lookup", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];

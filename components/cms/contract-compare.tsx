@@ -8,7 +8,7 @@ import { Divider } from "@heroui/divider";
 import {
   Upload, X, FileText, Loader2,
   CheckCircle2, XCircle, AlertCircle,
-  Eye,
+  Eye, ChevronRight,
 } from "lucide-react";
 import {
   Modal, ModalContent, ModalHeader, ModalBody,
@@ -243,6 +243,7 @@ function validateFileName(fileName: string, appCode: string | null): string | nu
 
 export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
   const [files, setFiles] = useState<ContractFile[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<ContractFile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -250,6 +251,13 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
     return () => { files.forEach((f) => URL.revokeObjectURL(f.objectUrl)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const toggleExpand = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -275,10 +283,14 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
       if (f) URL.revokeObjectURL(f.objectUrl);
       return prev.filter((x) => x.id !== id);
     });
+    setExpanded((prev) => { const next = new Set(prev); next.delete(id); return next; });
   };
 
-  const update = (id: string, patch: Partial<ContractFile>) =>
+  const update = (id: string, patch: Partial<ContractFile>) => {
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    // Auto-expand khi done
+    if (patch.status === "done") setExpanded((prev) => new Set(prev).add(id));
+  };
 
   const processFile = async (cf: ContractFile) => {
     const nameError = validateFileName(cf.file.name, cmsResult.application_code);
@@ -288,7 +300,6 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
     }
     update(cf.id, { status: "ocr", error: undefined });
     try {
-      // 1. OCR
       const base64  = await fileToBase64(cf.file);
       const ocrRes  = await fetch("/api/vision/ocr", {
         method: "POST",
@@ -298,7 +309,6 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
       const ocrData = await ocrRes.json();
       if (!ocrData.success || !ocrData.text) throw new Error(ocrData.message ?? "OCR thất bại");
 
-      // 2. Check — gửi kèm cmsData
       update(cf.id, { status: "checking", ocrText: ocrData.text });
       const checkRes  = await fetch("/api/cms/contract-check", {
         method: "POST",
@@ -330,106 +340,122 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
     <>
       <Card>
         <CardHeader className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <FileText size={20} className="text-default-500" />
-          Kiểm tra hợp đồng
-        </h2>
-        <div className="flex gap-2">
-          <Button size="sm" variant="flat" onPress={() => inputRef.current?.click()}>
-            <Upload size={14} className="mr-1" />
-            Thêm file
-          </Button>
-          {hasPending && (
-            <Button size="sm" color="primary" onPress={processAll} isLoading={isProcessing}>
-              Xử lý tất cả
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <FileText size={20} className="text-default-500" />
+            Kiểm tra hợp đồng
+          </h2>
+          <div className="flex gap-2">
+            <Button size="sm" variant="flat" onPress={() => inputRef.current?.click()}>
+              <Upload size={14} className="mr-1" />
+              Thêm file
             </Button>
-          )}
-        </div>
-        <input
-          ref={inputRef} type="file" multiple accept="image/*,.pdf"
-          className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
-        />
-      </CardHeader>
-
-      <CardBody className="flex flex-col gap-6">
-        {files.length === 0 && (
-          <div
-            className="border-2 border-dashed border-default-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary transition-colors"
-            onClick={() => inputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
-          >
-            <Upload className="mx-auto text-default-400 mb-2" size={32} />
-            <p className="text-sm text-default-500">Kéo thả hoặc click để upload file hợp đồng</p>
-            <p className="text-xs text-default-400 mt-1">Hỗ trợ ảnh và PDF</p>
-          </div>
-        )}
-
-        {files.map((cf, i) => (
-          <div key={cf.id} className="flex flex-col gap-3">
-            {i > 0 && <Divider />}
-
-            {/* Header */}
-            <div className="flex items-center gap-2 p-2 bg-default-50 rounded-lg">
-              <FileText size={15} className="text-default-400 shrink-0" />
-              <span className="text-sm font-medium flex-1 truncate">{cf.file.name}</span>
-              <FileStatusChip status={cf.status} />
-              {cf.status === "idle" && (
-                <Button size="sm" variant="flat" color="primary" onPress={() => processFile(cf)}>
-                  Kiểm tra
-                </Button>
-              )}
-              {cf.status === "error" && (
-                <Button size="sm" variant="flat" color="warning" onPress={() => processFile(cf)}>
-                  Thử lại
-                </Button>
-              )}
-              <Button isIconOnly size="sm" variant="light" onPress={() => removeFile(cf.id)}>
-                <X size={14} />
+            {hasPending && (
+              <Button size="sm" color="primary" onPress={processAll} isLoading={isProcessing}>
+                Xử lý tất cả
               </Button>
+            )}
+          </div>
+          <input
+            ref={inputRef} type="file" multiple accept="image/*,.pdf"
+            className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+          />
+        </CardHeader>
+
+        <CardBody className="flex flex-col gap-2">
+          {files.length === 0 && (
+            <div
+              className="border-2 border-dashed border-default-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary transition-colors"
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+            >
+              <Upload className="mx-auto text-default-400 mb-2" size={32} />
+              <p className="text-sm text-default-500">Kéo thả hoặc click để upload file hợp đồng</p>
+              <p className="text-xs text-default-400 mt-1">Hỗ trợ ảnh và PDF</p>
             </div>
+          )}
 
-            {cf.status === "error" && (
-              <p className="text-xs text-danger px-2">{cf.error}</p>
-            )}
+          {files.map((cf) => {
+            const isOpen = expanded.has(cf.id);
+            const matchCount = cf.fields?.filter(f => f.status === "match").length ?? 0;
+            const mismatchCount = cf.fields?.filter(f => f.status === "mismatch").length ?? 0;
+            const missingCount = cf.fields?.filter(f => f.status === "missing").length ?? 0;
 
-            {cf.status === "warning" && (
-              <p className="text-xs text-warning-600 px-2">{cf.error}</p>
-            )}
+            return (
+              <div key={cf.id} className="border border-default-200 rounded-xl overflow-hidden">
+                {/* Row — luôn hiển thị */}
+                <div
+                  className="flex items-center gap-2 px-3 py-2 bg-default-50 cursor-pointer hover:bg-default-100 transition-colors"
+                  onClick={() => toggleExpand(cf.id)}
+                >
+                  <ChevronRight size={14} className={`text-default-400 shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                  <FileText size={14} className="text-default-400 shrink-0" />
+                  <span className="text-sm font-medium flex-1 truncate">{cf.file.name}</span>
 
-            {cf.status === "done" && cf.skipped && (
-              <p className="text-xs text-default-400 italic px-2">
-                Loại tài liệu này không cần kiểm tra.
-              </p>
-            )}
+                  {/* Summary khi done */}
+                  {cf.status === "done" && !cf.skipped && (
+                    <span className="flex items-center gap-2 text-xs mr-1">
+                      {matchCount > 0 && <span className="text-success">{matchCount} khớp</span>}
+                      {mismatchCount > 0 && <span className="text-danger">{mismatchCount} sai</span>}
+                      {missingCount > 0 && <span className="text-warning">{missingCount} thiếu</span>}
+                    </span>
+                  )}
 
-            {cf.status === "done" && !cf.skipped && cf.fields && (
-              <div className="flex flex-col gap-3">
-                <ResultTable fields={cf.fields} />
-                {cf.normalizedText && (
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    onPress={() => setPreviewFile(cf)}
-                    startContent={<Eye size={14} />}
+                  <FileStatusChip status={cf.status} />
+
+                  {cf.status === "idle" && (
+                    <Button size="sm" variant="flat" color="primary"
+                      onPress={(e) => { (e as unknown as MouseEvent).stopPropagation?.(); processFile(cf); }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Kiểm tra
+                    </Button>
+                  )}
+                  {cf.status === "error" && (
+                    <Button size="sm" variant="flat" color="warning"
+                      onPress={() => processFile(cf)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Thử lại
+                    </Button>
+                  )}
+                  <Button isIconOnly size="sm" variant="light"
+                    onPress={() => removeFile(cf.id)}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Xem văn bản OCR
+                    <X size={14} />
                   </Button>
+                </div>
+
+                {/* Expanded content */}
+                {isOpen && (
+                  <div className="p-3 flex flex-col gap-2">
+                    {cf.status === "error" && <p className="text-xs text-danger">{cf.error}</p>}
+                    {cf.status === "warning" && <p className="text-xs text-warning-600">{cf.error}</p>}
+                    {cf.status === "done" && cf.skipped && (
+                      <p className="text-xs text-default-400 italic">Loại tài liệu này không cần kiểm tra.</p>
+                    )}
+                    {cf.status === "done" && !cf.skipped && cf.fields && (
+                      <div className="flex flex-col gap-2">
+                        <ResultTable fields={cf.fields} />
+                        {cf.normalizedText && (
+                          <Button size="sm" variant="flat" onPress={() => setPreviewFile(cf)} startContent={<Eye size={14} />}>
+                            Xem văn bản OCR
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
-      </CardBody>
-    </Card>
+            );
+          })}
+        </CardBody>
+      </Card>
 
-    {previewFile && (
-      <OcrModal
-        cf={previewFile}
-        isOpen={!!previewFile}
-        onClose={() => setPreviewFile(null)}
-      />
-    )}
+      {previewFile && (
+        <OcrModal cf={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)} />
+      )}
     </>
   );
 }

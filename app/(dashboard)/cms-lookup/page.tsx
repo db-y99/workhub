@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, CardHeader, CardBody } from "@heroui/card";
+import { Card, CardHeader, CardBody, CardFooter } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
+import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Search, FileSearch } from "lucide-react";
 import { ContractCompare } from "@/components/cms/contract-compare";
 import type { CleanResult } from "@/components/cms/types";
+import { PermissionGuard } from "@/components/auth/permission-guard";
+import { PERMISSIONS } from "@/constants/permissions";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 const APPLICATION_FIELDS: { key: keyof CleanResult; label: string }[] = [
   { key: "application_code", label: "Mã hồ sơ" },
@@ -76,6 +80,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function CmsLookupPage() {
+  const { isAdmin } = useAuth();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<CleanResult | null>(null);
   const [rawData, setRawData] = useState({})
@@ -140,6 +145,7 @@ export default function CmsLookupPage() {
   console.log({result})
 
   return (
+    <PermissionGuard requiredPermissions={[PERMISSIONS.CMS_LOOKUP_VIEW]}>
     <AppLayout>
       <div className="container mx-auto max-w-7xl px-6 py-8 flex flex-col gap-4">
         <Card className="w-full">
@@ -221,26 +227,34 @@ export default function CmsLookupPage() {
                     </>
                   )}
                 </CardBody>
+                <CardFooter>
+                  {isAdmin && (
+                    <Button size="sm" variant="flat" onPress={() => setShowRaw(true)}>
+                      Xem raw data
+                    </Button>
+                  )}
+                </CardFooter>
               </Card>
 
               {/* Contract compare */}
               <ContractCompare cmsResult={result} />
             </div>
 
-            {/* Raw toggle */}
-            <div>
-              <Button size="sm" variant="flat" onPress={() => setShowRaw((v) => !v)}>
-                {showRaw ? "Ẩn" : "Xem"} raw data
-              </Button>
-              {showRaw && (
-                <pre className="mt-2 bg-default-100 rounded-lg p-4 text-xs overflow-auto max-h-[500px] whitespace-pre-wrap break-all">
-                  {JSON.stringify(rawData, null, 2)}
-                </pre>
-              )}
-            </div>
+            {/* Raw data modal */}
+            <Modal isOpen={showRaw} onClose={() => setShowRaw(false)} size="4xl" scrollBehavior="inside">
+              <ModalContent>
+                <ModalHeader className="text-sm">Raw data</ModalHeader>
+                <ModalBody className="pb-6">
+                  <pre className="bg-default-100 rounded-lg p-4 text-xs overflow-auto whitespace-pre-wrap break-all">
+                    {JSON.stringify(rawData, null, 2)}
+                  </pre>
+                </ModalBody>
+              </ModalContent>
+            </Modal>
           </>
         )}
       </div>
     </AppLayout>
+    </PermissionGuard>
   );
 }

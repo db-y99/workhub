@@ -1,4 +1,4 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator, FileSearch } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
@@ -49,7 +49,12 @@ export const siteConfig = {
       label: "Vision OCR",
       href: ROUTES.VISION,
       icon: ScanEye,
-      // Trang public, không phân quyền — mọi user đăng nhập đều thấy trong sidebar
+    },
+    {
+      label: "Tra cứu CMS",
+      href: ROUTES.CMS_LOOKUP,
+      icon: FileSearch,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CMS_LOOKUP],
     },
     {
       label: "Tài nguyên công ty",
