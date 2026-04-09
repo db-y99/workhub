@@ -84,6 +84,7 @@ export default function CmsLookupPage() {
   const [code, setCode] = useState("");
   const [result, setResult] = useState<CleanResult | null>(null);
   const [cccdFrontFile, setCccdFrontFile] = useState<string | null>(null);
+  const [showCccd, setShowCccd] = useState(false);
   const [rawData, setRawData] = useState({})
   const [showRaw, setShowRaw] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function CmsLookupPage() {
     startTransition(async () => {
       setError(null);
       setResult(null);
+      setCccdFrontFile(null);
 
       const res = await fetch(`/api/cms/lookup?code=${encodeURIComponent(trimmed)}`);
       const data = await res.json();
@@ -110,10 +112,7 @@ export default function CmsLookupPage() {
 
       const { application, loan, collateral, customer } = data;
       if (application && loan) {
-
-
         setResult({
-          // Application
           application_code: application.code ?? null,
           fullname: application.fullname ?? null,
           phone: application.phone ?? null,
@@ -122,23 +121,20 @@ export default function CmsLookupPage() {
           issue_date: application.issue_date ?? null,
           issue_place: application.issue_place ?? null,
           approve_amount: application.approve_amount ?? null,
-          approve_term: application.approve_term,    
-          // Loan 
+          approve_term: application.approve_term,
           loan_code: loan.code ?? null,
           valid_from: loan.valid_from ?? null,
           valid_to: loan.valid_to ?? null,
           rate: loan.rate ?? null,
           beneficiary_account: loan.beneficiary_account ?? null,
-          beneficiary_bank: loan.beneficiary_bank__name ?? loan.beneficiary_bank ?? null, 
-          //Customer
-          dob: customer.dob,   
+          beneficiary_bank: loan.beneficiary_bank__name ?? loan.beneficiary_bank ?? null,
+          dob: customer.dob,
           zalo: customer.zalo,
-          //Collateral
           collateral__code: collateral?.collateral__code ?? collateral?.code ?? null,
           collateral__type__name: collateral?.collateral__type__name ?? null,
           collat_value: collateral?.collat_value ?? collateral?.appraisal_value ?? null,
           seri_number: collateral?.seri_number ?? null,
-          detail: collateral?.detail ?? null,        
+          detail: collateral?.detail ?? null,
         });
       }
     });
@@ -206,7 +202,8 @@ export default function CmsLookupPage() {
                       <img
                         src={cccdFrontFile}
                         alt="CCCD mặt trước"
-                        className="rounded-lg max-w-full object-contain max-h-64"
+                        className="rounded-lg max-w-full object-contain max-h-64 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setShowCccd(true)}
                       />
                     </>
                   )}
@@ -262,6 +259,18 @@ export default function CmsLookupPage() {
                   <pre className="bg-default-100 rounded-lg p-4 text-xs overflow-auto whitespace-pre-wrap break-all">
                     {JSON.stringify(rawData, null, 2)}
                   </pre>
+                </ModalBody>
+              </ModalContent>
+            </Modal>
+
+            {/* CCCD image modal */}
+            <Modal isOpen={showCccd} onClose={() => setShowCccd(false)} size="2xl">
+              <ModalContent>
+                <ModalHeader className="text-sm">CCCD mặt trước</ModalHeader>
+                <ModalBody className="pb-6 flex items-center justify-center">
+                  {cccdFrontFile && (
+                    <img src={cccdFrontFile} alt="CCCD mặt trước" className="rounded-lg max-w-full" />
+                  )}
                 </ModalBody>
               </ModalContent>
             </Modal>
