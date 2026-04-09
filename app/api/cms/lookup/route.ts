@@ -81,6 +81,20 @@ async function fetchCollateralDetail(baseUrl: string, login: string, collateralC
   return res.json();
 }
 
+const APPLICATION_FILE_VALUES = [
+  "id", "ref", "file", "file__name", "file__file",
+  "file__type__code", "file__type__name",
+  "file__doc_type__code", "file__doc_type__name", "file__doc_type__en",
+].join(",");
+
+async function fetchApplicationFiles(baseUrl: string, login: string, applicationId: number | string) {
+  const filter = encodeURIComponent(JSON.stringify({ ref: applicationId }));
+  const url = `${baseUrl}/data/Application_File/?values=${APPLICATION_FILE_VALUES}&filter=${filter}&login=${login}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Application_File API lỗi: ${res.status}`);
+  return res.json();
+}
+
 async function fetchCustomer(baseUrl: string, login: string, customerId: number | string) {
   const filter = encodeURIComponent(JSON.stringify({ id: customerId }));
   const url = `${baseUrl}/data/Customer/?sort=-id&login=${login}&filter=${filter}`;
@@ -116,11 +130,13 @@ export async function GET(request: Request) {
 
     const loanId = loanData?.rows?.[0]?.id ?? null;
     const customerId = applicationData?.rows?.[0]?.customer ?? null;
+    const applicationId = applicationData?.rows?.[0]?.id ?? null;
 
-    // Bước 2: Collateral + Customer song song
-    const [collateralLoanData, customerData] = await Promise.all([
+    // Bước 2: Collateral + Customer + ApplicationFiles song song
+    const [collateralLoanData, customerData, applicationFilesData] = await Promise.all([
       loanId ? fetchCollateral(cmsUrl, login, loanId).catch((e) => { console.error("Collateral error:", e); return null; }) : Promise.resolve(null),
       customerId ? fetchCustomer(cmsUrl, login, customerId).catch((e) => { console.error("Customer error:", e); return null; }) : Promise.resolve(null),
+      applicationId ? fetchApplicationFiles(cmsUrl, login, applicationId).catch((e) => { console.error("ApplicationFiles error:", e); return null; }) : Promise.resolve(null),
     ]);
 
     // Bước 3: Lấy chi tiết Collateral theo code
@@ -144,6 +160,15 @@ export async function GET(request: Request) {
         ? { ...collateralDetailData?.rows?.[0], ...collateralLoanData.rows[0] }
         : null,
       customer: customerData?.rows?.[0] ?? null,
+      cccdFront: (applicationFilesData?.rows ?? []).find(
+        (f: { file__doc_type__code: string }) => f.file__doc_type__code === "cccd-mt"
+      ) ?? null,
+      cccdFrontUrl: (() => {
+        const f = (applicationFilesData?.rows ?? []).find(
+          (f: { file__doc_type__code: string }) => f.file__doc_type__code === "cccd-mt"
+        );
+        return f ? `${cmsUrl}/static/files/${f.file__file}` : null;
+      })(),
     });
   } catch (error) {
     console.error("Error in CMS lookup:", error);

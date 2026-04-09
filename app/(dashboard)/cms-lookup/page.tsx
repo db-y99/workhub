@@ -83,6 +83,7 @@ export default function CmsLookupPage() {
   const { isAdmin } = useAuth();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<CleanResult | null>(null);
+  const [cccdFrontFile, setCccdFrontFile] = useState<string | null>(null);
   const [rawData, setRawData] = useState({})
   const [showRaw, setShowRaw] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +106,7 @@ export default function CmsLookupPage() {
       }
 
       setRawData(data)
+      setCccdFrontFile(data.cccdFrontUrl ?? null)
 
       const { application, loan, collateral, customer } = data;
       if (application && loan) {
@@ -196,6 +198,18 @@ export default function CmsLookupPage() {
                   {APPLICATION_FIELDS.map(({ key, label }) => (
                     <InfoRow key={key} label={label} value={formatValue(key, result[key])} />
                   ))}
+
+                  {cccdFrontFile && (
+                    <>
+                      <Divider className="my-3" />
+                      <p className="text-xs font-semibold text-primary uppercase mb-2">Ảnh CCCD mặt trước</p>
+                      <img
+                        src={cccdFrontFile}
+                        alt="CCCD mặt trước"
+                        className="rounded-lg max-w-full object-contain max-h-64"
+                      />
+                    </>
+                  )}
 
                   {result.loan_code && (
                     <>

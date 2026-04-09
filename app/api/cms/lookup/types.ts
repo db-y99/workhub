@@ -240,9 +240,24 @@ export interface LookupCustomer {
   update_time: string;
 }
 
+export interface LookupApplicationFile {
+  id: number;
+  ref: number;
+  file: number;
+  file__name: string;
+  file__file: string;
+  file__type__code: string;
+  file__type__name: string;
+  file__doc_type__code: string;
+  file__doc_type__en: string;
+  file__doc_type__name: string;
+}
+
 export interface LookupResponse {
   application: LookupApplication;
   loan: LookupLoan;
   collateral: LookupCollateral | null;
   customer: LookupCustomer | null;
+  cccdFront: LookupApplicationFile | null;
+  cccdFrontUrl: string | null;
 }
