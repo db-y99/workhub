@@ -29,6 +29,9 @@ export const ROUTES = {
   CMS_LOOKUP: "/cms-lookup",
   MESSAGES: "/messages",
 
+  // Debt report
+  DEBT_REPORT: "/debt-report",
+
   // Public (không cần đăng nhập)
   VISION: "/vision",
   SPONSOR: "/sponsor",
