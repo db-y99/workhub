@@ -27,6 +27,7 @@ export const ROUTES = {
   ROLES_DELETED: "/roles/deleted",
   CALCULATOR: "/calculator",
   CMS_LOOKUP: "/cms-lookup",
+  MESSAGES: "/messages",
 
   // Public (không cần đăng nhập)
   VISION: "/vision",
