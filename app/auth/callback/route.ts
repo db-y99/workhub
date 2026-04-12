@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProfileByEmail } from "@/lib/services/profiles.service";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROUTES } from "@/constants/routes";
 import { env } from "@/config/env";
@@ -46,16 +47,10 @@ export async function GET(request: NextRequest) {
   // Kiểm tra profile — chỉ cho vào nếu email đã có trong hệ thống
   if (data.user) {
     console.log("[callback] checking profile for email:", data.user.email);
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", data.user.email!)
-      .is("deleted_at", null)
-      .single();
+    const profile = await getProfileByEmail(data.user.email!);
+    console.log("[callback] profile found:", !!profile);
 
-    console.log("[callback] profile found:", !!profileData);
-
-    if (!profileData) {
+    if (!profile) {
       try {
         const admin = createAdminClient();
         await admin.auth.admin.deleteUser(data.user.id);

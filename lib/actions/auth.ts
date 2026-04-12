@@ -212,12 +212,11 @@ export async function verifyEmailOtp(email: string, token: string) {
  */
 export async function signInWithGoogle() {
   const supabase = await createClient();
-  const origin = env.NEXT_PUBLIC_SITE_URL;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}${ROUTES.AUTH_CALLBACK}`,
+      redirectTo: `${env.NEXT_PUBLIC_BASE_URL || env.NEXT_PUBLIC_SITE_URL}${ROUTES.AUTH_CALLBACK}`,
     },
   });
 
