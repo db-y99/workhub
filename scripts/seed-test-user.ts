@@ -13,11 +13,11 @@ import { createClient } from "@supabase/supabase-js";
 
 config({ path: ".env.local" });
 
-const TEST_EMAIL = "test@gmail.com";
-const TEST_PASSWORD = "test123";
+const TEST_EMAIL = "db@y99.vn";
+const TEST_PASSWORD = "123456";
 const TEST_FULL_NAME = "Test User";
 const DEPT_CODE = "IT";
-const ROLE_CODE = "user";
+const ROLE_CODE = "admin";
 
 async function main() {
   const { env } = await import("@/config/env");

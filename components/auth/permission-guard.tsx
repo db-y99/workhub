@@ -8,6 +8,7 @@ import { Button } from "@heroui/button";
 import { ShieldAlert, Home } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { signOut } from "@/lib/actions/auth";
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -25,7 +26,7 @@ export function PermissionGuard({
   adminOnly = false,
 }: PermissionGuardProps) {
   const router = useRouter();
-  const { currentUser, profile, hasPermission, isAdmin } = useAuth();
+  const { currentUser, profile, hasPermission, isAdmin, loading } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
@@ -54,7 +55,7 @@ export function PermissionGuard({
     };
 
     check();
-  }, [currentUser, profile, requiredPermissions, hasPermission, router]);
+  }, [currentUser, profile, loading, requiredPermissions, hasPermission, router]);
 
   if (isChecking) {
     return (

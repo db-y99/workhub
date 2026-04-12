@@ -32,7 +32,6 @@ export const ROUTES = {
   // Debt report
   DEBT_REPORT: "/debt-report",
 
-  // Public (không cần đăng nhập)
   VISION: "/vision",
   SPONSOR: "/sponsor",
 } as const;
@@ -58,7 +57,6 @@ export const PROTECTED_ROUTES = [
   ROUTES.PERMISSIONS,
   ROUTES.PERMISSIONS_LIST,
   ROUTES.ROLES,
-  ROUTES.HOME,
 ] as const;
 
 export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.AUTH_CALLBACK] as const;

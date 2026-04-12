@@ -207,6 +207,32 @@ export async function verifyEmailOtp(email: string, token: string) {
 }
 
 /**
+ * Đăng nhập bằng Google OAuth.
+ * Sau khi Google redirect về /auth/callback, callback route sẽ kiểm tra profile.
+ */
+export async function signInWithGoogle() {
+  const supabase = await createClient();
+  const origin = env.NEXT_PUBLIC_SITE_URL;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}${ROUTES.AUTH_CALLBACK}`,
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (data.url) {
+    redirect(data.url);
+  }
+
+  return { error: "Không thể khởi tạo đăng nhập Google" };
+}
+
+/**
  * Sign out
  */
 export async function signOut() {

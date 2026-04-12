@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
@@ -9,6 +10,10 @@ import { CheckCircle2, LogIn, LayoutDashboard } from "lucide-react";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+
+  if (user) {
+    redirect(ROUTES.APPROVE);
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary-50 via-background to-secondary-50 px-4 py-12 dark:from-primary-950 dark:via-background dark:to-secondary-950">

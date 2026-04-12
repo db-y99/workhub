@@ -22,6 +22,9 @@ export async function updateSession(request: NextRequest) {
             options?: CookieOptions;
           }[]
         ) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -37,6 +40,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  console.log("[middleware] pathname:", pathname, "| user:", user?.email ?? "null");
 
   const isProtectedRoute = PROTECTED_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
