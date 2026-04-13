@@ -259,11 +259,17 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
       return next;
     });
 
+  const MAX_FILES = 4;
+
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    setFiles((prev) => [
+    setFiles((prev) => {
+      const remaining = MAX_FILES - prev.length;
+      if (remaining <= 0) return prev;
+      const toAdd = Array.from(list).slice(0, remaining);
+      return [
       ...prev,
-      ...Array.from(list).map((f) => {
+      ...toAdd.map((f) => {
         const nameError = validateFileName(f.name, cmsResult.application_code);
         return {
           id: `${f.name}-${Date.now()}-${Math.random()}`,
@@ -274,7 +280,8 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
           error: nameError ?? undefined,
         };
       }),
-    ]);
+      ];
+    });
   };
 
   const removeFile = (id: string) => {
@@ -345,7 +352,7 @@ export function ContractCompare({ cmsResult }: { cmsResult: CleanResult }) {
             Kiểm tra hợp đồng
           </h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="flat" onPress={() => inputRef.current?.click()}>
+            <Button size="sm" variant="flat" onPress={() => inputRef.current?.click()} isDisabled={files.length >= MAX_FILES}>
               <Upload size={14} className="mr-1" />
               Thêm file
             </Button>

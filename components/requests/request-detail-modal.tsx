@@ -300,40 +300,47 @@ export function RequestDetailModal({
               <Button color="danger" variant="light" onPress={onClose}>
                 Đóng
               </Button>
-              {canApprove && (
+              {canApprove && request.status === REQUEST_STATUS.PENDING && (
                 <div className="flex gap-2">
-                  {request.status === REQUEST_STATUS.PENDING && (
-                    <>
-                      <Button
-                        color="success"
-                        isDisabled={isPending}
-                        isLoading={loadingAction === REQUEST_STATUS.APPROVED}
-                        onPress={() => handleStatusUpdate(REQUEST_STATUS.APPROVED)}
-                      >
-                        Duyệt
-                      </Button>
-                      <Button
-                        color="danger"
-                        variant="flat"
-                        isDisabled={isPending}
-                        isLoading={loadingAction === REQUEST_STATUS.REJECTED}
-                        onPress={() => handleStatusUpdate(REQUEST_STATUS.REJECTED)}
-                      >
-                        Từ chối
-                      </Button>
-                    </>
-                  )}
-                  {request.status === REQUEST_STATUS.APPROVED && (
-                    <Button
-                      color="primary"
-                      isDisabled={isPending}
-                      isLoading={loadingAction === REQUEST_STATUS.COMPLETED}
-                      onPress={() => handleStatusUpdate(REQUEST_STATUS.COMPLETED)}
-                    >
-                      Hoàn thành
-                    </Button>
-                  )}
+                  <Button
+                    color="success"
+                    isDisabled={isPending}
+                    isLoading={loadingAction === REQUEST_STATUS.APPROVED}
+                    onPress={() => handleStatusUpdate(REQUEST_STATUS.APPROVED)}
+                  >
+                    Duyệt
+                  </Button>
+                  <Button
+                    color="danger"
+                    variant="flat"
+                    isDisabled={isPending}
+                    isLoading={loadingAction === REQUEST_STATUS.REJECTED}
+                    onPress={() => handleStatusUpdate(REQUEST_STATUS.REJECTED)}
+                  >
+                    Từ chối
+                  </Button>
                 </div>
+              )}
+              {(canApprove || isOwner) && request.status === REQUEST_STATUS.APPROVED && (
+                <Button
+                  color="primary"
+                  isDisabled={isPending}
+                  isLoading={loadingAction === REQUEST_STATUS.COMPLETED}
+                  onPress={() => handleStatusUpdate(REQUEST_STATUS.COMPLETED)}
+                >
+                  Hoàn thành
+                </Button>
+              )}
+              {(canApprove || isOwner) && request.status === REQUEST_STATUS.COMPLETED && (
+                <Button
+                  color="warning"
+                  variant="flat"
+                  isDisabled={isPending}
+                  isLoading={loadingAction === REQUEST_STATUS.APPROVED}
+                  onPress={() => handleStatusUpdate(REQUEST_STATUS.APPROVED)}
+                >
+                  Hủy hoàn thành
+                </Button>
               )}
               {canManageOwn && (
                 <div className="flex gap-2">
