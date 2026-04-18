@@ -1,4 +1,4 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator, FileSearch, MessageSquare } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator, FileSearch, MessageSquare, FileSpreadsheet } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
@@ -61,6 +61,12 @@ export const siteConfig = {
       href: ROUTES.MESSAGES,
       icon: MessageSquare,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.MESSAGES],
+    },
+    {
+      label: "Import khách hàng",
+      href: ROUTES.CUSTOMERS_IMPORT,
+      icon: FileSpreadsheet,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_IMPORT],
     },
     {
       label: "Tài nguyên công ty",

@@ -80,6 +80,9 @@ export const PERMISSIONS = {
 
   // Messages
   MESSAGES_VIEW: "messages:view",
+
+  // Customers Import
+  CUSTOMERS_IMPORT_VIEW: "customers-import:view",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -100,6 +103,7 @@ export const PERMISSION_PAGES = [
   { code: "calculator", name: "Calculator", description: "Công cụ tính toán quá hạn và thanh toán", sort_order: 12 },
   { code: "cms-lookup", name: "Tra cứu CMS", description: "Tra cứu hồ sơ và kiểm tra hợp đồng từ CMS", sort_order: 13 },
   { code: "messages", name: "Tin nhắn", description: "Quản lý tin nhắn từ Facebook, WhatsApp, Zalo", sort_order: 14 },
+  { code: "customers-import", name: "Import khách hàng", description: "Import và xem báo cáo dữ liệu khách hàng từ Excel", sort_order: 15 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -117,6 +121,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/calculator": toPermissionCode("calculator", PERMISSION_ACTIONS.VIEW),
   "/cms-lookup": toPermissionCode("cms-lookup", PERMISSION_ACTIONS.VIEW),
   "/messages": toPermissionCode("messages", PERMISSION_ACTIONS.VIEW),
+  "/customers/import": toPermissionCode("customers-import", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];

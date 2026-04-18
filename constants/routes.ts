@@ -32,6 +32,9 @@ export const ROUTES = {
   // Debt report
   DEBT_REPORT: "/debt-report",
 
+  // Customers
+  CUSTOMERS_IMPORT: "/customers/import",
+
   VISION: "/vision",
   SPONSOR: "/sponsor",
 } as const;
