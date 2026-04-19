@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { OverdueCalculator } from "@/components/calculator/overdue-calculator.client";
 import { SettlementCalculator } from "@/components/calculator/settlement-calculator.client";
+import { LoanScheduleCalculator } from "@/components/calculator/loan-schedule-calculator.client";
 import { title } from "@/components/primitives";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
@@ -20,6 +21,11 @@ const calculatorTabs = [
     id: "settlement",
     label: "Tính thanh toán",
     content: <SettlementCalculator />,
+  },
+  {
+    id: "loan-schedule",
+    label: "Lịch trả nợ",
+    content: <LoanScheduleCalculator />,
   },
 ];
 
@@ -43,6 +49,7 @@ export default function CalculatorPage() {
               tab: "px-4 py-2",
               tabContent: "group-data-[selected=true]:text-primary",
             }}
+            className="w-full"
           >
             {calculatorTabs.map((tab) => (
               <Tab
