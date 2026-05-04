@@ -33,7 +33,12 @@ export const ROUTES = {
   DEBT_REPORT: "/debt-report",
 
   // Customers
+  CUSTOMERS: "/customers",
   CUSTOMERS_IMPORT: "/customers/import",
+  CUSTOMERS_LEADS: "/customers/leads",
+
+  // Branches
+  BRANCHES: "/branches",
 
   VISION: "/vision",
   SPONSOR: "/sponsor",

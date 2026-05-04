@@ -21,7 +21,21 @@ interface RolesResponse {
   roles: Role[];
 }
 
+interface BranchesResponse {
+  data: Array<{
+    id: string;
+    name: string;
+    code: string;
+  }>;
+}
+
 async function fetcher(url: string): Promise<RolesResponse> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+}
+
+async function branchesFetcher(url: string): Promise<BranchesResponse> {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -50,6 +64,7 @@ export function EditEmployeeModal({
     phone: "",
     department_id: "",
     role_id: "",
+    branch_id: "",
   });
 
   const { data: rolesData } = useSWR<RolesResponse>(
@@ -58,6 +73,14 @@ export function EditEmployeeModal({
     { revalidateOnFocus: false }
   );
   const roles = rolesData?.roles || [];
+
+  // Fetch branches
+  const { data: branchesData } = useSWR<BranchesResponse>(
+    isOpen ? "/api/branches" : null,
+    branchesFetcher,
+    { revalidateOnFocus: false }
+  );
+  const branches = branchesData?.data || [];
 
   useEffect(() => {
     if (employee) {
@@ -68,6 +91,7 @@ export function EditEmployeeModal({
         phone: employee.phone || "",
         department_id: employee.department_id || "",
         role_id: roleId,
+        branch_id: (employee as any).branch_id || "",
       });
     }
   }, [employee]);
@@ -85,6 +109,7 @@ export function EditEmployeeModal({
         phone: formData.phone,
         department_id: formData.department_id,
         role_id: formData.role_id || undefined,
+        branch_id: formData.branch_id || undefined,
       });
 
       if (result.error) {
@@ -183,25 +208,46 @@ export function EditEmployeeModal({
                     )}
                   </Select>
                 </div>
-                <Select
-                  items={roles.map((r) => ({
-                    key: r.id,
-                    label: r.name,
-                  }))}
-                  label="Vai trò"
-                  placeholder="Chọn vai trò"
-                  selectedKeys={formData.role_id ? [formData.role_id] : []}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    items={roles.map((r) => ({
+                      key: r.id,
+                      label: r.name,
+                    }))}
+                    label="Vai trò"
+                    placeholder="Chọn vai trò"
+                    selectedKeys={formData.role_id ? [formData.role_id] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0] as string;
 
-                    setFormData({
-                      ...formData,
-                      role_id: selected || "",
-                    });
-                  }}
-                >
-                  {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-                </Select>
+                      setFormData({
+                        ...formData,
+                        role_id: selected || "",
+                      });
+                    }}
+                  >
+                    {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                  </Select>
+                  <Select
+                    items={branches.map((b) => ({
+                      key: b.id,
+                      label: `${b.name} (${b.code})`,
+                    }))}
+                    label="Chi nhánh"
+                    placeholder="Chọn chi nhánh"
+                    selectedKeys={formData.branch_id ? [formData.branch_id] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0] as string;
+
+                      setFormData({
+                        ...formData,
+                        branch_id: selected || "",
+                      });
+                    }}
+                  >
+                    {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                  </Select>
+                </div>
               </div>
             </ModalBody>
             <ModalFooter>

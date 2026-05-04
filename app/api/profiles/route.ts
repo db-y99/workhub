@@ -52,7 +52,8 @@ export async function GET(request: Request) {
         `
         *,
         department:departments(id, name, code),
-        role:roles(id, code, name, description)
+        role:roles(id, code, name, description),
+        branch:branches(id, name, code)
       `
       )
       .is("deleted_at", null)

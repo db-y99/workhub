@@ -46,6 +46,7 @@ const columns = [
   { key: "email", label: "EMAIL" },
   { key: "phone", label: "SỐ ĐIỆN THOẠI" },
   { key: "department", label: "PHÒNG BAN" },
+  { key: "branch", label: "CHI NHÁNH" },
   { key: "role", label: "VAI TRÒ" },
   { key: "status", label: "TRẠNG THÁI" },
   { key: "actions", label: "THAO TÁC" },
@@ -54,6 +55,11 @@ const columns = [
 /** Profile từ API kèm department relation (role là object) */
 type ProfileWithDepartment = ProfileFromApi & {
   department?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+  branch?: {
     id: string;
     name: string;
     code: string;
@@ -79,6 +85,7 @@ const createSkeletonProfile = (i: number): ProfileRow => ({
   updated_at: "",
   deleted_at: null,
   department: null,
+  branch: null,
   role: { id: "", code: "user", name: "" },
   isSkeleton: true,
 });
@@ -406,6 +413,15 @@ export function UsersContent() {
                         <TableCell>
                           <Chip size="sm" variant="flat" color="primary">
                             {item.department?.name ? highlightSearchText(item.department.name, debouncedSearch) : "-"}
+                          </Chip>
+                        </TableCell>
+                      );
+                    }
+                    if (columnKey === "branch") {
+                      return (
+                        <TableCell>
+                          <Chip size="sm" variant="flat" color="secondary">
+                            {item.branch?.name ? `${item.branch.name} (${item.branch.code})` : "-"}
                           </Chip>
                         </TableCell>
                       );

@@ -12,6 +12,10 @@ export const UpdateProfileSchema = z.object({
     (v) => (v === "" || v === null ? undefined : v),
     z.string().uuid().optional()
   ),
+  branch_id: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().optional()
+  ),
 });
 
 export type TUpdateProfileInput = z.infer<typeof UpdateProfileSchema>;

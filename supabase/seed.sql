@@ -44,7 +44,12 @@ INSERT INTO public.permissions (code, name, sort_order) VALUES
   ('roles:create', 'Tạo Vai trò', 24),
   ('roles:edit', 'Sửa Vai trò', 25),
   ('roles:delete', 'Xóa Vai trò', 26),
-  ('settings:view', 'Xem Cài đặt', 27)
+  ('settings:view', 'Xem Cài đặt', 27),
+  ('customers-import:view', 'Xem Import Khách hàng', 28),
+  ('customer-leads:view', 'Xem Khách hàng tiềm năng', 29),
+  ('customer-leads:create', 'Tạo Khách hàng tiềm năng', 30),
+  ('customer-leads:edit', 'Sửa Khách hàng tiềm năng', 31),
+  ('customer-leads:delete', 'Xóa Khách hàng tiềm năng', 32)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   sort_order = EXCLUDED.sort_order;
@@ -88,6 +93,8 @@ WHERE r.code = 'staff'
     OR (p.code LIKE 'statistics:%' AND p.code NOT LIKE '%:delete')
     -- Bulletins: view, create, edit (không delete)
     OR (p.code LIKE 'bulletins:%' AND p.code NOT LIKE '%:delete')
+    -- Customer leads: view, create, edit (không delete)
+    OR (p.code LIKE 'customer-leads:%' AND p.code NOT LIKE '%:delete')
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -106,6 +113,10 @@ WHERE r.code = 'cs'
     OR p.code LIKE 'statistics:view'
     -- Bulletins: view, create, edit (không delete)
     OR (p.code LIKE 'bulletins:%' AND p.code NOT LIKE '%:delete')
+    -- Customer leads: view, create, edit, delete (full access)
+    OR p.code LIKE 'customer-leads:%'
+    -- Customers import: view
+    OR p.code LIKE 'customers-import:view'
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -122,6 +133,7 @@ WHERE r.code = 'user'
     OR p.code LIKE 'company-resources:view'
     OR p.code LIKE 'statistics:view'
     OR p.code LIKE 'bulletins:view'
+    OR p.code LIKE 'customers-import:view'
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 

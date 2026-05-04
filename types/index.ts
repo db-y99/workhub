@@ -32,6 +32,7 @@ export interface Profile {
   department_id?: string | null;
   role: UserRole; // Deprecated: dùng role_id thay thế. Giữ để backward compatibility.
   role_id?: string | null; // FK đến roles.id
+  branch_id?: string | null; // FK đến branches.id
   status: UserStatus;
   avatar_url?: string | null;
   created_at: string;
@@ -74,6 +75,7 @@ export type TCreateProfileInput = {
   phone?: string;
   department_id?: string;
   role_id?: string;
+  branch_id?: string;
 };
 
 export type TUpdateProfileInput = {
@@ -82,6 +84,7 @@ export type TUpdateProfileInput = {
   phone?: string;
   department_id?: string;
   role_id?: string;
+  branch_id?: string;
 };
 
 // Type cho change password modal - chỉ cần các field tối thiểu

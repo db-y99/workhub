@@ -13,6 +13,10 @@ export const CreateProfileSchema = z.object({
     (v) => (v === "" || v === null ? undefined : v),
     z.string().uuid().optional()
   ),
+  branch_id: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().uuid().optional()
+  ),
 });
 
 export type TCreateProfileInput = z.infer<typeof CreateProfileSchema>;

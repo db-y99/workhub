@@ -9,6 +9,7 @@ import {
   restoreProfileService,
   updateProfileStatusService,
   updateUserPasswordService,
+  getProfilesByDepartmentCode,
 } from "@/lib/services/profiles.service";
 import { getCurrentUser } from "./auth";
 import { ERROR_CODES } from "@/constants/error-codes";
@@ -39,6 +40,7 @@ export async function createProfile(data: {
   phone?: string;
   department_id?: string;
   role_id?: string;
+  branch_id?: string;
 }) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
@@ -52,6 +54,7 @@ export async function createProfile(data: {
     phone: data.phone || null,
     department_id: data.department_id || null,
     role_id: data.role_id || null,
+    branch_id: data.branch_id || null,
   });
 
   if (!parsed.success) {
@@ -66,6 +69,7 @@ export async function createProfile(data: {
     phone: parsed.data.phone ?? undefined,
     department_id: parsed.data.department_id ?? undefined,
     role_id: parsed.data.role_id ?? undefined,
+    branch_id: parsed.data.branch_id ?? undefined,
   });
 
   if (isErr(result)) {
@@ -123,6 +127,7 @@ export async function updateProfile(
     phone?: string;
     department_id?: string;
     role_id?: string;
+    branch_id?: string;
   }
 ) {
   const parsed = UpdateProfileSchema.safeParse({
@@ -131,6 +136,7 @@ export async function updateProfile(
     phone: formData.phone || null,
     department_id: formData.department_id || null,
     role_id: formData.role_id || null,
+    branch_id: formData.branch_id || null,
   });
 
   if (!parsed.success) {
@@ -144,6 +150,7 @@ export async function updateProfile(
     phone: parsed.data.phone ?? undefined,
     department_id: parsed.data.department_id ?? undefined,
     role_id: parsed.data.role_id ?? undefined,
+    branch_id: parsed.data.branch_id ?? undefined,
   });
 
   if (isErr(result)) {
@@ -255,4 +262,24 @@ export async function updateProfileStatus(
 
   revalidatePath(ROUTES.USERS);
   return { success: true };
+}
+
+/**
+ * Get CS department profiles for customer leads
+ */
+export async function getCSProfiles() {
+  try {
+    const profiles = await getProfilesByDepartmentCode("CS");
+    return { 
+      success: true, 
+      data: profiles.map(profile => ({
+        id: profile.id,
+        full_name: profile.full_name,
+        email: profile.email
+      }))
+    };
+  } catch (error) {
+    console.error("[getCSProfiles] Error:", error);
+    return { error: "Không thể tải danh sách nhân viên CS" };
+  }
 }

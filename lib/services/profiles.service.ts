@@ -113,6 +113,7 @@ export async function createProfileService(
     phone: input.phone?.trim() || null,
     department_id: input.department_id || null,
     role_id: input.role_id ?? null,
+    branch_id: input.branch_id || null,
     status: USER_STATUS.ACTIVE,
   };
 
@@ -152,6 +153,7 @@ export async function updateProfileService(
     phone: input.phone?.trim() || null,
     department_id: input.department_id || null,
     role_id: input.role_id ?? null,
+    branch_id: input.branch_id || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -256,4 +258,37 @@ export async function updateProfileStatusService(
   }
 
   return ok(true);
+}
+
+/**
+ * Get profiles by department code (server-side).
+ */
+export async function getProfilesByDepartmentCode(
+  departmentCode: string
+): Promise<ProfileFromApi[]> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(`
+        *,
+        role:roles(code, name),
+        department:departments!inner(code, name)
+      `)
+      .eq("departments.code", departmentCode)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("full_name");
+
+    if (error) {
+      console.error("Error fetching profiles by department:", error.message, error.code);
+      return [];
+    }
+
+    return data as ProfileFromApi[];
+  } catch (err) {
+    console.error("Error fetching profiles by department (thrown):", err);
+    return [];
+  }
 }

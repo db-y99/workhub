@@ -29,7 +29,21 @@ interface RolesResponse {
   roles: Role[];
 }
 
+interface BranchesResponse {
+  data: Array<{
+    id: string;
+    name: string;
+    code: string;
+  }>;
+}
+
 async function fetcher(url: string): Promise<RolesResponse> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+}
+
+async function branchesFetcher(url: string): Promise<BranchesResponse> {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -51,6 +65,7 @@ export function AddUserModal({
     phone: "",
     department_id: "",
     role_id: "",
+    branch_id: "",
   });
 
   const { data: rolesData } = useSWR<RolesResponse>(
@@ -60,6 +75,14 @@ export function AddUserModal({
   );
   const roles = rolesData?.roles || [];
   const defaultRole = roles.find((r) => r.code === "user");
+
+  // Fetch branches
+  const { data: branchesData } = useSWR<BranchesResponse>(
+    isOpen ? "/api/branches" : null,
+    branchesFetcher,
+    { revalidateOnFocus: false }
+  );
+  const branches = branchesData?.data || [];
 
   const handleGeneratePassword = () => {
     const newPassword = generatePassword();
@@ -80,6 +103,7 @@ export function AddUserModal({
         phone: formData.phone || undefined,
         department_id: formData.department_id || undefined,
         role_id: formData.role_id || undefined,
+        branch_id: formData.branch_id || undefined,
       });
 
       if (result.error) {
@@ -95,6 +119,7 @@ export function AddUserModal({
           phone: "",
           department_id: "",
           role_id: defaultRole?.id || "",
+          branch_id: "",
         });
         onSuccess();
         onClose();
@@ -110,6 +135,7 @@ export function AddUserModal({
       phone: "",
       department_id: "",
       role_id: defaultRole?.id || "",
+      branch_id: "",
     });
     setError(null);
     onClose();
@@ -230,20 +256,36 @@ export function AddUserModal({
                     ))}
                   </Select>
                 </div>
-                <Select
-                  label="Vai trò"
-                  selectedKeys={formData.role_id ? [formData.role_id] : []}
-                  onSelectionChange={(keys) => {
-                    setFormData({
-                      ...formData,
-                      role_id: (Array.from(keys)[0] as string) || "",
-                    });
-                  }}
-                >
-                  {roles.map((r) => (
-                    <SelectItem key={r.id}>{r.name}</SelectItem>
-                  ))}
-                </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Vai trò"
+                    selectedKeys={formData.role_id ? [formData.role_id] : []}
+                    onSelectionChange={(keys) => {
+                      setFormData({
+                        ...formData,
+                        role_id: (Array.from(keys)[0] as string) || "",
+                      });
+                    }}
+                  >
+                    {roles.map((r) => (
+                      <SelectItem key={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </Select>
+                  <Select
+                    label="Chi nhánh"
+                    selectedKeys={formData.branch_id ? [formData.branch_id] : []}
+                    onSelectionChange={(keys) => {
+                      setFormData({
+                        ...formData,
+                        branch_id: (Array.from(keys)[0] as string) || "",
+                      });
+                    }}
+                  >
+                    {branches.map((b) => (
+                      <SelectItem key={b.id}>{b.name} ({b.code})</SelectItem>
+                    ))}
+                  </Select>
+                </div>
               </div>
             </ModalBody>
             <ModalFooter>

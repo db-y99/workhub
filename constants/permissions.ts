@@ -83,6 +83,18 @@ export const PERMISSIONS = {
 
   // Customers Import
   CUSTOMERS_IMPORT_VIEW: "customers-import:view",
+
+  // Customers Leads
+  CUSTOMERS_LEADS_VIEW: "customer-leads:view",
+  CUSTOMERS_LEADS_CREATE: "customer-leads:create",
+  CUSTOMERS_LEADS_EDIT: "customer-leads:edit",
+  CUSTOMERS_LEADS_DELETE: "customer-leads:delete",
+
+  // Branches
+  BRANCHES_VIEW: "branches:view",
+  BRANCHES_CREATE: "branches:create",
+  BRANCHES_EDIT: "branches:edit",
+  BRANCHES_DELETE: "branches:delete",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -104,6 +116,8 @@ export const PERMISSION_PAGES = [
   { code: "cms-lookup", name: "Tra cứu CMS", description: "Tra cứu hồ sơ và kiểm tra hợp đồng từ CMS", sort_order: 13 },
   { code: "messages", name: "Tin nhắn", description: "Quản lý tin nhắn từ Facebook, WhatsApp, Zalo", sort_order: 14 },
   { code: "customers-import", name: "Import khách hàng", description: "Import và xem báo cáo dữ liệu khách hàng từ Excel", sort_order: 15 },
+  { code: "customer-leads", name: "Quản lý khách hàng", description: "Nhập và quản lý thông tin khách hàng vay vốn", sort_order: 16 },
+  { code: "branches", name: "Chi nhánh", description: "Quản lý thông tin chi nhánh", sort_order: 17 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -121,7 +135,10 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/calculator": toPermissionCode("calculator", PERMISSION_ACTIONS.VIEW),
   "/cms-lookup": toPermissionCode("cms-lookup", PERMISSION_ACTIONS.VIEW),
   "/messages": toPermissionCode("messages", PERMISSION_ACTIONS.VIEW),
+  "/customers": toPermissionCode("customers-import", PERMISSION_ACTIONS.VIEW),
   "/customers/import": toPermissionCode("customers-import", PERMISSION_ACTIONS.VIEW),
+  "/customers/leads": toPermissionCode("customer-leads", PERMISSION_ACTIONS.VIEW),
+  "/branches": toPermissionCode("branches", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];
