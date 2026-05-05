@@ -8,7 +8,7 @@ export interface CustomerLeadInput {
   time_slot?: string;
   person_in_charge?: string;
   facebook_name?: string; // Tên trên Facebook
-  customer_name: string; // Tên thật
+  customer_name: string; // Họ và tên (hiển thị trong UI)
   customer_link?: string;
   phone_number?: string;
   branch?: string;

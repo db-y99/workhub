@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback, useEffect, useMemo } from "react";
+import { useState, useTransition, useCallback, useEffect, useMemo, useRef } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import {
   Table,
@@ -36,7 +36,11 @@ import {
   X,
   Eye,
   Filter,
-  ChevronDown
+  ChevronDown,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import {
   createCustomerLead,
@@ -88,6 +92,18 @@ type FilterState = {
   finalOutcome: string;
   collateralType: string;
   personInCharge: string;
+};
+
+type ImportPreviewData = {
+  total: number;
+  sheet: string;
+  customers: CustomerLeadInput[];
+};
+
+type ImportResult = {
+  success: number;
+  failed: number;
+  errors: string[];
 };
 
 const LEAD_STATUS_OPTIONS = [
@@ -202,6 +218,41 @@ function formatDateDisplay(dateStr: string | null | undefined): string {
   }
   // Otherwise return as-is
   return dateStr;
+}
+
+// Map branch names from import data to actual branch names
+function mapBranchName(importBranch: string | undefined, availableBranches: Branch[]): string {
+  if (!importBranch) return "";
+  
+  // Create mapping for common variations
+  const branchMapping: Record<string, string> = {
+    "Can Tho": "Cần Thơ",
+    "Bac Ninh": "Bắc Ninh",
+    "TW": "Taiwan",
+    "Sing": "Singapore", 
+    "Khác": "Khác",
+    "Ho Chi Minh": "Hồ Chí Minh", 
+    "Ha Noi": "Hà Nội",
+    "Da Nang": "Đà Nẵng",
+    // Add more mappings as needed
+  };
+  
+  // First try direct mapping
+  if (branchMapping[importBranch]) {
+    const mappedName = branchMapping[importBranch];
+    // Check if mapped name exists in available branches
+    if (availableBranches.some(b => b.name === mappedName)) {
+      return mappedName;
+    }
+  }
+  
+  // If no mapping found, try to find exact match
+  if (availableBranches.some(b => b.name === importBranch)) {
+    return importBranch;
+  }
+  
+  // If still no match, return original value
+  return importBranch;
 }
 
 
@@ -324,6 +375,14 @@ function LeadForm({
             }
           }
         }
+
+        // Map branch name if it's from import data
+        if (initial.branch) {
+          const mappedBranch = mapBranchName(initial.branch, branches);
+          if (mappedBranch !== initial.branch) {
+            setForm(f => ({ ...f, branch: mappedBranch }));
+          }
+        }
       } catch (error) {
         console.error("Failed to load data:", error);
       } finally {
@@ -417,9 +476,9 @@ function LeadForm({
         />
         <Input
           type="text"
-          label="Tên thật khách hàng"
+          label="Họ và tên khách hàng"
           isRequired
-          placeholder="Tên thật"
+          placeholder="Nhập họ và tên"
           value={form.customer_name}
           onChange={(e) => set("customer_name", e.target.value)}
         />
@@ -670,6 +729,16 @@ export function LeadsManagerContent({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [csProfiles, setCSProfiles] = useState<CSProfile[]>([]);
 
+  // Import states
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<string>("");
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   // Advanced filters - temporary state in popover
   const [tempFilters, setTempFilters] = useState<FilterState>({
     dateFrom: "",
@@ -863,6 +932,127 @@ export function LeadsManagerContent({
 
   // ─── Import Functions ─────────────────────────────────────────────────────
 
+  // Map branch names from import data to actual branch names
+  function mapImportBranchName(importBranch: string | undefined): string {
+    if (!importBranch) return "";
+    
+    const branchMapping: Record<string, string> = {
+      // Code mapping (từ code ngắn sang tên đầy đủ)
+      "HN": "Hà Nội",
+      "CT": "Cần Thơ",
+      "HCM": "Hồ Chí Minh", 
+      "DN": "Đà Nẵng",
+      
+      // Text mapping (từ tên tiếng Anh sang tiếng Việt)
+      "Can Tho": "Cần Thơ",
+      "Bac Ninh": "Bắc Ninh",
+      "TW": "Taiwan",
+      "Sing": "Singapore", 
+      "Khác": "Khác",
+      "Ho Chi Minh": "Hồ Chí Minh", 
+      "Ha Noi": "Hà Nội",
+      "Da Nang": "Đà Nẵng",
+    };
+    
+    // Return mapped name if exists, otherwise return original
+    return branchMapping[importBranch] || importBranch;
+  }
+
+  async function handleImportUpload(file: File) {
+    setImportLoading(true);
+    setImportError(null);
+    setImportPreview(null);
+    setImportResult(null);
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    try {
+      const res = await fetch("/api/customers/import-preview", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Lỗi không xác định");
+      
+      // Map branch names in preview data
+      const mappedCustomers = json.customers.map((customer: CustomerLeadInput) => ({
+        ...customer,
+        branch: mapImportBranchName(customer.branch)
+      }));
+      
+      setImportPreview({
+        ...json,
+        customers: mappedCustomers
+      });
+      setImportFile(file);
+    } catch (e: any) {
+      setImportError(e.message);
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleImportUpload(file);
+    e.target.value = "";
+  }
+
+  function handleImportDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleImportUpload(file);
+  }
+
+  async function confirmImport() {
+    if (!importPreview) return;
+
+    setImportLoading(true);
+    setImportError(null);
+    setImportProgress(`Đang import ${importPreview.customers.length} khách hàng...`);
+
+    try {
+      // Use batch import API for better performance
+      const res = await fetch("/api/customers/import-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customers: importPreview.customers }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || json.details || "Lỗi không xác định");
+      }
+
+      const results: ImportResult = {
+        success: json.success || 0,
+        failed: json.failed || 0,
+        errors: json.errors || [],
+      };
+
+      setImportResult(results);
+      setImportProgress("");
+
+      // Reload data if any succeeded
+      if (results.success > 0) {
+        reload();
+      }
+    } catch (e: any) {
+      setImportError(e.message);
+      setImportProgress("");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function resetImport() {
+    setShowImport(false);
+    setImportFile(null);
+    setImportPreview(null);
+    setImportResult(null);
+    setImportError(null);
+    setImportProgress("");
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -879,7 +1069,7 @@ export function LeadsManagerContent({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <Button
               variant="bordered"
               startContent={<RefreshCw size={16} />}
@@ -887,6 +1077,13 @@ export function LeadsManagerContent({
               isLoading={isRefreshing}
             >
               Làm mới
+            </Button>
+            <Button
+              variant="bordered"
+              startContent={<Upload size={16} />}
+              onPress={() => setShowImport(true)}
+            >
+              Import Excel
             </Button>
             <Button
               color="primary"
@@ -949,7 +1146,7 @@ export function LeadsManagerContent({
             {/* Search and Filter Button */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Input
-                placeholder="Tìm kiếm theo tên Facebook, tên thật, SĐT, người phụ trách..."
+                placeholder="Tìm kiếm theo tên Facebook, họ và tên, SĐT, người phụ trách..."
                 value={search}
                 onValueChange={setSearch}
                 startContent={<Search size={16} className="text-default-400" />}
@@ -1294,6 +1491,217 @@ export function LeadsManagerContent({
         </ModalContent>
       </Modal>
 
+      {/* Import Modal */}
+      <Modal
+        isOpen={showImport}
+        onOpenChange={(open) => {
+          if (!open) resetImport();
+        }}
+        size="3xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-3">
+            <div className="p-2 bg-secondary/10 rounded-lg">
+              <FileSpreadsheet size={20} className="text-secondary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Import dữ liệu từ Excel</h3>
+              <p className="text-sm text-default-500">
+                {importResult ? "Kết quả import" : importPreview ? "Xem trước dữ liệu" : "Tải file Excel lên"}
+              </p>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            {/* Upload Zone */}
+            {!importPreview && !importResult && (
+              <div
+                onDrop={handleImportDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => importInputRef.current?.click()}
+                className="border-2 border-dashed border-default-300 rounded-xl p-12 text-center cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-colors"
+              >
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleImportFileChange}
+                />
+                <Upload size={48} className="mx-auto text-default-300 mb-4" />
+                <p className="font-medium text-lg mb-2">
+                  {importFile ? `Đã chọn: ${importFile.name}` : "Kéo thả file vào đây hoặc click để chọn"}
+                </p>
+                <p className="text-default-400 text-sm">Hỗ trợ .xlsx, .xls</p>
+              </div>
+            )}
+
+            {importLoading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                <p className="text-default-500">{importProgress || "Đang xử lý file..."}</p>
+              </div>
+            )}
+
+            {importError && (
+              <div className="bg-danger-50 text-danger border border-danger-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1">Lỗi khi xử lý file</p>
+                  <p className="text-sm">{importError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Preview */}
+            {importPreview && !importResult && (
+              <div className="space-y-4">
+                <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <FileSpreadsheet size={20} className="text-secondary" />
+                    <div>
+                      <p className="font-medium">Sheet: {importPreview.sheet}</p>
+                      <p className="text-sm text-default-500">
+                        Tìm thấy {importPreview.total} khách hàng
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-default-600">
+                    <p className="mb-2">Dữ liệu sẽ được import vào hệ thống. Chi nhánh đã được tự động mapping.</p>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className="border border-default-200 rounded-lg overflow-hidden">
+                  <div className="bg-default-100 px-4 py-2 font-medium text-sm">
+                    Xem trước {Math.min(5, importPreview.customers.length)} khách hàng đầu tiên
+                  </div>
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-default-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">#</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">Ngày</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">Tên khách hàng</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">SĐT</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">Chi nhánh</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">Nguồn</th>
+                          <th className="px-3 py-2 text-left font-medium text-default-600">Tình trạng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.customers.slice(0, 5).map((customer, i) => (
+                          <tr key={i} className="border-t border-default-100">
+                            <td className="px-3 py-2">{i + 1}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{formatDateDisplay(customer.date)}</td>
+                            <td className="px-3 py-2 font-medium">{customer.customer_name}</td>
+                            <td className="px-3 py-2">{customer.phone_number || "—"}</td>
+                            <td className="px-3 py-2">
+                              <Chip size="sm" variant="flat" color="primary">
+                                {customer.branch || "—"}
+                              </Chip>
+                            </td>
+                            <td className="px-3 py-2">{customer.source || "—"}</td>
+                            <td className="px-3 py-2">
+                              {customer.lead_status ? (
+                                <Chip size="sm" {...leadStatusColor(customer.lead_status)}>
+                                  {customer.lead_status}
+                                </Chip>
+                              ) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {importPreview.customers.length > 5 && (
+                    <div className="bg-default-50 px-4 py-2 text-sm text-default-500 text-center">
+                      ... và {importPreview.customers.length - 5} khách hàng khác
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Result */}
+            {importResult && (
+              <div className="space-y-4">
+                <div className={`border rounded-lg p-4 ${importResult.failed === 0
+                    ? "bg-success-50 border-success-200"
+                    : "bg-warning-50 border-warning-200"
+                  }`}>
+                  <div className="flex items-start gap-3">
+                    {importResult.failed === 0 ? (
+                      <CheckCircle size={24} className="text-success flex-shrink-0" />
+                    ) : (
+                      <AlertCircle size={24} className="text-warning flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <p className="font-medium text-lg mb-2">
+                        {importResult.failed === 0
+                          ? "Import thành công!"
+                          : "Import hoàn tất với một số lỗi"}
+                      </p>
+                      <div className="space-y-1 text-sm">
+                        <p className="text-success">
+                          ✓ Thành công: <span className="font-semibold">{importResult.success}</span> khách hàng
+                        </p>
+                        {importResult.failed > 0 && (
+                          <p className="text-danger">
+                            ✗ Thất bại: <span className="font-semibold">{importResult.failed}</span> khách hàng
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {importResult.errors.length > 0 && (
+                  <div className="border border-danger-200 rounded-lg overflow-hidden">
+                    <div className="bg-danger-50 px-4 py-2 font-medium text-sm text-danger">
+                      Chi tiết lỗi
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <ul className="divide-y divide-default-100">
+                        {importResult.errors.map((error, i) => (
+                          <li key={i} className="px-4 py-2 text-sm text-default-600">
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            {!importResult && (
+              <>
+                <Button variant="bordered" onPress={resetImport}>
+                  Hủy
+                </Button>
+                {importPreview && (
+                  <Button
+                    color="secondary"
+                    onPress={confirmImport}
+                    isLoading={importLoading}
+                    startContent={<CheckCircle size={16} />}
+                  >
+                    Xác nhận Import
+                  </Button>
+                )}
+              </>
+            )}
+            {importResult && (
+              <Button color="primary" onPress={resetImport}>
+                Đóng
+              </Button>
+            )}
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Table */}
       <Card>
         <CardBody className="p-0">
@@ -1309,7 +1717,9 @@ export function LeadsManagerContent({
                 <TableColumn key="date">NGÀY</TableColumn>
                 <TableColumn key="person_in_charge">NGƯỜI PHỤ TRÁCH</TableColumn>
                 <TableColumn key="facebook_name">TÊN FACEBOOK</TableColumn>
-                <TableColumn key="customer_name">TÊN THẬT</TableColumn>
+                <TableColumn key="final_outcome" className="w-[220px] max-w-[220px]">
+                  KẾT QUẢ HỒ SƠ
+                </TableColumn>
                 <TableColumn key="phone_number">SỐ ĐIỆN THOẠI</TableColumn>
                 <TableColumn key="branch">CHI NHÁNH</TableColumn>
                 <TableColumn key="source">NGUỒN</TableColumn>
@@ -1344,13 +1754,15 @@ export function LeadsManagerContent({
                     <TableCell>
                       <span className="text-sm whitespace-nowrap">{formatDateDisplay(item.date) || "—"}</span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                    <TableCell className="whitespace-nowrap">
+                      <div className="flex flex-nowrap gap-1 items-center">
                         {item.person_in_charge
-                          ? item.person_in_charge.split(", ").map((name) => (
-                            <Chip key={name} size="sm" variant="flat" color="primary">{name}</Chip>
+                          ? item.person_in_charge.split(", ").map((name, i) => (
+                            <Chip key={`${name}-${i}`} size="sm" variant="flat" color="primary">
+                              {name}
+                            </Chip>
                           ))
-                          : "—"}
+                          : <span className="text-default-300">—</span>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1362,8 +1774,27 @@ export function LeadsManagerContent({
                         ) : (item.facebook_name || "—")}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <span className="font-medium whitespace-nowrap">{item.customer_name}</span>
+                    <TableCell className="w-[120px] max-w-[120px] align-top">
+                      {item.final_outcome ? (
+                        <Tooltip
+                          content={item.final_outcome}
+                          placement="top"
+                          delay={200}
+                          closeDelay={0}
+                          classNames={{
+                            content: "max-w-sm whitespace-normal text-small py-2 px-3",
+                          }}
+                        >
+                          <div
+                            tabIndex={0}
+                            className="text-sm truncate min-w-0 cursor-default outline-none"
+                          >
+                            {item.final_outcome}
+                          </div>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-default-300">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -1374,14 +1805,49 @@ export function LeadsManagerContent({
                     <TableCell>
                       <span className="text-sm whitespace-nowrap">{item.branch || "—"}</span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {item.source
-                          ? item.source.split(", ").map((src) => (
-                            <Chip key={src} size="sm" variant="flat" color="secondary">{src}</Chip>
-                          ))
-                          : "—"}
-                      </div>
+                    <TableCell className="whitespace-nowrap">
+                      {(() => {
+                        const sources = item.source
+                          ? item.source.split(", ").map((s) => s.trim()).filter(Boolean)
+                          : [];
+                        if (sources.length === 0) {
+                          return <span className="text-default-300">—</span>;
+                        }
+                        
+                        // Hiển thị tối đa 1 chip đầu tiên
+                        const firstSource = sources[0];
+                        const remainingCount = sources.length - 1;
+                        
+                        return (
+                          <div className="flex flex-nowrap gap-1 items-center">
+                            <Chip size="sm" variant="flat" color="secondary">
+                              {firstSource}
+                            </Chip>
+                            {remainingCount > 0 && (
+                              <Tooltip
+                                content={
+                                  <div className="flex flex-wrap gap-1 max-w-xs">
+                                    <div className="text-xs text-default-500 mb-1 w-full">Tất cả nguồn:</div>
+                                    {sources.map((src, i) => (
+                                      <Chip key={`${src}-${i}`} size="sm" variant="flat" color="secondary">
+                                        {src}
+                                      </Chip>
+                                    ))}
+                                  </div>
+                                }
+                                placement="top"
+                                delay={200}
+                                closeDelay={0}
+                                classNames={{ content: "p-2" }}
+                              >
+                                <Chip size="sm" variant="flat" color="default" className="cursor-help">
+                                  +{remainingCount}
+                                </Chip>
+                              </Tooltip>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm whitespace-nowrap">{item.case_status || "—"}</span>

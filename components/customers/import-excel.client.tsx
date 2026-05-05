@@ -9,6 +9,7 @@ interface CustomerRow {
   date: string;
   time_slot: string;
   person_in_charge: string;
+  facebook_name: string;
   customer_name: string;
   phone_number: string;
   branch: string;
@@ -59,7 +60,8 @@ const COLUMNS: { key: keyof CustomerRow; label: string; width?: string }[] = [
   { key: "date", label: "Ngày", width: "90px" },
   { key: "time_slot", label: "Khung giờ", width: "80px" },
   { key: "person_in_charge", label: "Người phụ trách", width: "130px" },
-  { key: "customer_name", label: "Tên khách hàng", width: "160px" },
+  { key: "facebook_name", label: "Tên Facebook", width: "160px" },
+  { key: "customer_name", label: "Họ và tên", width: "160px" },
   { key: "phone_number", label: "SĐT KH", width: "110px" },
   { key: "branch", label: "Chi nhánh", width: "100px" },
   { key: "loan_amount", label: "Nhu cầu vay (VND)", width: "140px" },
@@ -145,6 +147,7 @@ export function ImportExcelContent() {
     const q = search.toLowerCase();
     return (
       c.customer_name.toLowerCase().includes(q) ||
+      c.facebook_name.toLowerCase().includes(q) ||
       c.phone_number.includes(q) ||
       c.person_in_charge.toLowerCase().includes(q) ||
       c.branch.toLowerCase().includes(q) ||
@@ -205,11 +208,10 @@ export function ImportExcelContent() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                  tab === t
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${tab === t
                     ? "bg-primary text-white"
                     : "text-default-500 hover:text-foreground hover:bg-default-100"
-                }`}
+                  }`}
               >
                 {t === "report" ? "📊 Báo cáo tuần" : t === "by-person" ? "👤 Theo người phụ trách" : "📋 Dữ liệu chi tiết"}
               </button>
