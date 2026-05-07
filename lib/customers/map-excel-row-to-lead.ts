@@ -50,6 +50,18 @@ type TExcelMappedFields = {
   referrer_phone?: string;
 };
 
+function parseStringArrayCell(value: string | undefined): string[] | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  const items = trimmed
+    .split(/[,;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : undefined;
+}
+
 export function mapExcelCustomerRowToLeadInput(
   row: TExcelMappedFields,
 ): CustomerLeadInput | null {
@@ -67,7 +79,7 @@ export function mapExcelCustomerRowToLeadInput(
   return {
     ...(isoDate ? { date: isoDate } : {}),
     time_slot: row.time_slot?.trim() || undefined,
-    person_in_charge: row.person_in_charge?.trim() || undefined,
+    person_in_charge: parseStringArrayCell(row.person_in_charge),
     facebook_name: fbName || undefined,
     customer_name: realName,
     customer_link: undefined,
@@ -75,7 +87,7 @@ export function mapExcelCustomerRowToLeadInput(
     branch: row.branch?.trim() || undefined,
     loan_amount: parseMoneyCell(row.loan_amount),
     collateral_type: row.collateral_type?.trim() || undefined,
-    source: row.source?.trim() || undefined,
+    source: parseStringArrayCell(row.source),
     from_ads: row.from_ads?.trim() || undefined,
     engagement_status: row.engagement_status?.trim() || undefined,
     case_status: row.case_status?.trim() || undefined,

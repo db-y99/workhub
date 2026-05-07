@@ -1001,7 +1001,6 @@ function LeadForm({
         <Input
           type="text"
           label="Họ và tên khách hàng"
-          isRequired
           placeholder="Nhập họ và tên"
           value={form.customer_name}
           onChange={(e) => set("customer_name", e.target.value)}
@@ -2118,8 +2117,12 @@ export function LeadsManagerContent({
           <Modal
             isOpen={showImport}
             onOpenChange={(open) => {
-              if (!open) resetImport();
+              if (!open && !importLoading) {
+                resetImport();
+              }
             }}
+            isDismissable={!importLoading}
+            isKeyboardDismissDisabled={importLoading}
             size="3xl"
             scrollBehavior="inside"
           >
@@ -2307,7 +2310,11 @@ export function LeadsManagerContent({
               <ModalFooter>
                 {!importResult && (
                   <>
-                    <Button variant="bordered" onPress={resetImport}>
+                    <Button 
+                      variant="bordered" 
+                      onPress={resetImport}
+                      isDisabled={importLoading}
+                    >
                       Hủy
                     </Button>
                     {importPreview && (
@@ -2315,9 +2322,10 @@ export function LeadsManagerContent({
                         color="secondary"
                         onPress={confirmImport}
                         isLoading={importLoading}
-                        startContent={<CheckCircle2 size={16} />}
+                        isDisabled={importLoading}
+                        startContent={!importLoading && <CheckCircle2 size={16} />}
                       >
-                        Xác nhận Import
+                        {importLoading ? "Đang import..." : "Xác nhận Import"}
                       </Button>
                     )}
                   </>
