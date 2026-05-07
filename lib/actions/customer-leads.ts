@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/actions/auth";
 export interface CustomerLeadInput {
   date?: string;
   time_slot?: string;
-  person_in_charge?: string;
+  person_in_charge?: string[]; // Changed to array
   facebook_name?: string; // Tên trên Facebook
   customer_name: string; // Họ và tên (hiển thị trong UI)
   customer_link?: string;
@@ -14,7 +14,7 @@ export interface CustomerLeadInput {
   branch?: string;
   loan_amount?: number | null;
   collateral_type?: string;
-  source?: string;
+  source?: string[]; // Changed to array
   from_ads?: string;
   engagement_status?: string;
   case_status?: string;
@@ -78,7 +78,7 @@ export async function getCustomerLeads(params: GetCustomerLeadsParams = {}) {
 
   if (search) {
     query = query.or(
-      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,person_in_charge.ilike.%${search}%,branch.ilike.%${search}%`,
+      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,branch.ilike.%${search}%`,
     );
   }
 
@@ -87,7 +87,8 @@ export async function getCustomerLeads(params: GetCustomerLeadsParams = {}) {
   }
 
   if (source && source !== "all") {
-    query = query.ilike("source", `%${source}%`);
+    // Use array contains operator for text[]
+    query = query.contains("source", [source]);
   }
 
   if (dateFrom) {
@@ -123,7 +124,8 @@ export async function getCustomerLeads(params: GetCustomerLeadsParams = {}) {
   }
 
   if (personInCharge && personInCharge !== "all") {
-    query = query.ilike("person_in_charge", `%${personInCharge}%`);
+    // Use array contains operator for text[]
+    query = query.contains("person_in_charge", [personInCharge]);
   }
 
   const from = (page - 1) * pageSize;
@@ -163,12 +165,12 @@ export async function getCustomerLeadsStats(
 
   if (search) {
     baseQuery = baseQuery.or(
-      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,person_in_charge.ilike.%${search}%,branch.ilike.%${search}%`,
+      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,branch.ilike.%${search}%`,
     );
   }
 
   if (source && source !== "all") {
-    baseQuery = baseQuery.ilike("source", `%${source}%`);
+    baseQuery = baseQuery.contains("source", [source]);
   }
 
   if (dateFrom) {
@@ -204,7 +206,7 @@ export async function getCustomerLeadsStats(
   }
 
   if (personInCharge && personInCharge !== "all") {
-    baseQuery = baseQuery.ilike("person_in_charge", `%${personInCharge}%`);
+    baseQuery = baseQuery.contains("person_in_charge", [personInCharge]);
   }
 
   // Get total count
@@ -218,11 +220,11 @@ export async function getCustomerLeadsStats(
 
   if (search) {
     disbursedQuery = disbursedQuery.or(
-      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,person_in_charge.ilike.%${search}%,branch.ilike.%${search}%`,
+      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,branch.ilike.%${search}%`,
     );
   }
   if (source && source !== "all")
-    disbursedQuery = disbursedQuery.ilike("source", `%${source}%`);
+    disbursedQuery = disbursedQuery.contains("source", [source]);
   if (dateFrom) disbursedQuery = disbursedQuery.gte("date", dateFrom);
   if (dateTo) disbursedQuery = disbursedQuery.lte("date", dateTo);
   if (branch && branch !== "all")
@@ -238,10 +240,7 @@ export async function getCustomerLeadsStats(
   if (collateralType && collateralType !== "all")
     disbursedQuery = disbursedQuery.eq("collateral_type", collateralType);
   if (personInCharge && personInCharge !== "all")
-    disbursedQuery = disbursedQuery.ilike(
-      "person_in_charge",
-      `%${personInCharge}%`,
-    );
+    disbursedQuery = disbursedQuery.contains("person_in_charge", [personInCharge]);
 
   const { count: disbursed } = await disbursedQuery;
 
@@ -253,11 +252,11 @@ export async function getCustomerLeadsStats(
 
   if (search) {
     rejectedQuery = rejectedQuery.or(
-      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,person_in_charge.ilike.%${search}%,branch.ilike.%${search}%`,
+      `facebook_name.ilike.%${search}%,customer_name.ilike.%${search}%,phone_number.ilike.%${search}%,branch.ilike.%${search}%`,
     );
   }
   if (source && source !== "all")
-    rejectedQuery = rejectedQuery.ilike("source", `%${source}%`);
+    rejectedQuery = rejectedQuery.contains("source", [source]);
   if (dateFrom) rejectedQuery = rejectedQuery.gte("date", dateFrom);
   if (dateTo) rejectedQuery = rejectedQuery.lte("date", dateTo);
   if (branch && branch !== "all")
@@ -273,10 +272,7 @@ export async function getCustomerLeadsStats(
   if (collateralType && collateralType !== "all")
     rejectedQuery = rejectedQuery.eq("collateral_type", collateralType);
   if (personInCharge && personInCharge !== "all")
-    rejectedQuery = rejectedQuery.ilike(
-      "person_in_charge",
-      `%${personInCharge}%`,
-    );
+    rejectedQuery = rejectedQuery.contains("person_in_charge", [personInCharge]);
 
   const { count: rejected } = await rejectedQuery;
 

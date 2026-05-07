@@ -152,7 +152,11 @@ const ENGAGEMENT_STATUS_OPTIONS = [
   "Đã gọi",
 ];
 
-const COLLATERAL_OPTIONS = ["Cavet xe máy", "Cavet oto", "iPhone", "Laptop", "Khác"];
+const COLLATERAL_OPTIONS = [
+  "iPhone",
+  "Ca-vet",
+  "Khác"
+];
 
 const CASE_STATUS_OPTIONS = [
   "Đang xử lý",
@@ -175,7 +179,7 @@ const FINAL_OUTCOME_OPTIONS = [
 const EMPTY_FORM: CustomerLeadInput = {
   date: new Date().toISOString().split('T')[0], // Ngày hôm nay yyyy-mm-dd
   time_slot: new Date().toTimeString().slice(0, 5), // Giờ phút hiện tại HH:MM
-  person_in_charge: "",
+  person_in_charge: [],
   facebook_name: "",
   customer_name: "",
   customer_link: "",
@@ -183,7 +187,7 @@ const EMPTY_FORM: CustomerLeadInput = {
   branch: "",
   loan_amount: null,
   collateral_type: "",
-  source: "",
+  source: [],
   from_ads: "",
   engagement_status: "",
   case_status: "",
@@ -228,15 +232,26 @@ function mapBranchName(importBranch: string | undefined, availableBranches: Bran
   
   // Create mapping for common variations
   const branchMapping: Record<string, string> = {
-    "Can Tho": "Cần Thơ",
-    "Bac Ninh": "Bắc Ninh",
-    "TW": "Taiwan",
-    "Sing": "Singapore", 
+    // Code mappings
+    "CT": "Chi nhánh Cần Thơ",
+    "BN": "Chi nhánh Bắc Ninh",
+    "TW": "Chi nhánh TW",
+    "SING": "Chi nhánh Sing",
+    
+    // Name variations
+    "Can Tho": "Chi nhánh Cần Thơ",
+    "Cần Thơ": "Chi nhánh Cần Thơ",
+    "Bac Ninh": "Chi nhánh Bắc Ninh",
+    "Bắc Ninh": "Chi nhánh Bắc Ninh",
+    "Taiwan": "Chi nhánh TW",
+    "Sing": "Chi nhánh Sing",
+    "Singapore": "Chi nhánh Sing",
+    
+    // Legacy mappings
     "Khác": "Khác",
     "Ho Chi Minh": "Hồ Chí Minh", 
     "Ha Noi": "Hà Nội",
     "Da Nang": "Đà Nẵng",
-    // Add more mappings as needed
   };
   
   // First try direct mapping
@@ -346,9 +361,38 @@ function LeadForm({
   saving: boolean;
   branches: Branch[];
 }) {
-  const [form, setForm] = useState<CustomerLeadInput>(initial);
+  const [form, setForm] = useState<CustomerLeadInput>(() => {
+    // Normalize initial data: convert string to array if needed
+    const personInCharge = initial.person_in_charge as string[] | string | undefined;
+    const source = initial.source as string[] | string | undefined;
+    
+    return {
+      ...initial,
+      person_in_charge: Array.isArray(personInCharge)
+        ? personInCharge
+        : typeof personInCharge === 'string' && personInCharge
+          ? personInCharge.split(", ")
+          : [],
+      source: Array.isArray(source)
+        ? source
+        : typeof source === 'string' && source
+          ? source.split(", ")
+          : [],
+    };
+  });
   const [csProfiles, setCSProfiles] = useState<CSProfile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
+
+  // Normalize final_outcome value to match options
+  useEffect(() => {
+    if (initial.final_outcome) {
+      const trimmed = initial.final_outcome.trim();
+      const matchingOption = FINAL_OUTCOME_OPTIONS.find((opt) => opt === trimmed);
+      if (matchingOption && matchingOption !== initial.final_outcome) {
+        setForm((f) => ({ ...f, final_outcome: matchingOption }));
+      }
+    }
+  }, [initial.final_outcome]);
 
   // Load CS profiles when component mounts
   useEffect(() => {
@@ -394,7 +438,7 @@ function LeadForm({
     loadData();
   }, [initial.branch, branches]);
 
-  function set(key: keyof CustomerLeadInput, value: string | number | null) {
+  function set(key: keyof CustomerLeadInput, value: string | number | null | string[]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -445,10 +489,10 @@ function LeadForm({
           label="Người phụ trách (Person in Charge)"
           placeholder="-- Chọn người phụ trách --"
           selectionMode="multiple"
-          selectedKeys={form.person_in_charge ? form.person_in_charge.split(", ") : []}
+          selectedKeys={form.person_in_charge || []}
           onSelectionChange={(keys) => {
             const selectedArray = Array.from(keys) as string[];
-            set("person_in_charge", selectedArray.join(", "));
+            set("person_in_charge", selectedArray);
           }}
           isLoading={loadingProfiles}
           renderValue={(items) => (
@@ -544,10 +588,10 @@ function LeadForm({
           label="Nguồn (Source)"
           placeholder="-- Chọn nguồn --"
           selectionMode="multiple"
-          selectedKeys={form.source ? form.source.split(", ") : []}
+          selectedKeys={form.source || []}
           onSelectionChange={(keys) => {
             const selectedArray = Array.from(keys) as string[];
-            set("source", selectedArray.join(", "));
+            set("source", selectedArray);
           }}
         >
           {SOURCE_OPTIONS.map((option) => (
@@ -609,7 +653,7 @@ function LeadForm({
           }}
         >
           {FINAL_OUTCOME_OPTIONS.map((option) => (
-            <SelectItem key={option}>
+            <SelectItem key={option} textValue={option}>
               <Tooltip content={option} placement="right" delay={300} closeDelay={0}>
                 <span className="block truncate max-w-[220px]">{option}</span>
               </Tooltip>
@@ -940,16 +984,24 @@ export function LeadsManagerContent({
     
     const branchMapping: Record<string, string> = {
       // Code mapping (từ code ngắn sang tên đầy đủ)
+      "CT": "Chi nhánh Cần Thơ",
+      "BN": "Chi nhánh Bắc Ninh",
+      "TW": "Chi nhánh TW",
+      "SING": "Chi nhánh Sing",
+      
+      // Name variations
+      "Can Tho": "Chi nhánh Cần Thơ",
+      "Cần Thơ": "Chi nhánh Cần Thơ",
+      "Bac Ninh": "Chi nhánh Bắc Ninh",
+      "Bắc Ninh": "Chi nhánh Bắc Ninh",
+      "Taiwan": "Chi nhánh TW",
+      "Sing": "Chi nhánh Sing",
+      "Singapore": "Chi nhánh Sing",
+      
+      // Legacy mappings
       "HN": "Hà Nội",
-      "CT": "Cần Thơ",
       "HCM": "Hồ Chí Minh", 
       "DN": "Đà Nẵng",
-      
-      // Text mapping (từ tên tiếng Anh sang tiếng Việt)
-      "Can Tho": "Cần Thơ",
-      "Bac Ninh": "Bắc Ninh",
-      "TW": "Taiwan",
-      "Sing": "Singapore", 
       "Khác": "Khác",
       "Ho Chi Minh": "Hồ Chí Minh", 
       "Ha Noi": "Hà Nội",
@@ -1738,7 +1790,6 @@ export function LeadsManagerContent({
               <TableBody
                 items={leads}
                 isLoading={isPending || isRefreshing}
-                loadingContent={<Skeleton className="w-full h-8" />}
                 emptyContent={
                   <div className="text-center py-8">
                     <Users size={48} className="mx-auto text-default-300 mb-4" />
@@ -1764,13 +1815,23 @@ export function LeadsManagerContent({
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <div className="flex flex-nowrap gap-1 items-center">
-                        {item.person_in_charge
-                          ? item.person_in_charge.split(", ").map((name, i) => (
-                            <Chip key={`${name}-${i}`} size="sm" variant="flat" color="primary">
-                              {name}
-                            </Chip>
-                          ))
-                          : <span className="text-default-300">—</span>}
+                        {(() => {
+                          // Handle both string (old data) and array (new data)
+                          const personInCharge = item.person_in_charge as string[] | string | undefined;
+                          const persons = Array.isArray(personInCharge)
+                            ? personInCharge
+                            : typeof personInCharge === 'string' && personInCharge
+                              ? personInCharge.split(", ")
+                              : [];
+                          
+                          return persons.length > 0
+                            ? persons.map((name: string, i: number) => (
+                              <Chip key={`${name}-${i}`} size="sm" variant="flat" color="primary">
+                                {name}
+                              </Chip>
+                            ))
+                            : <span className="text-default-300">—</span>;
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1815,8 +1876,8 @@ export function LeadsManagerContent({
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {(() => {
-                        const sources = item.source
-                          ? item.source.split(", ").map((s) => s.trim()).filter(Boolean)
+                        const sources = item.source && item.source.length > 0
+                          ? item.source
                           : [];
                         if (sources.length === 0) {
                           return <span className="text-default-300">—</span>;
@@ -1946,16 +2007,26 @@ export function LeadsManagerContent({
 
               <ModalBody className="py-4 gap-3">
                 {/* Người phụ trách */}
-                {viewTarget.person_in_charge && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-default-400">Người phụ trách</span>
-                    <div className="flex flex-wrap gap-1">
-                      {viewTarget.person_in_charge.split(", ").map((n) => (
-                        <Chip key={n} size="sm" variant="flat" color="primary">{n}</Chip>
-                      ))}
+                {(() => {
+                  // Handle both string (old data) and array (new data)
+                  const personInCharge = viewTarget.person_in_charge as string[] | string | undefined;
+                  const persons = Array.isArray(personInCharge)
+                    ? personInCharge
+                    : typeof personInCharge === 'string' && personInCharge
+                      ? personInCharge.split(", ")
+                      : [];
+                  
+                  return persons.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-default-400">Người phụ trách</span>
+                      <div className="flex flex-wrap gap-1">
+                        {persons.map((n: string) => (
+                          <Chip key={n} size="sm" variant="flat" color="primary">{n}</Chip>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
 
                 {/* Hồ sơ vay */}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -1974,11 +2045,21 @@ export function LeadsManagerContent({
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-default-400">Nguồn</span>
                   <div className="flex flex-wrap gap-1">
-                    {viewTarget.source
-                      ? viewTarget.source.split(", ").map((s) => (
-                        <Chip key={s} size="sm" variant="flat" color="secondary">{s}</Chip>
-                      ))
-                      : <span className="text-sm text-default-300">—</span>}
+                    {(() => {
+                      // Handle both string (old data) and array (new data)
+                      const source = viewTarget.source as string[] | string | undefined;
+                      const sources = Array.isArray(source)
+                        ? source
+                        : typeof source === 'string' && source
+                          ? source.split(", ")
+                          : [];
+                      
+                      return sources.length > 0
+                        ? sources.map((s: string) => (
+                          <Chip key={s} size="sm" variant="flat" color="secondary">{s}</Chip>
+                        ))
+                        : <span className="text-sm text-default-300">—</span>;
+                    })()}
                   </div>
                 </div>
 

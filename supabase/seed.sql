@@ -16,6 +16,18 @@ INSERT INTO public.departments (name, code, description, email) VALUES
   ('Manager', 'Manager', 'Bộ phận Manager', 'manager@y99.vn')
 ON CONFLICT (code) DO NOTHING;
 
+-- Branches (Chi nhánh)
+INSERT INTO public.branches (id, name, code, address, status) VALUES
+  ('8cd1be01-1424-447e-a003-ee1feeeee681', 'Chi nhánh Sing', 'SING', NULL, 'active'),
+  ('a6533061-b4e5-43af-b02e-c7977987efbd', 'Chi nhánh Cần Thơ', 'CT', '99B Nguyễn Trãi, Ninh Kiều, Cần Thơ', 'active'),
+  ('b98b5431-4e76-4152-92f5-48310987b6c1', 'Chi nhánh TW', 'TW', NULL, 'active'),
+  ('e7ec8f19-dae8-4e38-864a-1d2e2c858ca4', 'Chi nhánh Bắc Ninh', 'BN', NULL, 'active')
+ON CONFLICT (code) DO UPDATE SET
+  name = EXCLUDED.name,
+  address = EXCLUDED.address,
+  status = EXCLUDED.status,
+  updated_at = NOW();
+
 -- Permissions: seed đầy đủ các trang chính
 INSERT INTO public.permissions (code, name, sort_order) VALUES
   ('approve:view', 'Xem Duyệt yêu cầu', 1),

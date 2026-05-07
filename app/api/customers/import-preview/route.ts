@@ -30,6 +30,59 @@ export async function POST(request: NextRequest) {
     const headers = jsonData[0] as string[];
     const rows = jsonData.slice(1) as any[][];
 
+    // Normalize collateral type values
+    const normalizeCollateralType = (value: string): string => {
+      const normalized = value.trim().toLowerCase();
+      
+      const collateralMapping: Record<string, string> = {
+        // All cavet variations map to "Ca-vet"
+        "cavet": "Ca-vet",
+        "ca-vet": "Ca-vet",
+        "cavet xe máy": "Ca-vet",
+        "cavet xe may": "Ca-vet",
+        "cavet oto": "Ca-vet",
+        "cavet ô tô": "Ca-vet",
+        
+        // All iPhone variations map to "iPhone"
+        "iphone": "iPhone",
+        "i phone": "iPhone",
+        
+        // Laptop maps to "Khác"
+        "laptop": "Khác",
+        
+        // Khác variations
+        "khác": "Khác",
+        "khac": "Khác",
+      };
+      
+      return collateralMapping[normalized] || value;
+    };
+
+    // Normalize final outcome values
+    const normalizeFinalOutcome = (value: string): string => {
+      const trimmed = value.trim();
+      
+      // Map common variations to exact values in FINAL_OUTCOME_OPTIONS
+      const outcomeMapping: Record<string, string> = {
+        "đang tư vấn": "Đang tư vấn",
+        "Đang tư vấn": "Đang tư vấn",
+        "đã tư vấn xong": "Đã tư vấn xong",
+        "Đã tư vấn xong": "Đã tư vấn xong",
+        "đã giải ngân": "Đã giải ngân",
+        "Đã giải ngân": "Đã giải ngân",
+        "từ chối": "Từ chối",
+        "Từ chối": "Từ chối",
+        "im lặng hoặc từ chối sau tin nhắn đầu tiên": "Im lặng hoặc từ chối sau tin nhắn đầu tiên",
+        "Im lặng hoặc từ chối sau tin nhắn đầu tiên": "Im lặng hoặc từ chối sau tin nhắn đầu tiên",
+        "im lặng hoặc từ chối sau khi gửi bảng phỏng": "Im lặng hoặc từ chối sau khi gửi bảng phỏng",
+        "Im lặng hoặc từ chối sau khi gửi bảng phỏng": "Im lặng hoặc từ chối sau khi gửi bảng phỏng",
+        "im lặng hoặc từ chối khi báo hạn mức": "Im lặng hoặc từ chối khi báo hạn mức",
+        "Im lặng hoặc từ chối khi báo hạn mức": "Im lặng hoặc từ chối khi báo hạn mức",
+      };
+      
+      return outcomeMapping[trimmed] || trimmed;
+    };
+
     // Map Excel columns to our fields
     // Function to normalize header by removing extra spaces and checking for matches
     const normalizeHeader = (header: string): keyof CustomerLeadInput | null => {
@@ -233,11 +286,36 @@ export async function POST(request: NextRequest) {
                   customer[fieldName] = dateStr;
                 }
               }
+            } else if (fieldName === "time_slot") {
+              // Handle time conversion
+              if (typeof value === "number") {
+                // Excel time serial number (0.0 to 1.0 represents 00:00 to 24:00)
+                const totalMinutes = Math.round(value * 24 * 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                customer[fieldName] = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+              } else {
+                // String time - keep as is or try to parse
+                const timeStr = String(value).trim();
+                if (timeStr !== "") {
+                  customer[fieldName] = timeStr;
+                }
+              }
             } else {
               // For other fields, only set if not empty
               const stringValue = String(value).trim();
               if (stringValue !== "") {
-                customer[fieldName] = stringValue;
+                // Normalize specific field values
+                if (fieldName === "collateral_type") {
+                  customer[fieldName] = normalizeCollateralType(stringValue);
+                } else if (fieldName === "final_outcome") {
+                  customer[fieldName] = normalizeFinalOutcome(stringValue);
+                } else if (fieldName === "source" || fieldName === "person_in_charge") {
+                  // Convert comma-separated string to array
+                  customer[fieldName] = stringValue.split(",").map(s => s.trim()).filter(Boolean);
+                } else {
+                  customer[fieldName] = stringValue;
+                }
               }
             }
           }
@@ -248,7 +326,9 @@ export async function POST(request: NextRequest) {
         // 2. Must have person_in_charge
         
         const hasCustomerName = customer.customer_name && customer.customer_name.trim() !== "";
-        const hasPersonInCharge = customer.person_in_charge && customer.person_in_charge.trim() !== "";
+        const hasPersonInCharge = customer.person_in_charge && 
+          Array.isArray(customer.person_in_charge) && 
+          customer.person_in_charge.length > 0;
         
         if (!hasCustomerName) {
           console.log(`Skipping row ${index + 2}: No customer name found`);
