@@ -220,6 +220,7 @@ const FINAL_OUTCOME_OPTIONS = [
   "Đã tư vấn xong",
   "Đã giải ngân",
   "Từ chối",
+  "Tương tác từ quảng cáo facebook",
   "Im lặng hoặc từ chối sau tin nhắn đầu tiên",
   "Im lặng hoặc từ chối sau khi gửi bảng phỏng",
   "Im lặng hoặc từ chối khi báo hạn mức",
@@ -471,8 +472,8 @@ function ReportTab({
               key={t}
               onClick={() => setActiveTab(t)}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === t
-                  ? "bg-primary text-white"
-                  : "text-default-500 hover:text-foreground hover:bg-default-100"
+                ? "bg-primary text-white"
+                : "text-default-500 hover:text-foreground hover:bg-default-100"
                 }`}
             >
               {t === "overview" ? "📊 Tổng quan" : "👤 Theo người phụ trách"}
@@ -2317,8 +2318,8 @@ export function LeadsManagerContent({
               <ModalFooter>
                 {!importResult && (
                   <>
-                    <Button 
-                      variant="bordered" 
+                    <Button
+                      variant="bordered"
                       onPress={resetImport}
                       isDisabled={importLoading}
                     >
@@ -2359,6 +2360,7 @@ export function LeadsManagerContent({
                 >
                   <TableHeader>
                     <TableColumn key="date">NGÀY</TableColumn>
+                    <TableColumn key="time_slot">KHUNG GIỜ</TableColumn>
                     <TableColumn key="person_in_charge">NGƯỜI PHỤ TRÁCH</TableColumn>
                     <TableColumn key="facebook_name">TÊN FACEBOOK</TableColumn>
                     <TableColumn key="final_outcome" className="w-[220px] max-w-[220px]">
@@ -2396,6 +2398,9 @@ export function LeadsManagerContent({
                       <TableRow key={item.id} className="hover:bg-default-50">
                         <TableCell>
                           <span className="text-sm whitespace-nowrap">{formatDateDisplay(item.date) || "—"}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm whitespace-nowrap">{item.time_slot || "—"}</span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-nowrap gap-1 items-center">

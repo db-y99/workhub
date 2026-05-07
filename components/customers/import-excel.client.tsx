@@ -325,7 +325,7 @@ export function ImportExcelContent() {
                 </table>
               </div>
               <p className="text-xs text-default-400">
-                MQL = MQL + SQL + Application + Rejected + Disbursed · SQL = SQL + Application + Rejected + Disbursed
+                Mỗi chỉ số chỉ đếm đúng status tương ứng (không cộng dồn funnel).
               </p>
             </div>
           )}

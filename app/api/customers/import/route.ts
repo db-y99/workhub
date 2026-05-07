@@ -108,23 +108,10 @@ function fmtDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-const MQL_SET = new Set([
-  "mql",
-  "sql",
-  "application",
-  "approved",
-  "rejected",
-  "disbursed",
-]);
-const SQL_SET = new Set([
-  "sql",
-  "application",
-  "approved",
-  "rejected",
-  "disbursed",
-]);
-const APP_SET = new Set(["application", "approved", "rejected", "disbursed"]);
-const APPROVED_SET = new Set(["approved", "disbursed"]);
+const MQL_SET = new Set(["mql"]);
+const SQL_SET = new Set(["sql"]);
+const APP_SET = new Set(["application"]);
+const APPROVED_SET = new Set(["approved"]);
 const DISBURSED_SET = new Set(["disbursed"]);
 
 function calcStats(rows: any[], weekLabel: string, layout: TImportLayout) {
