@@ -1248,7 +1248,14 @@ export function LeadsManagerContent({
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportPeriodType, setReportPeriodType] = useState<ReportPeriod>("weekly");
-  const [reportDateRange, setReportDateRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  const [reportDateRange, setReportDateRange] = useState<{ from: string; to: string }>(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return {
+      from: format(firstDayOfMonth, "yyyy-MM-dd"),
+      to: format(today, "yyyy-MM-dd"),
+    };
+  });
   const [editTarget, setEditTarget] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const [viewTarget, setViewTarget] = useState<Lead | null>(null);
