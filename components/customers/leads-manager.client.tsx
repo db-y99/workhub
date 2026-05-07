@@ -39,7 +39,7 @@ import {
   ChevronDown,
   Upload,
   FileSpreadsheet,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle
 } from "lucide-react";
 import {
@@ -98,6 +98,8 @@ type ImportPreviewData = {
   total: number;
   sheet: string;
   customers: CustomerLeadInput[];
+  skipped?: number;
+  message?: string;
 };
 
 type ImportResult = {
@@ -1562,12 +1564,18 @@ export function LeadsManagerContent({
                     <div>
                       <p className="font-medium">Sheet: {importPreview.sheet}</p>
                       <p className="text-sm text-default-500">
-                        Tìm thấy {importPreview.total} khách hàng
+                        Tìm thấy {importPreview.total} khách hàng hợp lệ
+                        {importPreview.skipped && importPreview.skipped > 0 && (
+                          <span className="text-warning"> (đã bỏ qua {importPreview.skipped} dòng)</span>
+                        )}
                       </p>
                     </div>
                   </div>
                   <div className="text-sm text-default-600">
                     <p className="mb-2">Dữ liệu sẽ được import vào hệ thống. Chi nhánh đã được tự động mapping.</p>
+                    {importPreview.message && (
+                      <p className="text-warning font-medium">⚠️ {importPreview.message}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1632,7 +1640,7 @@ export function LeadsManagerContent({
                   }`}>
                   <div className="flex items-start gap-3">
                     {importResult.failed === 0 ? (
-                      <CheckCircle size={24} className="text-success flex-shrink-0" />
+                      <CheckCircle2 size={24} className="text-success flex-shrink-0" />
                     ) : (
                       <AlertCircle size={24} className="text-warning flex-shrink-0" />
                     )}
@@ -1686,7 +1694,7 @@ export function LeadsManagerContent({
                     color="secondary"
                     onPress={confirmImport}
                     isLoading={importLoading}
-                    startContent={<CheckCircle size={16} />}
+                    startContent={<CheckCircle2 size={16} />}
                   >
                     Xác nhận Import
                   </Button>

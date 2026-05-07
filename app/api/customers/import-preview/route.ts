@@ -31,88 +31,178 @@ export async function POST(request: NextRequest) {
     const rows = jsonData.slice(1) as any[][];
 
     // Map Excel columns to our fields
-    const columnMapping: Record<string, keyof CustomerLeadInput> = {
-      // Date fields
-      "Ngày": "date",
-      "Date": "date",
+    // Function to normalize header by removing extra spaces and checking for matches
+    const normalizeHeader = (header: string): keyof CustomerLeadInput | null => {
+      const normalized = header.trim();
       
-      // Time slot
-      "Khung giờ": "time_slot", 
-      "Time Slot": "time_slot",
+      // Direct mappings
+      const directMapping: Record<string, keyof CustomerLeadInput> = {
+        // Date fields
+        "Ngày": "date",
+        "Date": "date",
+        
+        // Time slot
+        "Khung giờ": "time_slot",
+        "Khung Giờ Khách Nhắn": "time_slot",
+        "Time Slot": "time_slot",
+        
+        // Person in charge
+        "Người phụ trách": "person_in_charge",
+        "Quản trị viên phụ trách": "person_in_charge",
+        "Person in Charge": "person_in_charge",
+        
+        // Customer names - map to customer_name (will also copy to facebook_name later)
+        "Tên Facebook": "customer_name",
+        "Facebook Name": "customer_name",
+        "Tên thật khách hàng": "customer_name",
+        "Tên khách hàng": "customer_name",
+        "Customer Name": "customer_name",
+        "Customer Name Tên khách hàng": "customer_name",
+        "Họ và tên": "customer_name",
+        "Full Name": "customer_name",
+        "Name": "customer_name",
+        
+        // Contact info
+        "Link khách hàng": "customer_link",
+        "Customer Link": "customer_link",
+        "SĐT KH": "phone_number",
+        "Phone Number": "phone_number",
+        "Phone Number SĐT KH": "phone_number",
+        "Phone": "phone_number",
+        
+        // Branch
+        "Chi nhánh": "branch",
+        "Branch": "branch",
+        "Branch Chi nhánh": "branch",
+        
+        // Loan info
+        "Nhu cầu vay": "loan_amount",
+        "Loan Amount": "loan_amount",
+        "Loan Amount Requested": "loan_amount",
+        "Loan Amount Requested Nhu cầu vay (VND)": "loan_amount",
+        "Tài sản đảm bảo": "collateral_type",
+        "Collateral Type": "collateral_type",
+        "Collateral Type Tài sản đảm bảo": "collateral_type",
+        
+        // Source and status
+        "Nguồn": "source",
+        "Source": "source",
+        "Source Nguồn (FB/Zalo/Tiktok/Giới thiệu/Khách đến cửa hàng)": "source",
+        "Từ Ads": "from_ads",
+        "From Ads": "from_ads",
+        "From Ads TỪ ADS": "from_ads",
+        "Trạng thái trao đổi": "engagement_status",
+        "Engagement Status": "engagement_status",
+        "Engagement Status Trạng thái trao đổi với KH": "engagement_status",
+        "Tiến độ hồ sơ": "case_status",
+        "Case Status": "case_status",
+        "Case Status Tiến độ hồ sơ": "case_status",
+        "Kết quả hồ sơ": "final_outcome",
+        "Final Outcome": "final_outcome",
+        "Final Application Outcomes": "final_outcome",
+        "Final Application Outcomes Kết quả hồ sơ": "final_outcome",
+        "Tình trạng": "lead_status",
+        "Lead Status": "lead_status",
+        "Lead Status (Enquiry/MQL/SQL/Application/Approved/Rejected/Disbursed) Tình trạng (đang tiếp nhận/MQL/SQL/lên đơn/duyệt đơn/từ chối/giải ngân": "lead_status",
+        
+        // Financial
+        "Số tiền đã giải ngân": "disbursed_amount",
+        "Disbursed Amount": "disbursed_amount",
+        "Disbursed Amount Số tiền Đã giải ngân (VNĐ)": "disbursed_amount",
+        
+        // Additional info
+        "Ghi chú": "remarks",
+        "Remarks": "remarks",
+        "Remarks Ghi chú": "remarks",
+        "Liên hệ L2": "contact_l2",
+        "Contact L2": "contact_l2",
+        "Liên hệ L3": "contact_l3",
+        "Contact L3": "contact_l3",
+        "Tên người giới thiệu": "referrer_name",
+        "Referrer Name": "referrer_name",
+        "Referrer Name Tên người giới thiệu": "referrer_name",
+        "SĐT người giới thiệu": "referrer_phone",
+        "Referrer Phone": "referrer_phone",
+        "Referrer Phone Sđt người giới thiệu Sđt người giới thiệu": "referrer_phone",
+      };
       
-      // Person in charge
-      "Người phụ trách": "person_in_charge",
-      "Person in Charge": "person_in_charge",
+      // Check direct mapping first
+      if (directMapping[normalized]) {
+        return directMapping[normalized];
+      }
       
-      // Customer names
-      "Tên Facebook": "facebook_name",
-      "Facebook Name": "facebook_name",
-      "Tên thật khách hàng": "customer_name",
-      "Tên khách hàng": "customer_name",
-      "Customer Name": "customer_name",
-      "Họ và tên": "customer_name",
-      "Full Name": "customer_name",
-      "Name": "customer_name",
+      // Fallback: check if header contains key phrases
+      const lowerHeader = normalized.toLowerCase();
       
-      // Contact info
-      "Link khách hàng": "customer_link",
-      "Customer Link": "customer_link",
-      "SĐT KH": "phone_number",
-      "Phone Number": "phone_number",
-      "Phone": "phone_number",
+      if (lowerHeader.includes("customer name") || lowerHeader.includes("tên khách hàng")) {
+        return "customer_name";
+      }
+      if (lowerHeader.includes("branch") && lowerHeader.includes("chi nhánh")) {
+        return "branch";
+      }
+      if (lowerHeader.includes("loan amount") && lowerHeader.includes("nhu cầu vay")) {
+        return "loan_amount";
+      }
+      if (lowerHeader.includes("collateral") && lowerHeader.includes("tài sản")) {
+        return "collateral_type";
+      }
+      if (lowerHeader.includes("source") && lowerHeader.includes("nguồn")) {
+        return "source";
+      }
+      if (lowerHeader.includes("from ads") || lowerHeader.includes("từ ads")) {
+        return "from_ads";
+      }
+      if (lowerHeader.includes("engagement") && lowerHeader.includes("trạng thái trao đổi")) {
+        return "engagement_status";
+      }
+      if (lowerHeader.includes("case status") && lowerHeader.includes("tiến độ")) {
+        return "case_status";
+      }
+      if (lowerHeader.includes("final") && (lowerHeader.includes("outcome") || lowerHeader.includes("kết quả"))) {
+        return "final_outcome";
+      }
+      if (lowerHeader.includes("lead status") && lowerHeader.includes("tình trạng")) {
+        return "lead_status";
+      }
+      if (lowerHeader.includes("disbursed") && lowerHeader.includes("giải ngân")) {
+        return "disbursed_amount";
+      }
+      if (lowerHeader.includes("remarks") && lowerHeader.includes("ghi chú")) {
+        return "remarks";
+      }
+      if (lowerHeader.includes("referrer name") && lowerHeader.includes("người giới thiệu")) {
+        return "referrer_name";
+      }
+      if (lowerHeader.includes("referrer phone") || (lowerHeader.includes("sđt") && lowerHeader.includes("giới thiệu"))) {
+        return "referrer_phone";
+      }
+      if (lowerHeader.includes("khung giờ") || lowerHeader.includes("time slot")) {
+        return "time_slot";
+      }
+      if ((lowerHeader.includes("quản trị") || lowerHeader.includes("person in charge")) && lowerHeader.includes("phụ trách")) {
+        return "person_in_charge";
+      }
       
-      // Branch
-      "Chi nhánh": "branch",
-      "Branch": "branch",
-      
-      // Loan info
-      "Nhu cầu vay": "loan_amount",
-      "Loan Amount": "loan_amount",
-      "Tài sản đảm bảo": "collateral_type",
-      "Collateral Type": "collateral_type",
-      
-      // Source and status
-      "Nguồn": "source",
-      "Source": "source",
-      "Từ Ads": "from_ads",
-      "From Ads": "from_ads",
-      "Trạng thái trao đổi": "engagement_status",
-      "Engagement Status": "engagement_status",
-      "Tiến độ hồ sơ": "case_status",
-      "Case Status": "case_status",
-      "Kết quả hồ sơ": "final_outcome",
-      "Final Outcome": "final_outcome",
-      "Tình trạng": "lead_status",
-      "Lead Status": "lead_status",
-      
-      // Financial
-      "Số tiền đã giải ngân": "disbursed_amount",
-      "Disbursed Amount": "disbursed_amount",
-      
-      // Additional info
-      "Ghi chú": "remarks",
-      "Remarks": "remarks",
-      "Liên hệ L2": "contact_l2",
-      "Contact L2": "contact_l2",
-      "Liên hệ L3": "contact_l3",
-      "Contact L3": "contact_l3",
-      "Tên người giới thiệu": "referrer_name",
-      "Referrer Name": "referrer_name",
-      "SĐT người giới thiệu": "referrer_phone",
-      "Referrer Phone": "referrer_phone",
+      return null;
     };
 
     console.log("Excel headers found:", headers);
-    console.log("Mapped fields:", headers.map(h => ({ header: h, mapped: columnMapping[h] })));
+    console.log("Mapped fields:", headers.map(h => ({ header: h, mapped: normalizeHeader(h) })));
 
     // Convert rows to customer objects
     const customers: CustomerLeadInput[] = rows
-      .filter(row => row.some(cell => cell != null && cell !== "")) // Skip empty rows
       .map((row, index) => {
+        // Skip completely empty rows
+        const hasAnyData = row.some(cell => cell != null && String(cell).trim() !== "");
+        if (!hasAnyData) {
+          console.log(`Skipping empty row ${index + 2}`);
+          return null;
+        }
+        
         const customer: Partial<CustomerLeadInput> = {};
         
         headers.forEach((header, colIndex) => {
-          const fieldName = columnMapping[header];
+          const fieldName = normalizeHeader(header);
           if (fieldName && row[colIndex] != null) {
             let value = row[colIndex];
             
@@ -153,29 +243,43 @@ export async function POST(request: NextRequest) {
           }
         });
 
-        // Ensure required fields - check multiple possible name fields
-        const hasCustomerName = customer.customer_name || 
-                               customer.facebook_name || 
-                               headers.some(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('tên'));
+        // Validation: Skip rows without required fields
+        // 1. Must have customer_name
+        // 2. Must have person_in_charge
         
-        if (!customer.customer_name) {
-          // Try to use facebook_name as fallback
-          if (customer.facebook_name) {
-            customer.customer_name = customer.facebook_name;
-          } else {
-            console.log(`Row ${index + 2} data:`, row);
-            console.log(`Row ${index + 2} customer object:`, customer);
-            throw new Error(`Dòng ${index + 2}: Thiếu tên khách hàng. Headers: ${headers.join(', ')}`);
-          }
+        const hasCustomerName = customer.customer_name && customer.customer_name.trim() !== "";
+        const hasPersonInCharge = customer.person_in_charge && customer.person_in_charge.trim() !== "";
+        
+        if (!hasCustomerName) {
+          console.log(`Skipping row ${index + 2}: No customer name found`);
+          console.log(`Row ${index + 2} data:`, row);
+          return null;
+        }
+        
+        if (!hasPersonInCharge) {
+          console.log(`Skipping row ${index + 2}: No person in charge found`);
+          console.log(`Row ${index + 2} data:`, row);
+          return null;
+        }
+        
+        // Copy customer_name to facebook_name for display
+        if (!customer.facebook_name || customer.facebook_name.trim() === "") {
+          customer.facebook_name = customer.customer_name;
         }
 
         return customer as CustomerLeadInput;
-      });
+      })
+      .filter((customer): customer is CustomerLeadInput => customer !== null); // Remove null entries
+
+    const skippedRows = rows.length - customers.length;
+    console.log(`Total rows: ${rows.length}, Valid customers: ${customers.length}, Skipped: ${skippedRows}`);
 
     return NextResponse.json({
       total: customers.length,
       sheet: sheetName,
       customers: customers,
+      skipped: skippedRows,
+      message: skippedRows > 0 ? `Đã bỏ qua ${skippedRows} dòng không có tên khách hàng hoặc dòng trống` : undefined,
     });
 
   } catch (error: any) {

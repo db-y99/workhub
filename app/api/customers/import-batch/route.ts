@@ -1,74 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/actions/auth";
-import { CustomerLeadInput } from "@/lib/actions/customer-leads";
-
-const BATCH_SIZE = 50; // Insert 50 records at a time
+import { createCustomerLead, CustomerLeadInput } from "@/lib/actions/customer-leads";
 
 export async function POST(request: NextRequest) {
   try {
-    const { customers }: { customers: CustomerLeadInput[] } = await request.json();
+    const body = await request.json();
+    const { customers } = body as { customers: CustomerLeadInput[] };
 
     if (!customers || !Array.isArray(customers) || customers.length === 0) {
-      return NextResponse.json({ error: "Không có dữ liệu để import" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Không có dữ liệu khách hàng để import" },
+        { status: 400 }
+      );
     }
 
-    const supabase = await createClient();
-    const user = await getCurrentUser();
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
-
-    // Process in batches
-    for (let i = 0; i < customers.length; i += BATCH_SIZE) {
-      const batch = customers.slice(i, i + BATCH_SIZE);
-      
-      // Prepare batch data with created_by
-      const batchData = batch.map(customer => ({
-        ...customer,
-        created_by: user.id,
-      }));
-
+    // Import từng khách hàng
+    for (let i = 0; i < customers.length; i++) {
+      const customer = customers[i];
       try {
-        const { data, error } = await supabase
-          .from("customer_leads")
-          .insert(batchData)
-          .select();
-
-        if (error) {
-          // Handle individual errors
-          batch.forEach((_, index) => {
-            failedCount++;
-            errors.push(`Dòng ${i + index + 1}: ${error.message}`);
-          });
-        } else {
-          successCount += data?.length || 0;
+        // Validate required fields
+        if (!customer.customer_name) {
+          throw new Error(`Thiếu tên khách hàng`);
         }
-      } catch (batchError: any) {
-        // Handle batch errors
-        batch.forEach((_, index) => {
-          failedCount++;
-          errors.push(`Dòng ${i + index + 1}: ${batchError.message}`);
-        });
+
+        const result = await createCustomerLead(customer);
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(
+          `Dòng ${i + 2}: ${error.message || "Lỗi không xác định"}`
+        );
       }
     }
 
     return NextResponse.json({
-      success: successCount,
-      failed: failedCount,
-      errors: errors.slice(0, 100), // Limit errors to first 100
-      total: customers.length,
+      success: results.success,
+      failed: results.failed,
+      errors: results.errors,
     });
-
   } catch (error: any) {
     console.error("Import batch error:", error);
     return NextResponse.json(
-      { error: error.message || "Lỗi khi import dữ liệu" },
+      { 
+        error: error.message || "Lỗi khi import dữ liệu",
+        details: error.toString()
+      },
       { status: 500 }
     );
   }
