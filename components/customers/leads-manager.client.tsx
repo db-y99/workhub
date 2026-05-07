@@ -306,7 +306,7 @@ function ReportTab({
   };
 
   const hasData = reportData && reportData.periods.length > 0;
-  
+
   const totals = hasData ? reportData.periods.reduce(
     (acc, w) => ({
       total: acc.total + w.total_enquiries,
@@ -470,11 +470,10 @@ function ReportTab({
             <button
               key={t}
               onClick={() => setActiveTab(t)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeTab === t
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === t
                   ? "bg-primary text-white"
                   : "text-default-500 hover:text-foreground hover:bg-default-100"
-              }`}
+                }`}
             >
               {t === "overview" ? "📊 Tổng quan" : "👤 Theo người phụ trách"}
             </button>
@@ -708,7 +707,7 @@ function formatDateDisplay(dateStr: string | null | undefined): string {
 // Map branch names from import data to actual branch names
 function mapBranchName(importBranch: string | undefined, availableBranches: Branch[]): string {
   if (!importBranch) return "";
-  
+
   // Create mapping for common variations
   const branchMapping: Record<string, string> = {
     // Code mappings
@@ -716,7 +715,7 @@ function mapBranchName(importBranch: string | undefined, availableBranches: Bran
     "BN": "Chi nhánh Bắc Ninh",
     "TW": "Chi nhánh TW",
     "SING": "Chi nhánh Sing",
-    
+
     // Name variations
     "Can Tho": "Chi nhánh Cần Thơ",
     "Cần Thơ": "Chi nhánh Cần Thơ",
@@ -725,14 +724,14 @@ function mapBranchName(importBranch: string | undefined, availableBranches: Bran
     "Taiwan": "Chi nhánh TW",
     "Sing": "Chi nhánh Sing",
     "Singapore": "Chi nhánh Sing",
-    
+
     // Legacy mappings
     "Khác": "Khác",
-    "Ho Chi Minh": "Hồ Chí Minh", 
+    "Ho Chi Minh": "Hồ Chí Minh",
     "Ha Noi": "Hà Nội",
     "Da Nang": "Đà Nẵng",
   };
-  
+
   // First try direct mapping
   if (branchMapping[importBranch]) {
     const mappedName = branchMapping[importBranch];
@@ -741,12 +740,12 @@ function mapBranchName(importBranch: string | undefined, availableBranches: Bran
       return mappedName;
     }
   }
-  
+
   // If no mapping found, try to find exact match
   if (availableBranches.some(b => b.name === importBranch)) {
     return importBranch;
   }
-  
+
   // If still no match, return original value
   return importBranch;
 }
@@ -844,7 +843,7 @@ function LeadForm({
     // Normalize initial data: convert string to array if needed
     const personInCharge = initial.person_in_charge as string[] | string | undefined;
     const source = initial.source as string[] | string | undefined;
-    
+
     return {
       ...initial,
       person_in_charge: Array.isArray(personInCharge)
@@ -1371,13 +1370,13 @@ export function LeadsManagerContent({
     try {
       const params = new URLSearchParams();
       params.append("periodType", reportPeriodType);
-      
+
       // Use report date range if set, otherwise use applied filters
       const dateFrom = reportDateRange.from || appliedFilters.dateFrom;
       const dateTo = reportDateRange.to || appliedFilters.dateTo;
-      
+
       console.log("📊 Fetching report with date range:", { dateFrom, dateTo, reportDateRange, appliedFilters });
-      
+
       if (dateFrom) params.append("dateFrom", dateFrom);
       if (dateTo) params.append("dateTo", dateTo);
       if (appliedFilters.branch !== "all") params.append("branch", appliedFilters.branch);
@@ -1507,14 +1506,14 @@ export function LeadsManagerContent({
   // Map branch names from import data to actual branch names
   function mapImportBranchName(importBranch: string | undefined): string {
     if (!importBranch) return "";
-    
+
     const branchMapping: Record<string, string> = {
       // Code mapping (từ code ngắn sang tên đầy đủ)
       "CT": "Chi nhánh Cần Thơ",
       "BN": "Chi nhánh Bắc Ninh",
       "TW": "Chi nhánh TW",
       "SING": "Chi nhánh Sing",
-      
+
       // Name variations
       "Can Tho": "Chi nhánh Cần Thơ",
       "Cần Thơ": "Chi nhánh Cần Thơ",
@@ -1523,17 +1522,17 @@ export function LeadsManagerContent({
       "Taiwan": "Chi nhánh TW",
       "Sing": "Chi nhánh Sing",
       "Singapore": "Chi nhánh Sing",
-      
+
       // Legacy mappings
       "HN": "Hà Nội",
-      "HCM": "Hồ Chí Minh", 
+      "HCM": "Hồ Chí Minh",
       "DN": "Đà Nẵng",
       "Khác": "Khác",
-      "Ho Chi Minh": "Hồ Chí Minh", 
+      "Ho Chi Minh": "Hồ Chí Minh",
       "Ha Noi": "Hà Nội",
       "Da Nang": "Đà Nẵng",
     };
-    
+
     // Return mapped name if exists, otherwise return original
     return branchMapping[importBranch] || importBranch;
   }
@@ -1551,13 +1550,13 @@ export function LeadsManagerContent({
       const res = await fetch("/api/customers/import-preview", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Lỗi không xác định");
-      
+
       // Map branch names in preview data
       const mappedCustomers = json.customers.map((customer: CustomerLeadInput) => ({
         ...customer,
         branch: mapImportBranchName(customer.branch)
       }));
-      
+
       setImportPreview({
         ...json,
         customers: mappedCustomers
@@ -1739,7 +1738,7 @@ export function LeadsManagerContent({
                 onPress={() => setActiveMainTab("report")}
                 startContent={<FileSpreadsheet size={16} />}
               >
-                Báo cáo (Daily/Weekly/Monthly)
+                Báo cáo
               </Button>
             </div>
 
@@ -1972,46 +1971,46 @@ export function LeadsManagerContent({
                   )}
                 </div>
 
-            {/* Active Filters Display */}
-            {activeFilterLabels.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-default-200">
-                <span className="text-sm text-default-500 font-medium">Đang lọc:</span>
-                {activeFilterLabels.map((label, index) => (
-                  <Chip
-                    key={index}
-                    size="sm"
-                    variant="flat"
-                    color="primary"
-                    onClose={() => {
-                      // Handle individual filter removal
-                      if (label.startsWith("Ngày:")) {
-                        setAppliedFilters(f => ({ ...f, dateFrom: "", dateTo: "" }));
-                      } else if (label.startsWith("Chi nhánh:")) {
-                        setAppliedFilters(f => ({ ...f, branch: "all" }));
-                      } else if (label.startsWith("Tình trạng:")) {
-                        setAppliedFilters(f => ({ ...f, leadStatus: "all" }));
-                      } else if (label.startsWith("Nguồn:")) {
-                        setAppliedFilters(f => ({ ...f, source: "all" }));
-                      } else if (label.startsWith("Từ Ads:")) {
-                        setAppliedFilters(f => ({ ...f, fromAds: "all" }));
-                      } else if (label.startsWith("Trao đổi:")) {
-                        setAppliedFilters(f => ({ ...f, engagementStatus: "all" }));
-                      } else if (label.startsWith("Tiến độ:")) {
-                        setAppliedFilters(f => ({ ...f, caseStatus: "all" }));
-                      } else if (label.startsWith("Kết quả:")) {
-                        setAppliedFilters(f => ({ ...f, finalOutcome: "all" }));
-                      } else if (label.startsWith("Tài sản:")) {
-                        setAppliedFilters(f => ({ ...f, collateralType: "all" }));
-                      } else if (label.startsWith("Phụ trách:")) {
-                        setAppliedFilters(f => ({ ...f, personInCharge: "all" }));
-                      }
-                    }}
-                  >
-                    {label}
-                  </Chip>
-                ))}
-              </div>
-            )}
+                {/* Active Filters Display */}
+                {activeFilterLabels.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-default-200">
+                    <span className="text-sm text-default-500 font-medium">Đang lọc:</span>
+                    {activeFilterLabels.map((label, index) => (
+                      <Chip
+                        key={index}
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onClose={() => {
+                          // Handle individual filter removal
+                          if (label.startsWith("Ngày:")) {
+                            setAppliedFilters(f => ({ ...f, dateFrom: "", dateTo: "" }));
+                          } else if (label.startsWith("Chi nhánh:")) {
+                            setAppliedFilters(f => ({ ...f, branch: "all" }));
+                          } else if (label.startsWith("Tình trạng:")) {
+                            setAppliedFilters(f => ({ ...f, leadStatus: "all" }));
+                          } else if (label.startsWith("Nguồn:")) {
+                            setAppliedFilters(f => ({ ...f, source: "all" }));
+                          } else if (label.startsWith("Từ Ads:")) {
+                            setAppliedFilters(f => ({ ...f, fromAds: "all" }));
+                          } else if (label.startsWith("Trao đổi:")) {
+                            setAppliedFilters(f => ({ ...f, engagementStatus: "all" }));
+                          } else if (label.startsWith("Tiến độ:")) {
+                            setAppliedFilters(f => ({ ...f, caseStatus: "all" }));
+                          } else if (label.startsWith("Kết quả:")) {
+                            setAppliedFilters(f => ({ ...f, finalOutcome: "all" }));
+                          } else if (label.startsWith("Tài sản:")) {
+                            setAppliedFilters(f => ({ ...f, collateralType: "all" }));
+                          } else if (label.startsWith("Phụ trách:")) {
+                            setAppliedFilters(f => ({ ...f, personInCharge: "all" }));
+                          }
+                        }}
+                      >
+                        {label}
+                      </Chip>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -2040,661 +2039,661 @@ export function LeadsManagerContent({
         <>
           {/* Form modal */}
           <Modal
-        isOpen={showForm}
-        onOpenChange={(open) => {
-          if (!open) {
-            setShowForm(false);
-            setEditTarget(null);
-          }
-        }}
-        size="5xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {editTarget ? <Edit size={20} className="text-primary" /> : <Plus size={20} className="text-primary" />}
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">
-                {editTarget ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
-              </h3>
-              <p className="text-sm text-default-500">
-                {editTarget ? "Cập nhật thông tin khách hàng" : "Nhập thông tin khách hàng mới"}
-              </p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <LeadForm
-              initial={editTarget ? { ...editTarget } : EMPTY_FORM}
-              onSave={handleSave}
-              onCancel={() => { setShowForm(false); setEditTarget(null); }}
-              saving={isPending}
-              branches={branches}
-            />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-
-      {/* Delete confirm */}
-      <Modal
-        isOpen={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <div className="p-2 bg-danger/10 rounded-lg">
-              <Trash2 size={20} className="text-danger" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Xác nhận xóa</h3>
-              <p className="text-sm text-default-500">Hành động này không thể hoàn tác</p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <p className="text-default-600">
-              Bạn có chắc muốn xóa khách hàng{" "}
-              <span className="font-medium text-foreground">{deleteTarget?.customer_name}</span>?
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="bordered" onPress={() => setDeleteTarget(null)}>
-              Hủy
-            </Button>
-            <Button
-              color="danger"
-              onPress={handleDelete}
-              isLoading={isPending}
-            >
-              Xóa
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Import Modal */}
-      <Modal
-        isOpen={showImport}
-        onOpenChange={(open) => {
-          if (!open) resetImport();
-        }}
-        size="3xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <div className="p-2 bg-secondary/10 rounded-lg">
-              <FileSpreadsheet size={20} className="text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Import dữ liệu từ Excel</h3>
-              <p className="text-sm text-default-500">
-                {importResult ? "Kết quả import" : importPreview ? "Xem trước dữ liệu" : "Tải file Excel lên"}
-              </p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            {/* Upload Zone */}
-            {!importPreview && !importResult && (
-              <div
-                onDrop={handleImportDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onClick={() => importInputRef.current?.click()}
-                className="border-2 border-dashed border-default-300 rounded-xl p-12 text-center cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-colors"
-              >
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={handleImportFileChange}
-                />
-                <Upload size={48} className="mx-auto text-default-300 mb-4" />
-                <p className="font-medium text-lg mb-2">
-                  {importFile ? `Đã chọn: ${importFile.name}` : "Kéo thả file vào đây hoặc click để chọn"}
-                </p>
-                <p className="text-default-400 text-sm">Hỗ trợ .xlsx, .xls</p>
-              </div>
-            )}
-
-            {importLoading && (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                <p className="text-default-500">{importProgress || "Đang xử lý file..."}</p>
-              </div>
-            )}
-
-            {importError && (
-              <div className="bg-danger-50 text-danger border border-danger-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+            isOpen={showForm}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowForm(false);
+                setEditTarget(null);
+              }
+            }}
+            size="5xl"
+            scrollBehavior="inside"
+          >
+            <ModalContent>
+              <ModalHeader className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  {editTarget ? <Edit size={20} className="text-primary" /> : <Plus size={20} className="text-primary" />}
+                </div>
                 <div>
-                  <p className="font-medium mb-1">Lỗi khi xử lý file</p>
-                  <p className="text-sm">{importError}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Preview */}
-            {importPreview && !importResult && (
-              <div className="space-y-4">
-                <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <FileSpreadsheet size={20} className="text-secondary" />
-                    <div>
-                      <p className="font-medium">Sheet: {importPreview.sheet}</p>
-                      <p className="text-sm text-default-500">
-                        Tìm thấy {importPreview.total} khách hàng hợp lệ
-                        {importPreview.skipped && importPreview.skipped > 0 && (
-                          <span className="text-warning"> (đã bỏ qua {importPreview.skipped} dòng)</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-sm text-default-600">
-                    <p className="mb-2">Dữ liệu sẽ được import vào hệ thống. Chi nhánh đã được tự động mapping.</p>
-                    {importPreview.message && (
-                      <p className="text-warning font-medium">⚠️ {importPreview.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Preview Table */}
-                <div className="border border-default-200 rounded-lg overflow-hidden">
-                  <div className="bg-default-100 px-4 py-2 font-medium text-sm">
-                    Xem trước {Math.min(5, importPreview.customers.length)} khách hàng đầu tiên
-                  </div>
-                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-default-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">#</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">Ngày</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">Tên khách hàng</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">SĐT</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">Chi nhánh</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">Nguồn</th>
-                          <th className="px-3 py-2 text-left font-medium text-default-600">Tình trạng</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importPreview.customers.slice(0, 5).map((customer, i) => (
-                          <tr key={i} className="border-t border-default-100">
-                            <td className="px-3 py-2">{i + 1}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{formatDateDisplay(customer.date)}</td>
-                            <td className="px-3 py-2 font-medium">{customer.customer_name}</td>
-                            <td className="px-3 py-2">{customer.phone_number || "—"}</td>
-                            <td className="px-3 py-2">
-                              <Chip size="sm" variant="flat" color="primary">
-                                {customer.branch || "—"}
-                              </Chip>
-                            </td>
-                            <td className="px-3 py-2">{customer.source || "—"}</td>
-                            <td className="px-3 py-2">
-                              {customer.lead_status ? (
-                                <Chip size="sm" {...leadStatusColor(customer.lead_status)}>
-                                  {customer.lead_status}
-                                </Chip>
-                              ) : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {importPreview.customers.length > 5 && (
-                    <div className="bg-default-50 px-4 py-2 text-sm text-default-500 text-center">
-                      ... và {importPreview.customers.length - 5} khách hàng khác
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Result */}
-            {importResult && (
-              <div className="space-y-4">
-                <div className={`border rounded-lg p-4 ${importResult.failed === 0
-                    ? "bg-success-50 border-success-200"
-                    : "bg-warning-50 border-warning-200"
-                  }`}>
-                  <div className="flex items-start gap-3">
-                    {importResult.failed === 0 ? (
-                      <CheckCircle2 size={24} className="text-success flex-shrink-0" />
-                    ) : (
-                      <AlertCircle size={24} className="text-warning flex-shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <p className="font-medium text-lg mb-2">
-                        {importResult.failed === 0
-                          ? "Import thành công!"
-                          : "Import hoàn tất với một số lỗi"}
-                      </p>
-                      <div className="space-y-1 text-sm">
-                        <p className="text-success">
-                          ✓ Thành công: <span className="font-semibold">{importResult.success}</span> khách hàng
-                        </p>
-                        {importResult.failed > 0 && (
-                          <p className="text-danger">
-                            ✗ Thất bại: <span className="font-semibold">{importResult.failed}</span> khách hàng
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {importResult.errors.length > 0 && (
-                  <div className="border border-danger-200 rounded-lg overflow-hidden">
-                    <div className="bg-danger-50 px-4 py-2 font-medium text-sm text-danger">
-                      Chi tiết lỗi
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      <ul className="divide-y divide-default-100">
-                        {importResult.errors.map((error, i) => (
-                          <li key={i} className="px-4 py-2 text-sm text-default-600">
-                            {error}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            {!importResult && (
-              <>
-                <Button variant="bordered" onPress={resetImport}>
-                  Hủy
-                </Button>
-                {importPreview && (
-                  <Button
-                    color="secondary"
-                    onPress={confirmImport}
-                    isLoading={importLoading}
-                    startContent={<CheckCircle2 size={16} />}
-                  >
-                    Xác nhận Import
-                  </Button>
-                )}
-              </>
-            )}
-            {importResult && (
-              <Button color="primary" onPress={resetImport}>
-                Đóng
-              </Button>
-            )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Table */}
-      <Card>
-        <CardBody className="p-0">
-          <div className="overflow-x-scroll w-full [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-default-100 [&::-webkit-scrollbar-thumb]:bg-default-300 [&::-webkit-scrollbar-thumb]:rounded-full">
-            <Table
-              aria-label="Customers table"
-              classNames={{
-                wrapper: "min-h-[400px] overflow-visible shadow-none rounded-none",
-                table: "min-w-[900px]",
-              }}
-            >
-              <TableHeader>
-                <TableColumn key="date">NGÀY</TableColumn>
-                <TableColumn key="person_in_charge">NGƯỜI PHỤ TRÁCH</TableColumn>
-                <TableColumn key="facebook_name">TÊN FACEBOOK</TableColumn>
-                <TableColumn key="final_outcome" className="w-[220px] max-w-[220px]">
-                  KẾT QUẢ HỒ SƠ
-                </TableColumn>
-                <TableColumn key="phone_number">SỐ ĐIỆN THOẠI</TableColumn>
-                <TableColumn key="branch">CHI NHÁNH</TableColumn>
-                <TableColumn key="source">NGUỒN</TableColumn>
-                <TableColumn key="case_status">TIẾN ĐỘ</TableColumn>
-                <TableColumn key="lead_status">TÌNH TRẠNG</TableColumn>
-                <TableColumn key="actions">THAO TÁC</TableColumn>
-              </TableHeader>
-              <TableBody
-                items={leads}
-                isLoading={isPending || isRefreshing}
-                emptyContent={
-                  <div className="text-center py-8">
-                    <Users size={48} className="mx-auto text-default-300 mb-4" />
-                    <p className="text-default-500 mb-4">
-                      {total === 0 ? "Chưa có khách hàng nào" : "Không tìm thấy kết quả"}
-                    </p>
-                    {total === 0 && (
-                      <Button
-                        color="primary"
-                        startContent={<Plus size={16} />}
-                        onPress={() => { setEditTarget(null); setShowForm(true); }}
-                      >
-                        Thêm khách hàng đầu tiên
-                      </Button>
-                    )}
-                  </div>
-                }
-              >
-                {(item) => (
-                  <TableRow key={item.id} className="hover:bg-default-50">
-                    <TableCell>
-                      <span className="text-sm whitespace-nowrap">{formatDateDisplay(item.date) || "—"}</span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex flex-nowrap gap-1 items-center">
-                        {(() => {
-                          // Handle both string (old data) and array (new data)
-                          const personInCharge = item.person_in_charge as string[] | string | undefined;
-                          const persons = Array.isArray(personInCharge)
-                            ? personInCharge
-                            : typeof personInCharge === 'string' && personInCharge
-                              ? personInCharge.split(", ")
-                              : [];
-                          
-                          return persons.length > 0
-                            ? persons.map((name: string, i: number) => (
-                              <Chip key={`${name}-${i}`} size="sm" variant="flat" color="primary">
-                                {name}
-                              </Chip>
-                            ))
-                            : <span className="text-default-300">—</span>;
-                        })()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium whitespace-nowrap">
-                        {item.customer_link ? (
-                          <a href={item.customer_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            {item.facebook_name || "—"}
-                          </a>
-                        ) : (item.facebook_name || "—")}
-                      </span>
-                    </TableCell>
-                    <TableCell className="w-[120px] max-w-[120px] align-top">
-                      {item.final_outcome ? (
-                        <Tooltip
-                          content={item.final_outcome}
-                          placement="top"
-                          delay={200}
-                          closeDelay={0}
-                          classNames={{
-                            content: "max-w-sm whitespace-normal text-small py-2 px-3",
-                          }}
-                        >
-                          <div
-                            tabIndex={0}
-                            className="text-sm truncate min-w-0 cursor-default outline-none"
-                          >
-                            {item.final_outcome}
-                          </div>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-default-300">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Phone size={14} className="text-default-400" />
-                        <span className="font-mono whitespace-nowrap">{item.phone_number || "—"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm whitespace-nowrap">{item.branch || "—"}</span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {(() => {
-                        const sources = item.source && item.source.length > 0
-                          ? item.source
-                          : [];
-                        if (sources.length === 0) {
-                          return <span className="text-default-300">—</span>;
-                        }
-                        
-                        // Hiển thị tối đa 1 chip đầu tiên
-                        const firstSource = sources[0];
-                        const remainingCount = sources.length - 1;
-                        
-                        return (
-                          <div className="flex flex-nowrap gap-1 items-center">
-                            <Chip size="sm" variant="flat" color="secondary">
-                              {firstSource}
-                            </Chip>
-                            {remainingCount > 0 && (
-                              <Tooltip
-                                content={
-                                  <div className="flex flex-wrap gap-1 max-w-xs">
-                                    <div className="text-xs text-default-500 mb-1 w-full">Tất cả nguồn:</div>
-                                    {sources.map((src, i) => (
-                                      <Chip key={`${src}-${i}`} size="sm" variant="flat" color="secondary">
-                                        {src}
-                                      </Chip>
-                                    ))}
-                                  </div>
-                                }
-                                placement="top"
-                                delay={200}
-                                closeDelay={0}
-                                classNames={{ content: "p-2" }}
-                              >
-                                <Chip size="sm" variant="flat" color="default" className="cursor-help">
-                                  +{remainingCount}
-                                </Chip>
-                              </Tooltip>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm whitespace-nowrap">{item.case_status || "—"}</span>
-                    </TableCell>
-                    <TableCell>
-                      {item.lead_status ? (
-                        <Chip size="sm" {...leadStatusColor(item.lead_status)}>{item.lead_status}</Chip>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Tooltip content="Xem chi tiết">
-                          <Button size="sm" variant="light" isIconOnly onPress={() => setViewTarget(item)}>
-                            <Eye size={16} />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Chỉnh sửa">
-                          <Button size="sm" variant="light" isIconOnly onPress={() => { setEditTarget(item); setShowForm(true); }}>
-                            <Edit size={16} />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Xóa" color="danger">
-                          <Button size="sm" variant="light" color="danger" isIconOnly onPress={() => setDeleteTarget(item)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Detail Modal */}
-      <Modal
-        isOpen={!!viewTarget}
-        onOpenChange={(open) => { if (!open) setViewTarget(null); }}
-        size="lg"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          {viewTarget && (
-            <>
-              <ModalHeader className="pb-0">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold">
-                      {viewTarget.customer_link ? (
-                        <a href={viewTarget.customer_link} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
-                          {viewTarget.customer_name}
-                        </a>
-                      ) : viewTarget.customer_name}
-                    </h3>
-                    {viewTarget.lead_status && (
-                      <Chip size="sm" {...leadStatusColor(viewTarget.lead_status)}>{viewTarget.lead_status}</Chip>
-                    )}
-                  </div>
-                  {viewTarget.facebook_name && (
-                    <p className="text-sm text-default-500">
-                      Tên Facebook: <span className="font-medium">{viewTarget.facebook_name}</span>
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-sm text-default-500">
-                    {viewTarget.phone_number && (
-                      <span className="flex items-center gap-1">
-                        <Phone size={13} />
-                        {viewTarget.phone_number}
-                      </span>
-                    )}
-                    {viewTarget.branch && (
-                      <span className="flex items-center gap-1">
-                        <MapPin size={13} />
-                        {viewTarget.branch}
-                      </span>
-                    )}
-                    {viewTarget.date && (
-                      <span className="flex items-center gap-1">
-                        <Calendar size={13} />
-                        {formatDateDisplay(viewTarget.date)}{viewTarget.time_slot ? ` · ${viewTarget.time_slot}` : ""}
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="text-lg font-semibold">
+                    {editTarget ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
+                  </h3>
+                  <p className="text-sm text-default-500">
+                    {editTarget ? "Cập nhật thông tin khách hàng" : "Nhập thông tin khách hàng mới"}
+                  </p>
                 </div>
               </ModalHeader>
+              <ModalBody>
+                <LeadForm
+                  initial={editTarget ? { ...editTarget } : EMPTY_FORM}
+                  onSave={handleSave}
+                  onCancel={() => { setShowForm(false); setEditTarget(null); }}
+                  saving={isPending}
+                  branches={branches}
+                />
+              </ModalBody>
+            </ModalContent>
+          </Modal>
 
-              <ModalBody className="py-4 gap-3">
-                {/* Người phụ trách */}
-                {(() => {
-                  // Handle both string (old data) and array (new data)
-                  const personInCharge = viewTarget.person_in_charge as string[] | string | undefined;
-                  const persons = Array.isArray(personInCharge)
-                    ? personInCharge
-                    : typeof personInCharge === 'string' && personInCharge
-                      ? personInCharge.split(", ")
-                      : [];
-                  
-                  return persons.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs text-default-400">Người phụ trách</span>
-                      <div className="flex flex-wrap gap-1">
-                        {persons.map((n: string) => (
-                          <Chip key={n} size="sm" variant="flat" color="primary">{n}</Chip>
-                        ))}
+          {/* Delete confirm */}
+          <Modal
+            isOpen={!!deleteTarget}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTarget(null);
+            }}
+            size="sm"
+          >
+            <ModalContent>
+              <ModalHeader className="flex items-center gap-3">
+                <div className="p-2 bg-danger/10 rounded-lg">
+                  <Trash2 size={20} className="text-danger" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Xác nhận xóa</h3>
+                  <p className="text-sm text-default-500">Hành động này không thể hoàn tác</p>
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-default-600">
+                  Bạn có chắc muốn xóa khách hàng{" "}
+                  <span className="font-medium text-foreground">{deleteTarget?.customer_name}</span>?
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="bordered" onPress={() => setDeleteTarget(null)}>
+                  Hủy
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={handleDelete}
+                  isLoading={isPending}
+                >
+                  Xóa
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          {/* Import Modal */}
+          <Modal
+            isOpen={showImport}
+            onOpenChange={(open) => {
+              if (!open) resetImport();
+            }}
+            size="3xl"
+            scrollBehavior="inside"
+          >
+            <ModalContent>
+              <ModalHeader className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <FileSpreadsheet size={20} className="text-secondary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Import dữ liệu từ Excel</h3>
+                  <p className="text-sm text-default-500">
+                    {importResult ? "Kết quả import" : importPreview ? "Xem trước dữ liệu" : "Tải file Excel lên"}
+                  </p>
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                {/* Upload Zone */}
+                {!importPreview && !importResult && (
+                  <div
+                    onDrop={handleImportDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => importInputRef.current?.click()}
+                    className="border-2 border-dashed border-default-300 rounded-xl p-12 text-center cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-colors"
+                  >
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      className="hidden"
+                      onChange={handleImportFileChange}
+                    />
+                    <Upload size={48} className="mx-auto text-default-300 mb-4" />
+                    <p className="font-medium text-lg mb-2">
+                      {importFile ? `Đã chọn: ${importFile.name}` : "Kéo thả file vào đây hoặc click để chọn"}
+                    </p>
+                    <p className="text-default-400 text-sm">Hỗ trợ .xlsx, .xls</p>
+                  </div>
+                )}
+
+                {importLoading && (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                    <p className="text-default-500">{importProgress || "Đang xử lý file..."}</p>
+                  </div>
+                )}
+
+                {importError && (
+                  <div className="bg-danger-50 text-danger border border-danger-200 rounded-lg p-4 flex items-start gap-3">
+                    <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium mb-1">Lỗi khi xử lý file</p>
+                      <p className="text-sm">{importError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {importPreview && !importResult && (
+                  <div className="space-y-4">
+                    <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <FileSpreadsheet size={20} className="text-secondary" />
+                        <div>
+                          <p className="font-medium">Sheet: {importPreview.sheet}</p>
+                          <p className="text-sm text-default-500">
+                            Tìm thấy {importPreview.total} khách hàng hợp lệ
+                            {importPreview.skipped && importPreview.skipped > 0 && (
+                              <span className="text-warning"> (đã bỏ qua {importPreview.skipped} dòng)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-sm text-default-600">
+                        <p className="mb-2">Dữ liệu sẽ được import vào hệ thống. Chi nhánh đã được tự động mapping.</p>
+                        {importPreview.message && (
+                          <p className="text-warning font-medium">⚠️ {importPreview.message}</p>
+                        )}
                       </div>
                     </div>
-                  ) : null;
-                })()}
 
-                {/* Hồ sơ vay */}
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  <InfoItem label="Nhu cầu vay" value={viewTarget.loan_amount ? fmtNum(viewTarget.loan_amount) + " ₫" : null} valueClass="font-semibold" />
-                  <InfoItem label="Tài sản đảm bảo" value={viewTarget.collateral_type} />
-                  <InfoItem label="Tiến độ hồ sơ" value={viewTarget.case_status} />
-                  <InfoItem label="Kết quả hồ sơ" value={viewTarget.final_outcome} />
-                  {viewTarget.disbursed_amount ? (
-                    <InfoItem label="Đã giải ngân" value={fmtNum(viewTarget.disbursed_amount) + " ₫"} valueClass="text-success font-semibold" />
-                  ) : null}
-                </div>
-
-                <div className="border-t border-default-100" />
-
-                {/* Nguồn */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-default-400">Nguồn</span>
-                  <div className="flex flex-wrap gap-1">
-                    {(() => {
-                      // Handle both string (old data) and array (new data)
-                      const source = viewTarget.source as string[] | string | undefined;
-                      const sources = Array.isArray(source)
-                        ? source
-                        : typeof source === 'string' && source
-                          ? source.split(", ")
-                          : [];
-                      
-                      return sources.length > 0
-                        ? sources.map((s: string) => (
-                          <Chip key={s} size="sm" variant="flat" color="secondary">{s}</Chip>
-                        ))
-                        : <span className="text-sm text-default-300">—</span>;
-                    })()}
-                  </div>
-                </div>
-
-                {(viewTarget.from_ads || viewTarget.engagement_status) && (
-                  <div className="grid grid-cols-2 gap-x-6">
-                    <InfoItem label="Từ Ads" value={viewTarget.from_ads} />
-                    <InfoItem label="Trạng thái trao đổi" value={viewTarget.engagement_status} />
-                  </div>
-                )}
-
-                {/* Giới thiệu */}
-                {(viewTarget.referrer_name || viewTarget.referrer_phone || viewTarget.contact_l2 || viewTarget.contact_l3) && (
-                  <>
-                    <div className="border-t border-default-100" />
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                      <InfoItem label="Người giới thiệu" value={viewTarget.referrer_name} />
-                      <InfoItem label="SĐT giới thiệu" value={viewTarget.referrer_phone} />
-                      <InfoItem label="Liên hệ L2" value={viewTarget.contact_l2} />
-                      <InfoItem label="Liên hệ L3" value={viewTarget.contact_l3} />
+                    {/* Preview Table */}
+                    <div className="border border-default-200 rounded-lg overflow-hidden">
+                      <div className="bg-default-100 px-4 py-2 font-medium text-sm">
+                        Xem trước {Math.min(5, importPreview.customers.length)} khách hàng đầu tiên
+                      </div>
+                      <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-default-50 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">#</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">Ngày</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">Tên khách hàng</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">SĐT</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">Chi nhánh</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">Nguồn</th>
+                              <th className="px-3 py-2 text-left font-medium text-default-600">Tình trạng</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importPreview.customers.slice(0, 5).map((customer, i) => (
+                              <tr key={i} className="border-t border-default-100">
+                                <td className="px-3 py-2">{i + 1}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{formatDateDisplay(customer.date)}</td>
+                                <td className="px-3 py-2 font-medium">{customer.customer_name}</td>
+                                <td className="px-3 py-2">{customer.phone_number || "—"}</td>
+                                <td className="px-3 py-2">
+                                  <Chip size="sm" variant="flat" color="primary">
+                                    {customer.branch || "—"}
+                                  </Chip>
+                                </td>
+                                <td className="px-3 py-2">{customer.source || "—"}</td>
+                                <td className="px-3 py-2">
+                                  {customer.lead_status ? (
+                                    <Chip size="sm" {...leadStatusColor(customer.lead_status)}>
+                                      {customer.lead_status}
+                                    </Chip>
+                                  ) : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {importPreview.customers.length > 5 && (
+                        <div className="bg-default-50 px-4 py-2 text-sm text-default-500 text-center">
+                          ... và {importPreview.customers.length - 5} khách hàng khác
+                        </div>
+                      )}
                     </div>
-                  </>
+                  </div>
                 )}
 
-                {/* Ghi chú */}
-                {viewTarget.remarks && (
-                  <div className="rounded-xl border border-default-200 p-3">
-                    <p className="text-xs text-default-400 mb-1.5">Ghi chú</p>
-                    <p className="text-sm whitespace-pre-wrap">{viewTarget.remarks}</p>
+                {/* Result */}
+                {importResult && (
+                  <div className="space-y-4">
+                    <div className={`border rounded-lg p-4 ${importResult.failed === 0
+                      ? "bg-success-50 border-success-200"
+                      : "bg-warning-50 border-warning-200"
+                      }`}>
+                      <div className="flex items-start gap-3">
+                        {importResult.failed === 0 ? (
+                          <CheckCircle2 size={24} className="text-success flex-shrink-0" />
+                        ) : (
+                          <AlertCircle size={24} className="text-warning flex-shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium text-lg mb-2">
+                            {importResult.failed === 0
+                              ? "Import thành công!"
+                              : "Import hoàn tất với một số lỗi"}
+                          </p>
+                          <div className="space-y-1 text-sm">
+                            <p className="text-success">
+                              ✓ Thành công: <span className="font-semibold">{importResult.success}</span> khách hàng
+                            </p>
+                            {importResult.failed > 0 && (
+                              <p className="text-danger">
+                                ✗ Thất bại: <span className="font-semibold">{importResult.failed}</span> khách hàng
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {importResult.errors.length > 0 && (
+                      <div className="border border-danger-200 rounded-lg overflow-hidden">
+                        <div className="bg-danger-50 px-4 py-2 font-medium text-sm text-danger">
+                          Chi tiết lỗi
+                        </div>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          <ul className="divide-y divide-default-100">
+                            {importResult.errors.map((error, i) => (
+                              <li key={i} className="px-4 py-2 text-sm text-default-600">
+                                {error}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </ModalBody>
-
-              <ModalFooter className="pt-2">
-                <Button variant="light" onPress={() => setViewTarget(null)}>Đóng</Button>
-                <Button color="primary" startContent={<Edit size={15} />} onPress={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}>
-                  Chỉnh sửa
-                </Button>
+              <ModalFooter>
+                {!importResult && (
+                  <>
+                    <Button variant="bordered" onPress={resetImport}>
+                      Hủy
+                    </Button>
+                    {importPreview && (
+                      <Button
+                        color="secondary"
+                        onPress={confirmImport}
+                        isLoading={importLoading}
+                        startContent={<CheckCircle2 size={16} />}
+                      >
+                        Xác nhận Import
+                      </Button>
+                    )}
+                  </>
+                )}
+                {importResult && (
+                  <Button color="primary" onPress={resetImport}>
+                    Đóng
+                  </Button>
+                )}
               </ModalFooter>
-            </>
+            </ModalContent>
+          </Modal>
+
+          {/* Table */}
+          <Card>
+            <CardBody className="p-0">
+              <div className="overflow-x-scroll w-full [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-default-100 [&::-webkit-scrollbar-thumb]:bg-default-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <Table
+                  aria-label="Customers table"
+                  classNames={{
+                    wrapper: "min-h-[400px] overflow-visible shadow-none rounded-none",
+                    table: "min-w-[900px]",
+                  }}
+                >
+                  <TableHeader>
+                    <TableColumn key="date">NGÀY</TableColumn>
+                    <TableColumn key="person_in_charge">NGƯỜI PHỤ TRÁCH</TableColumn>
+                    <TableColumn key="facebook_name">TÊN FACEBOOK</TableColumn>
+                    <TableColumn key="final_outcome" className="w-[220px] max-w-[220px]">
+                      KẾT QUẢ HỒ SƠ
+                    </TableColumn>
+                    <TableColumn key="phone_number">SỐ ĐIỆN THOẠI</TableColumn>
+                    <TableColumn key="branch">CHI NHÁNH</TableColumn>
+                    <TableColumn key="source">NGUỒN</TableColumn>
+                    <TableColumn key="case_status">TIẾN ĐỘ</TableColumn>
+                    <TableColumn key="lead_status">TÌNH TRẠNG</TableColumn>
+                    <TableColumn key="actions">THAO TÁC</TableColumn>
+                  </TableHeader>
+                  <TableBody
+                    items={leads}
+                    isLoading={isPending || isRefreshing}
+                    emptyContent={
+                      <div className="text-center py-8">
+                        <Users size={48} className="mx-auto text-default-300 mb-4" />
+                        <p className="text-default-500 mb-4">
+                          {total === 0 ? "Chưa có khách hàng nào" : "Không tìm thấy kết quả"}
+                        </p>
+                        {total === 0 && (
+                          <Button
+                            color="primary"
+                            startContent={<Plus size={16} />}
+                            onPress={() => { setEditTarget(null); setShowForm(true); }}
+                          >
+                            Thêm khách hàng đầu tiên
+                          </Button>
+                        )}
+                      </div>
+                    }
+                  >
+                    {(item) => (
+                      <TableRow key={item.id} className="hover:bg-default-50">
+                        <TableCell>
+                          <span className="text-sm whitespace-nowrap">{formatDateDisplay(item.date) || "—"}</span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex flex-nowrap gap-1 items-center">
+                            {(() => {
+                              // Handle both string (old data) and array (new data)
+                              const personInCharge = item.person_in_charge as string[] | string | undefined;
+                              const persons = Array.isArray(personInCharge)
+                                ? personInCharge
+                                : typeof personInCharge === 'string' && personInCharge
+                                  ? personInCharge.split(", ")
+                                  : [];
+
+                              return persons.length > 0
+                                ? persons.map((name: string, i: number) => (
+                                  <Chip key={`${name}-${i}`} size="sm" variant="flat" color="primary">
+                                    {name}
+                                  </Chip>
+                                ))
+                                : <span className="text-default-300">—</span>;
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium whitespace-nowrap">
+                            {item.customer_link ? (
+                              <a href={item.customer_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                {item.facebook_name || "—"}
+                              </a>
+                            ) : (item.facebook_name || "—")}
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-[120px] max-w-[120px] align-top">
+                          {item.final_outcome ? (
+                            <Tooltip
+                              content={item.final_outcome}
+                              placement="top"
+                              delay={200}
+                              closeDelay={0}
+                              classNames={{
+                                content: "max-w-sm whitespace-normal text-small py-2 px-3",
+                              }}
+                            >
+                              <div
+                                tabIndex={0}
+                                className="text-sm truncate min-w-0 cursor-default outline-none"
+                              >
+                                {item.final_outcome}
+                              </div>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-default-300">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Phone size={14} className="text-default-400" />
+                            <span className="font-mono whitespace-nowrap">{item.phone_number || "—"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm whitespace-nowrap">{item.branch || "—"}</span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {(() => {
+                            const sources = item.source && item.source.length > 0
+                              ? item.source
+                              : [];
+                            if (sources.length === 0) {
+                              return <span className="text-default-300">—</span>;
+                            }
+
+                            // Hiển thị tối đa 1 chip đầu tiên
+                            const firstSource = sources[0];
+                            const remainingCount = sources.length - 1;
+
+                            return (
+                              <div className="flex flex-nowrap gap-1 items-center">
+                                <Chip size="sm" variant="flat" color="secondary">
+                                  {firstSource}
+                                </Chip>
+                                {remainingCount > 0 && (
+                                  <Tooltip
+                                    content={
+                                      <div className="flex flex-wrap gap-1 max-w-xs">
+                                        <div className="text-xs text-default-500 mb-1 w-full">Tất cả nguồn:</div>
+                                        {sources.map((src, i) => (
+                                          <Chip key={`${src}-${i}`} size="sm" variant="flat" color="secondary">
+                                            {src}
+                                          </Chip>
+                                        ))}
+                                      </div>
+                                    }
+                                    placement="top"
+                                    delay={200}
+                                    closeDelay={0}
+                                    classNames={{ content: "p-2" }}
+                                  >
+                                    <Chip size="sm" variant="flat" color="default" className="cursor-help">
+                                      +{remainingCount}
+                                    </Chip>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm whitespace-nowrap">{item.case_status || "—"}</span>
+                        </TableCell>
+                        <TableCell>
+                          {item.lead_status ? (
+                            <Chip size="sm" {...leadStatusColor(item.lead_status)}>{item.lead_status}</Chip>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Tooltip content="Xem chi tiết">
+                              <Button size="sm" variant="light" isIconOnly onPress={() => setViewTarget(item)}>
+                                <Eye size={16} />
+                              </Button>
+                            </Tooltip>
+                            <Tooltip content="Chỉnh sửa">
+                              <Button size="sm" variant="light" isIconOnly onPress={() => { setEditTarget(item); setShowForm(true); }}>
+                                <Edit size={16} />
+                              </Button>
+                            </Tooltip>
+                            <Tooltip content="Xóa" color="danger">
+                              <Button size="sm" variant="light" color="danger" isIconOnly onPress={() => setDeleteTarget(item)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Detail Modal */}
+          <Modal
+            isOpen={!!viewTarget}
+            onOpenChange={(open) => { if (!open) setViewTarget(null); }}
+            size="lg"
+            scrollBehavior="inside"
+          >
+            <ModalContent>
+              {viewTarget && (
+                <>
+                  <ModalHeader className="pb-0">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold">
+                          {viewTarget.customer_link ? (
+                            <a href={viewTarget.customer_link} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                              {viewTarget.customer_name}
+                            </a>
+                          ) : viewTarget.customer_name}
+                        </h3>
+                        {viewTarget.lead_status && (
+                          <Chip size="sm" {...leadStatusColor(viewTarget.lead_status)}>{viewTarget.lead_status}</Chip>
+                        )}
+                      </div>
+                      {viewTarget.facebook_name && (
+                        <p className="text-sm text-default-500">
+                          Tên Facebook: <span className="font-medium">{viewTarget.facebook_name}</span>
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 text-sm text-default-500">
+                        {viewTarget.phone_number && (
+                          <span className="flex items-center gap-1">
+                            <Phone size={13} />
+                            {viewTarget.phone_number}
+                          </span>
+                        )}
+                        {viewTarget.branch && (
+                          <span className="flex items-center gap-1">
+                            <MapPin size={13} />
+                            {viewTarget.branch}
+                          </span>
+                        )}
+                        {viewTarget.date && (
+                          <span className="flex items-center gap-1">
+                            <Calendar size={13} />
+                            {formatDateDisplay(viewTarget.date)}{viewTarget.time_slot ? ` · ${viewTarget.time_slot}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </ModalHeader>
+
+                  <ModalBody className="py-4 gap-3">
+                    {/* Người phụ trách */}
+                    {(() => {
+                      // Handle both string (old data) and array (new data)
+                      const personInCharge = viewTarget.person_in_charge as string[] | string | undefined;
+                      const persons = Array.isArray(personInCharge)
+                        ? personInCharge
+                        : typeof personInCharge === 'string' && personInCharge
+                          ? personInCharge.split(", ")
+                          : [];
+
+                      return persons.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-default-400">Người phụ trách</span>
+                          <div className="flex flex-wrap gap-1">
+                            {persons.map((n: string) => (
+                              <Chip key={n} size="sm" variant="flat" color="primary">{n}</Chip>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Hồ sơ vay */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                      <InfoItem label="Nhu cầu vay" value={viewTarget.loan_amount ? fmtNum(viewTarget.loan_amount) + " ₫" : null} valueClass="font-semibold" />
+                      <InfoItem label="Tài sản đảm bảo" value={viewTarget.collateral_type} />
+                      <InfoItem label="Tiến độ hồ sơ" value={viewTarget.case_status} />
+                      <InfoItem label="Kết quả hồ sơ" value={viewTarget.final_outcome} />
+                      {viewTarget.disbursed_amount ? (
+                        <InfoItem label="Đã giải ngân" value={fmtNum(viewTarget.disbursed_amount) + " ₫"} valueClass="text-success font-semibold" />
+                      ) : null}
+                    </div>
+
+                    <div className="border-t border-default-100" />
+
+                    {/* Nguồn */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-default-400">Nguồn</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          // Handle both string (old data) and array (new data)
+                          const source = viewTarget.source as string[] | string | undefined;
+                          const sources = Array.isArray(source)
+                            ? source
+                            : typeof source === 'string' && source
+                              ? source.split(", ")
+                              : [];
+
+                          return sources.length > 0
+                            ? sources.map((s: string) => (
+                              <Chip key={s} size="sm" variant="flat" color="secondary">{s}</Chip>
+                            ))
+                            : <span className="text-sm text-default-300">—</span>;
+                        })()}
+                      </div>
+                    </div>
+
+                    {(viewTarget.from_ads || viewTarget.engagement_status) && (
+                      <div className="grid grid-cols-2 gap-x-6">
+                        <InfoItem label="Từ Ads" value={viewTarget.from_ads} />
+                        <InfoItem label="Trạng thái trao đổi" value={viewTarget.engagement_status} />
+                      </div>
+                    )}
+
+                    {/* Giới thiệu */}
+                    {(viewTarget.referrer_name || viewTarget.referrer_phone || viewTarget.contact_l2 || viewTarget.contact_l3) && (
+                      <>
+                        <div className="border-t border-default-100" />
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          <InfoItem label="Người giới thiệu" value={viewTarget.referrer_name} />
+                          <InfoItem label="SĐT giới thiệu" value={viewTarget.referrer_phone} />
+                          <InfoItem label="Liên hệ L2" value={viewTarget.contact_l2} />
+                          <InfoItem label="Liên hệ L3" value={viewTarget.contact_l3} />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Ghi chú */}
+                    {viewTarget.remarks && (
+                      <div className="rounded-xl border border-default-200 p-3">
+                        <p className="text-xs text-default-400 mb-1.5">Ghi chú</p>
+                        <p className="text-sm whitespace-pre-wrap">{viewTarget.remarks}</p>
+                      </div>
+                    )}
+                  </ModalBody>
+
+                  <ModalFooter className="pt-2">
+                    <Button variant="light" onPress={() => setViewTarget(null)}>Đóng</Button>
+                    <Button color="primary" startContent={<Edit size={15} />} onPress={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}>
+                      Chỉnh sửa
+                    </Button>
+                  </ModalFooter>
+                </>
+              )}
+            </ModalContent>
+          </Modal>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center">
+              <Pagination
+                total={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                showControls
+                showShadow
+                color="primary"
+              />
+            </div>
           )}
-        </ModalContent>
-      </Modal>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center">
-          <Pagination
-            total={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            showControls
-            showShadow
-            color="primary"
-          />
-        </div>
-      )}
-
-      {/* Results Info */}
-      <Card>
-        <CardBody>
-          <p className="text-small text-default-400 text-center">
-            Trang {currentPage}/{totalPages || 1} — {leads.length} bản ghi / {total} tổng
-          </p>
-        </CardBody>
-      </Card>
+          {/* Results Info */}
+          <Card>
+            <CardBody>
+              <p className="text-small text-default-400 text-center">
+                Trang {currentPage}/{totalPages || 1} — {leads.length} bản ghi / {total} tổng
+              </p>
+            </CardBody>
+          </Card>
         </>
       )}
     </div>
