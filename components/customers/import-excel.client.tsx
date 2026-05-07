@@ -31,6 +31,7 @@ interface CustomerRow {
 
 interface WeekRow {
   week: string;
+  week_display: string;
   total_enquiries: number;
   mql: number;
   mql_rate: number;
@@ -286,7 +287,7 @@ export function ImportExcelContent() {
                   <tbody>
                     {result.weeks.map((w, i) => (
                       <tr key={i} className="border-t border-default-100 hover:bg-default-50 transition-colors">
-                        <td className="px-4 py-3 font-medium whitespace-nowrap">{w.week}</td>
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">{w.week_display || w.week}</td>
                         <td className="px-4 py-3 text-right font-semibold">{w.total_enquiries}</td>
                         <td className="px-4 py-3 text-right">{w.mql}</td>
                         <td className="px-4 py-3"><RateBar value={w.mql_rate} /></td>
@@ -379,7 +380,7 @@ export function ImportExcelContent() {
                         <tbody>
                           {pWeeks.map((w, i) => (
                             <tr key={i} className={`border-t border-default-100 ${w.total_enquiries === 0 ? "opacity-40" : "hover:bg-default-50"} transition-colors`}>
-                              <td className="px-4 py-2 whitespace-nowrap text-default-500">{w.week}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-default-500">{w.week_display || w.week}</td>
                               <td className="px-4 py-2 text-right font-semibold">{w.total_enquiries || "—"}</td>
                               <td className="px-4 py-2 text-right">{w.total_enquiries ? w.mql : "—"}</td>
                               <td className="px-4 py-2">{w.total_enquiries ? <RateBar value={w.mql_rate} /> : "—"}</td>

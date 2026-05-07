@@ -42,6 +42,8 @@ import {
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
 import {
   createCustomerLead,
   updateCustomerLead,
@@ -107,6 +109,53 @@ type ImportResult = {
   failed: number;
   errors: string[];
 };
+
+interface WeekRow {
+  week: string;
+  week_display: string; // Format: "dd/mm - dd/mm"
+  total_enquiries: number;
+  mql: number;
+  mql_rate: number;
+  sql: number;
+  sql_rate: number;
+  application: number;
+  app_rate: number;
+  approved: number;
+  disbursed: number;
+  disbursed_rate: number;
+  avg_loan_size: number | null;
+  total_disbursed_amount: number | null;
+}
+
+type ReportPeriod = "daily" | "weekly" | "monthly";
+
+interface PeriodRow {
+  period: string;
+  period_display: string;
+  total_enquiries: number;
+  enquiry: number;
+  enquiry_rate: number;
+  mql: number;
+  mql_rate: number;
+  sql: number;
+  sql_rate: number;
+  application: number;
+  app_rate: number;
+  approved: number;
+  approved_rate: number;
+  rejected: number;
+  rejected_rate: number;
+  disbursed: number;
+  disbursed_rate: number;
+  avg_loan_size: number | null;
+  total_disbursed_amount: number | null;
+}
+
+interface ReportData {
+  period_type: ReportPeriod;
+  periods: PeriodRow[];
+  periods_by_person: { person: string; periods: PeriodRow[] }[];
+}
 
 const LEAD_STATUS_OPTIONS = [
   "Enquiry",
@@ -206,6 +255,436 @@ const EMPTY_FORM: CustomerLeadInput = {
 function fmtNum(v: number | null | undefined) {
   if (v == null) return "";
   return v.toLocaleString("vi-VN");
+}
+
+function RateBar({ value }: { value: number }) {
+  const color = value >= 30 ? "bg-success-400" : value >= 15 ? "bg-warning-400" : "bg-danger-400";
+  return (
+    <div className="flex items-center gap-2 min-w-[100px]">
+      <div className="flex-1 bg-default-100 rounded-full h-1.5 overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(value, 100)}%` }} />
+      </div>
+      <span className="text-xs w-8 text-right tabular-nums">{value}%</span>
+    </div>
+  );
+}
+
+// ─── Report Tab Component ─────────────────────────────────────────────────────
+
+function ReportTab({
+  reportData,
+  loading,
+  onRefresh,
+  periodType,
+  onPeriodChange,
+  dateRange,
+  onDateRangeChange,
+}: {
+  reportData: ReportData | null;
+  loading: boolean;
+  onRefresh: () => void;
+  periodType: ReportPeriod;
+  onPeriodChange: (period: ReportPeriod) => void;
+  dateRange: { from: string; to: string };
+  onDateRangeChange: (range: { from: string; to: string }) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"overview" | "by-person">("overview");
+
+  // Convert string dates to Date objects for DateRangePicker
+  const startDate = dateRange.from ? new Date(dateRange.from) : undefined;
+  const endDate = dateRange.to ? new Date(dateRange.to) : undefined;
+
+  const handleDateRangeChange = (start: Date, end: Date) => {
+    onDateRangeChange({
+      from: format(start, "yyyy-MM-dd"),
+      to: format(end, "yyyy-MM-dd"),
+    });
+  };
+
+  const handleClearDateRange = () => {
+    onDateRangeChange({ from: "", to: "" });
+  };
+
+  const hasData = reportData && reportData.periods.length > 0;
+  
+  const totals = hasData ? reportData.periods.reduce(
+    (acc, w) => ({
+      total: acc.total + w.total_enquiries,
+      enquiry: acc.enquiry + w.enquiry,
+      mql: acc.mql + w.mql,
+      sql: acc.sql + w.sql,
+      application: acc.application + w.application,
+      approved: acc.approved + w.approved,
+      rejected: acc.rejected + w.rejected,
+      disbursed: acc.disbursed + w.disbursed,
+      total_disbursed_amount: acc.total_disbursed_amount + (w.total_disbursed_amount ?? 0),
+    }),
+    { total: 0, enquiry: 0, mql: 0, sql: 0, application: 0, approved: 0, rejected: 0, disbursed: 0, total_disbursed_amount: 0 }
+  ) : { total: 0, enquiry: 0, mql: 0, sql: 0, application: 0, approved: 0, rejected: 0, disbursed: 0, total_disbursed_amount: 0 };
+
+  const periodLabel = periodType === "daily" ? "Ngày" : periodType === "weekly" ? "Tuần" : "Tháng";
+
+  return (
+    <div className="space-y-6">
+      {/* Header with controls */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-xl font-semibold">Báo cáo khách hàng</h2>
+          <Button
+            size="sm"
+            variant="bordered"
+            startContent={<RefreshCw size={16} />}
+            onPress={onRefresh}
+          >
+            Làm mới
+          </Button>
+        </div>
+
+        {/* Date Range and Period Type Controls */}
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-default-50 rounded-lg border border-default-200">
+          {/* Date Range Picker */}
+          <div className="flex-1 min-w-[300px] max-w-[400px]">
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChange={handleDateRangeChange}
+              placeholder="Chọn khoảng thời gian"
+            />
+          </div>
+
+          {/* Period Type Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-default-500">Nhóm theo:</span>
+            <div className="flex gap-1 bg-default-100 rounded-lg p-1">
+              <Button
+                size="sm"
+                variant={periodType === "daily" ? "solid" : "light"}
+                color={periodType === "daily" ? "primary" : "default"}
+                onPress={() => onPeriodChange("daily")}
+                className="min-w-[70px]"
+              >
+                Ngày
+              </Button>
+              <Button
+                size="sm"
+                variant={periodType === "weekly" ? "solid" : "light"}
+                color={periodType === "weekly" ? "primary" : "default"}
+                onPress={() => onPeriodChange("weekly")}
+                className="min-w-[70px]"
+              >
+                Tuần
+              </Button>
+              <Button
+                size="sm"
+                variant={periodType === "monthly" ? "solid" : "light"}
+                color={periodType === "monthly" ? "primary" : "default"}
+                onPress={() => onPeriodChange("monthly")}
+                className="min-w-[70px]"
+              >
+                Tháng
+              </Button>
+            </div>
+          </div>
+
+          {/* Clear button */}
+          {(dateRange.from || dateRange.to) && (
+            <Button
+              size="sm"
+              variant="flat"
+              color="danger"
+              startContent={<X size={14} />}
+              onPress={handleClearDateRange}
+            >
+              Xóa bộ lọc
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-default-500">Đang tạo báo cáo...</p>
+        </div>
+      )}
+
+      {/* Empty state - only show when not loading */}
+      {!loading && !hasData && (
+        <div className="text-center py-12">
+          <FileSpreadsheet size={48} className="mx-auto text-default-300 mb-4" />
+          <p className="text-default-500 mb-4">Không có dữ liệu để tạo báo cáo</p>
+          <p className="text-sm text-default-400">Vui lòng thêm khách hàng hoặc điều chỉnh bộ lọc</p>
+        </div>
+      )}
+
+      {/* Summary cards - only show when has data */}
+      {hasData && (
+        <div className="space-y-3">
+          {/* Row 1: 5 items */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { label: "Tổng đầu vào", value: totals.total.toLocaleString("vi-VN") },
+              { label: "Enquiry", value: totals.enquiry.toLocaleString("vi-VN"), sub: `${Math.round((totals.enquiry / totals.total) * 100)}% tổng` },
+              { label: "MQL", value: totals.mql.toLocaleString("vi-VN"), sub: `${Math.round((totals.mql / totals.total) * 100)}% tổng` },
+              { label: "SQL", value: totals.sql.toLocaleString("vi-VN"), sub: `${Math.round((totals.sql / totals.total) * 100)}% tổng` },
+              { label: "Lên đơn", value: totals.application.toLocaleString("vi-VN"), sub: `${Math.round((totals.application / totals.total) * 100)}% tổng` },
+            ].map((c) => (
+              <div key={c.label} className="bg-default-50 border border-default-200 rounded-xl p-4">
+                <div className="text-xs text-default-400 uppercase tracking-wide mb-1">{c.label}</div>
+                <div className="text-xl font-semibold tabular-nums">{c.value}</div>
+                {c.sub && <div className="text-xs text-default-400 mt-0.5">{c.sub}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Row 2: 4 items (last one spans 2 columns) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { label: "Đã duyệt", value: totals.approved.toLocaleString("vi-VN"), sub: `${Math.round((totals.approved / totals.total) * 100)}% tổng` },
+              { label: "Từ chối", value: totals.rejected.toLocaleString("vi-VN"), sub: `${Math.round((totals.rejected / totals.total) * 100)}% tổng` },
+              { label: "Giải ngân (hồ sơ)", value: totals.disbursed.toLocaleString("vi-VN"), sub: `${Math.round((totals.disbursed / totals.total) * 100)}% tổng` },
+            ].map((c) => (
+              <div key={c.label} className="bg-default-50 border border-default-200 rounded-xl p-4">
+                <div className="text-xs text-default-400 uppercase tracking-wide mb-1">{c.label}</div>
+                <div className="text-xl font-semibold tabular-nums">{c.value}</div>
+                {c.sub && <div className="text-xs text-default-400 mt-0.5">{c.sub}</div>}
+              </div>
+            ))}
+            {/* Last item spans 2 columns */}
+            <div className="bg-default-50 border border-default-200 rounded-xl p-4 col-span-2">
+              <div className="text-xs text-default-400 uppercase tracking-wide mb-1">Tổng tiền giải ngân</div>
+              <div className="text-xl font-semibold tabular-nums">
+                {totals.total_disbursed_amount > 0 ? fmtNum(totals.total_disbursed_amount) : "—"}
+              </div>
+              <div className="text-xs text-default-400 mt-0.5">VND</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs - only show when has data */}
+      {hasData && (
+        <div className="flex gap-1 border-b border-default-200">
+          {(["overview", "by-person"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === t
+                  ? "bg-primary text-white"
+                  : "text-default-500 hover:text-foreground hover:bg-default-100"
+              }`}
+            >
+              {t === "overview" ? "📊 Tổng quan" : "👤 Theo người phụ trách"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Overview Tab */}
+      {hasData && activeTab === "overview" && (
+        <div className="space-y-4">
+          <div className="overflow-x-auto rounded-xl border border-default-200">
+            <table className="w-full text-sm">
+              <thead className="bg-default-100">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-default-600 whitespace-nowrap">{periodLabel}</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Total Enquiries<br /><span className="font-normal text-default-400 text-xs">Tổng đầu vào</span>
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Enquiry<br /><span className="font-normal text-default-400 text-xs">Khách mới</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">Enquiry Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    MQL<br /><span className="font-normal text-default-400 text-xs">Marketing Qualified Lead</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">MQL Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    SQL<br /><span className="font-normal text-default-400 text-xs">Sales Qualified Lead</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">SQL Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Application<br /><span className="font-normal text-default-400 text-xs">Lên đơn</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">App Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Approved<br /><span className="font-normal text-default-400 text-xs">Đã duyệt</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">Approved Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Rejected<br /><span className="font-normal text-default-400 text-xs">Từ chối</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">Rejected Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Disbursed<br /><span className="font-normal text-default-400 text-xs">Giải ngân</span>
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-default-600 whitespace-nowrap">Disbursed Rate</th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Avg Loan Size<br /><span className="font-normal text-default-400 text-xs">Số tiền vay TB (VND)</span>
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-default-600 whitespace-nowrap">
+                    Total Disbursed<br /><span className="font-normal text-default-400 text-xs">Tổng tiền giải ngân (VND)</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportData.periods.map((w, i) => (
+                  <tr key={i} className="border-t border-default-100 hover:bg-default-50 transition-colors">
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{w.period_display}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{w.total_enquiries}</td>
+                    <td className="px-4 py-3 text-right">{w.enquiry}</td>
+                    <td className="px-4 py-3"><RateBar value={w.enquiry_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.mql}</td>
+                    <td className="px-4 py-3"><RateBar value={w.mql_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.sql}</td>
+                    <td className="px-4 py-3"><RateBar value={w.sql_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.application}</td>
+                    <td className="px-4 py-3"><RateBar value={w.app_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.approved}</td>
+                    <td className="px-4 py-3"><RateBar value={w.approved_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.rejected}</td>
+                    <td className="px-4 py-3"><RateBar value={w.rejected_rate} /></td>
+                    <td className="px-4 py-3 text-right">{w.disbursed}</td>
+                    <td className="px-4 py-3"><RateBar value={w.disbursed_rate} /></td>
+                    <td className="px-4 py-3 text-right tabular-nums">{w.avg_loan_size ? fmtNum(w.avg_loan_size) : <span className="text-default-300">—</span>}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{w.total_disbursed_amount ? fmtNum(w.total_disbursed_amount) : <span className="text-default-300">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-default-100 border-t-2 border-default-300">
+                <tr>
+                  <td className="px-4 py-3 font-semibold">Tổng cộng</td>
+                  <td className="px-4 py-3 text-right font-bold">{totals.total}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.enquiry}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.enquiry / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.mql}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.mql / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.sql}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.sql / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.application}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.application / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.approved}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.approved / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.rejected}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.rejected / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold">{totals.disbursed}</td>
+                  <td className="px-4 py-3"><RateBar value={Math.round((totals.disbursed / totals.total) * 100)} /></td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    {totals.disbursed > 0 ? fmtNum(Math.round(totals.total_disbursed_amount / totals.disbursed)) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    {totals.total_disbursed_amount > 0 ? fmtNum(totals.total_disbursed_amount) : "—"}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="text-xs text-default-400">
+            <strong>Lưu ý:</strong> Mỗi chỉ số đếm số lượng khách hàng có status tương ứng. Ví dụ: MQL = số khách có status "MQL", SQL = số khách có status "SQL", v.v.
+          </p>
+        </div>
+      )}
+
+      {/* By Person Tab */}
+      {hasData && activeTab === "by-person" && (
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+          {reportData.periods_by_person.map(({ person, periods: pPeriods }) => {
+            const pTotals = pPeriods.reduce(
+              (acc, w) => ({
+                total: acc.total + w.total_enquiries,
+                enquiry: acc.enquiry + w.enquiry,
+                mql: acc.mql + w.mql,
+                sql: acc.sql + w.sql,
+                application: acc.application + w.application,
+                approved: acc.approved + w.approved,
+                rejected: acc.rejected + w.rejected,
+                disbursed: acc.disbursed + w.disbursed,
+                total_disbursed_amount: acc.total_disbursed_amount + (w.total_disbursed_amount ?? 0),
+              }),
+              { total: 0, enquiry: 0, mql: 0, sql: 0, application: 0, approved: 0, rejected: 0, disbursed: 0, total_disbursed_amount: 0 }
+            );
+            return (
+              <div key={person} className="rounded-xl border border-default-200 overflow-hidden">
+                {/* Person header */}
+                <div className="bg-default-100 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-semibold text-base">👤 {person}</span>
+                  <div className="flex gap-4 text-sm text-default-500">
+                    <span>Tổng: <span className="font-semibold text-foreground">{pTotals.total}</span></span>
+                    <span>Enquiry: <span className="font-semibold text-foreground">{pTotals.enquiry}</span></span>
+                    <span>MQL: <span className="font-semibold text-foreground">{pTotals.mql}</span></span>
+                    <span>SQL: <span className="font-semibold text-foreground">{pTotals.sql}</span></span>
+                    <span>Approved: <span className="font-semibold text-foreground">{pTotals.approved}</span></span>
+                    <span>Rejected: <span className="font-semibold text-foreground">{pTotals.rejected}</span></span>
+                    <span>Giải ngân: <span className="font-semibold text-foreground">{pTotals.disbursed}</span></span>
+                    {pTotals.total_disbursed_amount > 0 && (
+                      <span>Tổng GN: <span className="font-semibold text-foreground">{fmtNum(pTotals.total_disbursed_amount)}</span></span>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-default-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-default-500 whitespace-nowrap">{periodLabel}</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Tổng</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Enquiry</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">MQL</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">SQL</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Application</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Approved</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Rejected</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Disbursed</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Avg Loan</th>
+                        <th className="px-4 py-2 text-right font-medium text-default-500 whitespace-nowrap">Total GN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pPeriods.map((w, i) => (
+                        <tr key={i} className={`border-t border-default-100 ${w.total_enquiries === 0 ? "opacity-40" : "hover:bg-default-50"} transition-colors`}>
+                          <td className="px-4 py-2 whitespace-nowrap text-default-500">{w.period_display}</td>
+                          <td className="px-4 py-2 text-right font-semibold">{w.total_enquiries || "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.enquiry : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.mql : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.sql : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.application : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.approved : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.rejected : "—"}</td>
+                          <td className="px-4 py-2 text-right">{w.total_enquiries ? w.disbursed : "—"}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{w.avg_loan_size ? fmtNum(w.avg_loan_size) : "—"}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{w.total_disbursed_amount ? fmtNum(w.total_disbursed_amount) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-default-200 bg-default-50">
+                      <tr>
+                        <td className="px-4 py-2 font-semibold">Tổng</td>
+                        <td className="px-4 py-2 text-right font-bold">{pTotals.total}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.enquiry}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.mql}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.sql}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.application}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.approved}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.rejected}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{pTotals.disbursed}</td>
+                        <td className="px-4 py-2 text-right font-semibold tabular-nums">
+                          {pTotals.disbursed > 0 ? fmtNum(Math.round(pTotals.total_disbursed_amount / pTotals.disbursed)) : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold tabular-nums">
+                          {pTotals.total_disbursed_amount > 0 ? fmtNum(pTotals.total_disbursed_amount) : "—"}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Format số tiền dạng 1.000.000 cho input display
@@ -767,6 +1246,11 @@ export function LeadsManagerContent({
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 300);
   const [showForm, setShowForm] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<"list" | "report">("list");
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportPeriodType, setReportPeriodType] = useState<ReportPeriod>("weekly");
+  const [reportDateRange, setReportDateRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
   const [editTarget, setEditTarget] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const [viewTarget, setViewTarget] = useState<Lead | null>(null);
@@ -880,6 +1364,48 @@ export function LeadsManagerContent({
   };
 
   const reload = () => fetchLeads(currentPage, debouncedSearch, appliedFilters);
+
+  // Fetch report data
+  const fetchReport = useCallback(async () => {
+    setReportLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append("periodType", reportPeriodType);
+      
+      // Use report date range if set, otherwise use applied filters
+      const dateFrom = reportDateRange.from || appliedFilters.dateFrom;
+      const dateTo = reportDateRange.to || appliedFilters.dateTo;
+      
+      console.log("📊 Fetching report with date range:", { dateFrom, dateTo, reportDateRange, appliedFilters });
+      
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+      if (appliedFilters.branch !== "all") params.append("branch", appliedFilters.branch);
+      if (appliedFilters.personInCharge !== "all") params.append("personInCharge", appliedFilters.personInCharge);
+      if (appliedFilters.source !== "all") params.append("source", appliedFilters.source);
+      if (appliedFilters.fromAds !== "all") params.append("fromAds", appliedFilters.fromAds);
+
+      console.log("📊 API URL:", `/api/customers/reports?${params.toString()}`);
+
+      const res = await fetch(`/api/customers/reports?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch report");
+      const data = await res.json();
+      console.log("📊 Report data received:", data);
+      setReportData(data);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      setReportData(null);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [appliedFilters, reportPeriodType, reportDateRange]);
+
+  // Fetch report when switching to report tab or filters/period/date range change
+  useEffect(() => {
+    if (activeMainTab === "report") {
+      fetchReport();
+    }
+  }, [activeMainTab, appliedFilters, reportPeriodType, reportDateRange, fetchReport]);
 
   // Apply filters
   const applyFilters = () => {
@@ -1197,232 +1723,254 @@ export function LeadsManagerContent({
       <Card>
         <CardBody>
           <div className="flex flex-col gap-4">
-            {/* Search and Filter Button */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                placeholder="Tìm kiếm theo tên Facebook, họ và tên, SĐT, người phụ trách..."
-                value={search}
-                onValueChange={setSearch}
-                startContent={<Search size={16} className="text-default-400" />}
-                className="flex-1"
-                isClearable
-              />
-
-              <Popover
-                isOpen={isFilterOpen}
-                onOpenChange={handleFilterOpen}
-                placement="bottom-end"
+            {/* Main Tabs */}
+            <div className="flex gap-2 border-b border-default-200 pb-2">
+              <Button
+                variant={activeMainTab === "list" ? "solid" : "light"}
+                color={activeMainTab === "list" ? "primary" : "default"}
+                onPress={() => setActiveMainTab("list")}
+                startContent={<Users size={16} />}
               >
-                <PopoverTrigger>
-                  <Button
-                    variant={activeFiltersCount > 0 ? "solid" : "bordered"}
-                    color={activeFiltersCount > 0 ? "primary" : "default"}
-                    startContent={<Filter size={16} />}
-                    endContent={activeFiltersCount > 0 ? (
-                      <Chip size="sm" color="primary" variant="solid">{activeFiltersCount}</Chip>
-                    ) : <ChevronDown size={16} />}
-                    className="min-w-[140px]"
-                  >
-                    Bộ lọc
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between pb-2 border-b border-default-200">
-                      <h4 className="text-lg font-semibold">Bộ lọc chi tiết</h4>
-                      {activeFiltersCount > 0 && (
-                        <Button
-                          size="sm"
-                          variant="light"
-                          color="danger"
-                          onPress={clearFilters}
-                          startContent={<X size={14} />}
-                        >
-                          Xóa tất cả
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Date Range */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-default-700">Khoảng thời gian</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="date"
-                          label="Từ ngày"
-                          labelPlacement="outside"
-                          size="sm"
-                          value={tempFilters.dateFrom}
-                          onChange={(e) => setTempFilters(f => ({ ...f, dateFrom: e.target.value }))}
-                        />
-                        <Input
-                          type="date"
-                          label="Đến ngày"
-                          labelPlacement="outside"
-                          size="sm"
-                          value={tempFilters.dateTo}
-                          onChange={(e) => setTempFilters(f => ({ ...f, dateTo: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Branch */}
-                    <Select
-                      label="Chi nhánh"
-                      size="sm"
-                      selectedKeys={tempFilters.branch !== "all" ? [tempFilters.branch] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, branch: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả chi nhánh" }, ...branches.map(b => ({ key: b.name, label: b.name }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Lead Status */}
-                    <Select
-                      label="Tình trạng"
-                      size="sm"
-                      selectedKeys={tempFilters.leadStatus !== "all" ? [tempFilters.leadStatus] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, leadStatus: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả tình trạng" }, ...LEAD_STATUS_OPTIONS.map(s => ({ key: s, label: s }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Source */}
-                    <Select
-                      label="Nguồn"
-                      size="sm"
-                      selectedKeys={tempFilters.source !== "all" ? [tempFilters.source] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, source: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả nguồn" }, ...SOURCE_OPTIONS.map(s => ({ key: s, label: s }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* From Ads */}
-                    <Select
-                      label="Từ Ads"
-                      size="sm"
-                      selectedKeys={tempFilters.fromAds !== "all" ? [tempFilters.fromAds] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, fromAds: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...FROM_ADS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Engagement Status */}
-                    <Select
-                      label="Trạng thái trao đổi"
-                      size="sm"
-                      selectedKeys={tempFilters.engagementStatus !== "all" ? [tempFilters.engagementStatus] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, engagementStatus: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...ENGAGEMENT_STATUS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Case Status */}
-                    <Select
-                      label="Tiến độ hồ sơ"
-                      size="sm"
-                      selectedKeys={tempFilters.caseStatus !== "all" ? [tempFilters.caseStatus] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, caseStatus: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...CASE_STATUS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Final Outcome */}
-                    <Select
-                      label="Kết quả hồ sơ"
-                      size="sm"
-                      selectedKeys={tempFilters.finalOutcome !== "all" ? [tempFilters.finalOutcome] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, finalOutcome: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...FINAL_OUTCOME_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Collateral Type */}
-                    <Select
-                      label="Tài sản đảm bảo"
-                      size="sm"
-                      selectedKeys={tempFilters.collateralType !== "all" ? [tempFilters.collateralType] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, collateralType: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...COLLATERAL_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Person in Charge */}
-                    <Select
-                      label="Người phụ trách"
-                      size="sm"
-                      selectedKeys={tempFilters.personInCharge !== "all" ? [tempFilters.personInCharge] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setTempFilters(f => ({ ...f, personInCharge: selected || "all" }));
-                      }}
-                    >
-                      {[{ key: "all", label: "Tất cả" }, ...csProfiles.map(p => ({ key: p.full_name, label: p.full_name }))].map((item) => (
-                        <SelectItem key={item.key}>{item.label}</SelectItem>
-                      ))}
-                    </Select>
-
-                    <Button
-                      color="primary"
-                      className="w-full"
-                      onPress={applyFilters}
-                    >
-                      Áp dụng bộ lọc
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {hasActiveFilters && (
-                <Button
-                  variant="flat"
-                  color="danger"
-                  startContent={<X size={16} />}
-                  onPress={clearFilters}
-                >
-                  Xóa bộ lọc
-                </Button>
-              )}
+                Danh sách khách hàng
+              </Button>
+              <Button
+                variant={activeMainTab === "report" ? "solid" : "light"}
+                color={activeMainTab === "report" ? "primary" : "default"}
+                onPress={() => setActiveMainTab("report")}
+                startContent={<FileSpreadsheet size={16} />}
+              >
+                Báo cáo (Daily/Weekly/Monthly)
+              </Button>
             </div>
+
+            {/* Search and Filter Button - Only show in list tab */}
+            {activeMainTab === "list" && (
+              <>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    placeholder="Tìm kiếm theo tên Facebook, họ và tên, SĐT, người phụ trách..."
+                    value={search}
+                    onValueChange={setSearch}
+                    startContent={<Search size={16} className="text-default-400" />}
+                    className="flex-1"
+                    isClearable
+                  />
+
+                  <Popover
+                    isOpen={isFilterOpen}
+                    onOpenChange={handleFilterOpen}
+                    placement="bottom-end"
+                  >
+                    <PopoverTrigger>
+                      <Button
+                        variant={activeFiltersCount > 0 ? "solid" : "bordered"}
+                        color={activeFiltersCount > 0 ? "primary" : "default"}
+                        startContent={<Filter size={16} />}
+                        endContent={activeFiltersCount > 0 ? (
+                          <Chip size="sm" color="primary" variant="solid">{activeFiltersCount}</Chip>
+                        ) : <ChevronDown size={16} />}
+                        className="min-w-[140px]"
+                      >
+                        Bộ lọc
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-default-200">
+                          <h4 className="text-lg font-semibold">Bộ lọc chi tiết</h4>
+                          {activeFiltersCount > 0 && (
+                            <Button
+                              size="sm"
+                              variant="light"
+                              color="danger"
+                              onPress={clearFilters}
+                              startContent={<X size={14} />}
+                            >
+                              Xóa tất cả
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Date Range */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-default-700">Khoảng thời gian</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="date"
+                              label="Từ ngày"
+                              labelPlacement="outside"
+                              size="sm"
+                              value={tempFilters.dateFrom}
+                              onChange={(e) => setTempFilters(f => ({ ...f, dateFrom: e.target.value }))}
+                            />
+                            <Input
+                              type="date"
+                              label="Đến ngày"
+                              labelPlacement="outside"
+                              size="sm"
+                              value={tempFilters.dateTo}
+                              onChange={(e) => setTempFilters(f => ({ ...f, dateTo: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Branch */}
+                        <Select
+                          label="Chi nhánh"
+                          size="sm"
+                          selectedKeys={tempFilters.branch !== "all" ? [tempFilters.branch] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, branch: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả chi nhánh" }, ...branches.map(b => ({ key: b.name, label: b.name }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Lead Status */}
+                        <Select
+                          label="Tình trạng"
+                          size="sm"
+                          selectedKeys={tempFilters.leadStatus !== "all" ? [tempFilters.leadStatus] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, leadStatus: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả tình trạng" }, ...LEAD_STATUS_OPTIONS.map(s => ({ key: s, label: s }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Source */}
+                        <Select
+                          label="Nguồn"
+                          size="sm"
+                          selectedKeys={tempFilters.source !== "all" ? [tempFilters.source] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, source: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả nguồn" }, ...SOURCE_OPTIONS.map(s => ({ key: s, label: s }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* From Ads */}
+                        <Select
+                          label="Từ Ads"
+                          size="sm"
+                          selectedKeys={tempFilters.fromAds !== "all" ? [tempFilters.fromAds] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, fromAds: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...FROM_ADS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Engagement Status */}
+                        <Select
+                          label="Trạng thái trao đổi"
+                          size="sm"
+                          selectedKeys={tempFilters.engagementStatus !== "all" ? [tempFilters.engagementStatus] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, engagementStatus: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...ENGAGEMENT_STATUS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Case Status */}
+                        <Select
+                          label="Tiến độ hồ sơ"
+                          size="sm"
+                          selectedKeys={tempFilters.caseStatus !== "all" ? [tempFilters.caseStatus] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, caseStatus: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...CASE_STATUS_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Final Outcome */}
+                        <Select
+                          label="Kết quả hồ sơ"
+                          size="sm"
+                          selectedKeys={tempFilters.finalOutcome !== "all" ? [tempFilters.finalOutcome] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, finalOutcome: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...FINAL_OUTCOME_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Collateral Type */}
+                        <Select
+                          label="Tài sản đảm bảo"
+                          size="sm"
+                          selectedKeys={tempFilters.collateralType !== "all" ? [tempFilters.collateralType] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, collateralType: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...COLLATERAL_OPTIONS.map(o => ({ key: o, label: o }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        {/* Person in Charge */}
+                        <Select
+                          label="Người phụ trách"
+                          size="sm"
+                          selectedKeys={tempFilters.personInCharge !== "all" ? [tempFilters.personInCharge] : []}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setTempFilters(f => ({ ...f, personInCharge: selected || "all" }));
+                          }}
+                        >
+                          {[{ key: "all", label: "Tất cả" }, ...csProfiles.map(p => ({ key: p.full_name, label: p.full_name }))].map((item) => (
+                            <SelectItem key={item.key}>{item.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        <Button
+                          color="primary"
+                          className="w-full"
+                          onPress={applyFilters}
+                        >
+                          Áp dụng bộ lọc
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {hasActiveFilters && (
+                    <Button
+                      variant="flat"
+                      color="danger"
+                      startContent={<X size={16} />}
+                      onPress={clearFilters}
+                    >
+                      Xóa bộ lọc
+                    </Button>
+                  )}
+                </div>
 
             {/* Active Filters Display */}
             {activeFilterLabels.length > 0 && (
@@ -1464,12 +2012,34 @@ export function LeadsManagerContent({
                 ))}
               </div>
             )}
+              </>
+            )}
           </div>
         </CardBody>
       </Card>
 
-      {/* Form modal */}
-      <Modal
+      {/* Report Tab Content */}
+      {activeMainTab === "report" && (
+        <Card>
+          <CardBody>
+            <ReportTab
+              reportData={reportData}
+              loading={reportLoading}
+              onRefresh={fetchReport}
+              periodType={reportPeriodType}
+              onPeriodChange={setReportPeriodType}
+              dateRange={reportDateRange}
+              onDateRangeChange={setReportDateRange}
+            />
+          </CardBody>
+        </Card>
+      )}
+
+      {/* List Tab Content - wrap existing table and pagination */}
+      {activeMainTab === "list" && (
+        <>
+          {/* Form modal */}
+          <Modal
         isOpen={showForm}
         onOpenChange={(open) => {
           if (!open) {
@@ -2125,6 +2695,8 @@ export function LeadsManagerContent({
           </p>
         </CardBody>
       </Card>
+        </>
+      )}
     </div>
   );
 }
