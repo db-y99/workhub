@@ -584,7 +584,10 @@ function ReportTab({
             </table>
           </div>
           <p className="text-xs text-default-400">
-            <strong>Lưu ý:</strong> Mỗi chỉ số đếm số lượng khách hàng có status tương ứng. Ví dụ: MQL = số khách có status "MQL", SQL = số khách có status "SQL", v.v.
+            <strong>Lưu ý:</strong> Cách tính các chỉ số:
+            <br />• <strong>Enquiry, MQL, Approved, Rejected, Disbursed:</strong> Đếm số khách hàng có đúng status đó
+            <br />• <strong>SQL:</strong> SQL + MQL
+            <br />• <strong>Application:</strong> Application + SQL + MQL
           </p>
         </div>
       )}
