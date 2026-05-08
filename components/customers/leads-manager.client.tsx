@@ -157,6 +157,12 @@ interface ReportData {
   periods_by_person: { person: string; periods: PeriodRow[] }[];
 }
 
+interface TimeSlotStats {
+  slot: string;
+  count: number;
+  percentage: number;
+}
+
 const LEAD_STATUS_OPTIONS = [
   "Enquiry",
   "MQL",
@@ -291,7 +297,9 @@ function ReportTab({
   dateRange: { from: string; to: string };
   onDateRangeChange: (range: { from: string; to: string }) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "by-person">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "by-person" | "by-timeslot">("overview");
+  const [timeSlotStats, setTimeSlotStats] = useState<TimeSlotStats[]>([]);
+  const [timeSlotLoading, setTimeSlotLoading] = useState(false);
 
   // Convert string dates to Date objects for DateRangePicker
   const startDate = dateRange.from ? new Date(dateRange.from) : undefined;
@@ -307,6 +315,36 @@ function ReportTab({
   const handleClearDateRange = () => {
     onDateRangeChange({ from: "", to: "" });
   };
+
+  // Fetch time slot stats
+  const fetchTimeSlotStats = async () => {
+    setTimeSlotLoading(true);
+    try {
+      const params = new URLSearchParams();
+      const dateFrom = dateRange.from;
+      const dateTo = dateRange.to;
+      
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+
+      const res = await fetch(`/api/customers/timeslot-stats?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch time slot stats");
+      const data = await res.json();
+      setTimeSlotStats(data.slots || []);
+    } catch (error) {
+      console.error("Error fetching time slot stats:", error);
+      setTimeSlotStats([]);
+    } finally {
+      setTimeSlotLoading(false);
+    }
+  };
+
+  // Fetch time slot stats when switching to by-timeslot tab
+  useEffect(() => {
+    if (activeTab === "by-timeslot") {
+      fetchTimeSlotStats();
+    }
+  }, [activeTab, dateRange]);
 
   const hasData = reportData && reportData.periods.length > 0;
 
@@ -469,7 +507,7 @@ function ReportTab({
       {/* Tabs - only show when has data */}
       {hasData && (
         <div className="flex gap-1 border-b border-default-200">
-          {(["overview", "by-person"] as const).map((t) => (
+          {(["overview", "by-person", "by-timeslot"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -478,7 +516,7 @@ function ReportTab({
                 : "text-default-500 hover:text-foreground hover:bg-default-100"
                 }`}
             >
-              {t === "overview" ? "📊 Tổng quan" : "👤 Theo người phụ trách"}
+              {t === "overview" ? "📊 Tổng quan" : t === "by-person" ? "👤 Theo người phụ trách" : "⏰ Theo khung giờ"}
             </button>
           ))}
         </div>
@@ -686,6 +724,92 @@ function ReportTab({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* By Time Slot Tab */}
+      {hasData && activeTab === "by-timeslot" && (
+        <div className="space-y-6">
+          {timeSlotLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-default-500">Đang tải dữ liệu khung giờ...</p>
+            </div>
+          ) : timeSlotStats.length === 0 ? (
+            <div className="text-center py-12">
+              <Clock size={48} className="mx-auto text-default-300 mb-4" />
+              <p className="text-default-500">Không có dữ liệu khung giờ</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {timeSlotStats.map((slot) => (
+                  <div key={slot.slot} className="bg-default-50 border border-default-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                          <Clock size={24} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-default-500 font-medium">Khung giờ</p>
+                          <p className="text-lg font-bold">{slot.slot}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-primary">{slot.count}</span>
+                        <span className="text-sm text-default-500">khách hàng</span>
+                      </div>
+                      <div className="w-full bg-default-200 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className="bg-primary h-full rounded-full transition-all duration-500"
+                          style={{ width: `${slot.percentage}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-default-500 text-right">{slot.percentage.toFixed(1)}% tổng số</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bar Chart */}
+              <div className="bg-default-50 border border-default-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold mb-6">Biểu đồ phân bố khách hàng theo khung giờ</h3>
+                <div className="space-y-4">
+                  {timeSlotStats.map((slot) => {
+                    const maxCount = Math.max(...timeSlotStats.map(s => s.count));
+                    const barWidth = maxCount > 0 ? (slot.count / maxCount) * 100 : 0;
+                    
+                    return (
+                      <div key={slot.slot} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium min-w-[140px]">{slot.slot}</span>
+                          <span className="text-default-500">{slot.count} khách ({slot.percentage.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-default-200 rounded-full h-8 overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-primary to-secondary h-full rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+                            style={{ width: `${barWidth}%` }}
+                          >
+                            {barWidth > 15 && (
+                              <span className="text-white text-sm font-semibold">{slot.count}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Info Note */}
+              <p className="text-xs text-default-400">
+                <strong>Lưu ý:</strong> Thống kê dựa trên trường "Khung giờ" (time_slot) của khách hàng trong khoảng thời gian đã chọn.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>
