@@ -216,14 +216,16 @@ const CASE_STATUS_OPTIONS = [
 ];
 
 const FINAL_OUTCOME_OPTIONS = [
-  "Đang tư vấn",
-  "Đã tư vấn xong",
-  "Đã giải ngân",
-  "Từ chối",
-  "Tương tác từ quảng cáo facebook",
+  "Tương tác từ quảng cáo/media",
   "Im lặng hoặc từ chối sau tin nhắn đầu tiên",
-  "Im lặng hoặc từ chối sau khi gửi bảng phỏng",
+  "Đang tư vấn",
   "Im lặng hoặc từ chối khi báo hạn mức",
+  "Im lặng hoặc từ chối khi gửi bảng phỏng",
+  "Đã tư vấn xong",
+  "Đơn tạo",
+  "Đơn được duyệt",
+  "Từ chối",
+  "Đã giải ngân",
 ];
 
 const EMPTY_FORM: CustomerLeadInput = {

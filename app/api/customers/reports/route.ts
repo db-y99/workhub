@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { calculateLeadReportStats } from "@/lib/customers/lead-report-stats";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,16 +30,6 @@ type PeriodRow = StatsRow & {
   period: string;
   period_display: string;
 };
-
-const LEAD_STATUS = {
-  EQUIRY: "equiry",
-  MQL: "mql",
-  SQL: "sql",
-  APPLICATION: "application",
-  APPROVED: "approved",
-  REJECTED: "rejected",
-  DISBURSED: "disbursed",
-} as const;
 
 interface ReportData {
   period_type: ReportPeriod;
@@ -179,67 +170,17 @@ function getPeriodInfo(dateStr: string, periodType: ReportPeriod): { key: string
   }
 }
 
-function normalizeLeadStatus(status: unknown): string {
-  if (typeof status !== "string") return "";
-
-  const normalized = status.trim().toLowerCase();
-
-  if (normalized === "enquiry") return LEAD_STATUS.EQUIRY;
-  if (normalized === "inquiry") return LEAD_STATUS.EQUIRY;
-  if (normalized === "qualified lead") return LEAD_STATUS.MQL;
-  if (normalized === "sales qualified lead") return LEAD_STATUS.SQL;
-
-  return normalized;
-}
-
 function calculatePeriodStats(customers: any[]): Omit<PeriodRow, 'period' | 'period_display'> {
-  const total = customers.length;
-  
-  // Count by normalized status to avoid data-entry inconsistencies.
-  const enquiryCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.EQUIRY).length;
-  const mqlCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.MQL).length;
-  const sqlCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.SQL).length;
-  const applicationCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.APPLICATION).length;
-  const approvedCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.APPROVED).length;
-  const rejectedCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.REJECTED).length;
-  const disbursedCount = customers.filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.DISBURSED).length;
-  
-  // Each metric is just the count of that specific status
-  const enquiry = enquiryCount;
-  const mql = mqlCount;
-  const sql = sqlCount;
-  const application = applicationCount;
-  const approved = approvedCount;
-  const rejected = rejectedCount;
-  const disbursed = disbursedCount;
-  
-  // Total disbursed amount
-  const totalDisbursedAmount = customers
-    .filter((c) => normalizeLeadStatus(c.lead_status) === LEAD_STATUS.DISBURSED && c.disbursed_amount)
-    .reduce((sum, c) => sum + (c.disbursed_amount || 0), 0);
-  
-  // Average loan size
-  const avgLoanSize = disbursed > 0 ? Math.round(totalDisbursedAmount / disbursed) : null;
-  
-  return {
-    total_enquiries: total,
-    enquiry,
-    enquiry_rate: total > 0 ? Math.round((enquiry / total) * 100) : 0,
-    mql,
-    mql_rate: total > 0 ? Math.round((mql / total) * 100) : 0,
-    sql,
-    sql_rate: total > 0 ? Math.round((sql / total) * 100) : 0,
-    application,
-    app_rate: total > 0 ? Math.round((application / total) * 100) : 0,
-    approved,
-    approved_rate: total > 0 ? Math.round((approved / total) * 100) : 0,
-    rejected,
-    rejected_rate: total > 0 ? Math.round((rejected / total) * 100) : 0,
-    disbursed,
-    disbursed_rate: total > 0 ? Math.round((disbursed / total) * 100) : 0,
-    avg_loan_size: avgLoanSize,
-    total_disbursed_amount: totalDisbursedAmount > 0 ? totalDisbursedAmount : null,
-  };
+  return calculateLeadReportStats(
+    customers.map((c) => c.lead_status),
+    customers.map((c) => {
+      const amount =
+        typeof c.disbursed_amount === "number"
+          ? c.disbursed_amount
+          : Number(c.disbursed_amount);
+      return Number.isFinite(amount) ? amount : null;
+    }),
+  );
 }
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────

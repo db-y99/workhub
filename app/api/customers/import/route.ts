@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { calculateLeadReportStats } from "@/lib/customers/lead-report-stats";
 
 function excelDateToString(serial: number): string {
   if (!serial || typeof serial !== "number") return "";
@@ -108,51 +109,20 @@ function fmtDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-const MQL_SET = new Set(["mql"]);
-const SQL_SET = new Set(["sql"]);
-const APP_SET = new Set(["application"]);
-const APPROVED_SET = new Set(["approved"]);
-const DISBURSED_SET = new Set(["disbursed"]);
-
 function calcStats(rows: any[], weekLabel: string, layout: TImportLayout) {
   const leadIdx = layout === "legacy_single_name" ? 13 : 14;
   const disbursedIdx = layout === "legacy_single_name" ? 14 : 15;
-  const count = (set: Set<string>) =>
-    rows.filter((r) => set.has(str(r[leadIdx]).toLowerCase())).length;
-
-  const total = rows.length;
-  const mql = count(MQL_SET);
-  const sql = count(SQL_SET);
-  const application = count(APP_SET);
-  const approved = count(APPROVED_SET);
-  const disbursed = count(DISBURSED_SET);
-
-  const disbursedAmounts = rows
-    .map((r) => Number(r[disbursedIdx]))
-    .filter((v) => !isNaN(v) && v > 0);
-  const total_disbursed_amount =
-    disbursedAmounts.length > 0
-      ? disbursedAmounts.reduce((s, v) => s + v, 0)
-      : null;
-  const avg_loan_size =
-    total_disbursed_amount !== null && disbursed > 0
-      ? Math.round(total_disbursed_amount / disbursed)
-      : null;
+  const stats = calculateLeadReportStats(
+    rows.map((r) => str(r[leadIdx])),
+    rows.map((r) => {
+      const amount = Number(r[disbursedIdx]);
+      return Number.isFinite(amount) ? amount : null;
+    }),
+  );
 
   return {
     week: weekLabel,
-    total_enquiries: total,
-    mql,
-    mql_rate: total > 0 ? Math.round((mql / total) * 100) : 0,
-    sql,
-    sql_rate: total > 0 ? Math.round((sql / total) * 100) : 0,
-    application,
-    app_rate: total > 0 ? Math.round((application / total) * 100) : 0,
-    approved,
-    disbursed,
-    disbursed_rate: total > 0 ? Math.round((disbursed / total) * 100) : 0,
-    avg_loan_size,
-    total_disbursed_amount,
+    ...stats,
   };
 }
 
