@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import type { TRequestComment } from "@/types/requests.types";
 import { getProfileById } from "@/lib/services/profiles.service";
-import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
+import { sendEmail } from "@/lib/services/email.service";
 import { getBaseUrl } from "@/config/env";
 import { stripHtml } from "@/lib/functions";
 import {
@@ -199,7 +199,7 @@ export async function createRequest(
 
         // Gửi email đến từng CC email (gửi song song)
         const emailPromises = ccEmails.map((email) =>
-          sendEmailViaAppScript({
+          sendEmail({
             to: email.trim(),
             subject: emailSubject,
             htmlBody,
@@ -407,7 +407,7 @@ export async function updateRequestStatus(
           const subject = getRequestApprovedEmailSubject(existing.title);
           const textBody = `Kính gửi ${emailData.requesterName},\n\nYêu cầu "${existing.title}" của bạn đã được phê duyệt bởi ${emailData.approverName} lúc ${approvedAt}.\n\nXem chi tiết: ${emailData.requestUrl}\n\nTrân trọng,\nHệ thống Easy Approve`;
 
-          await sendEmailViaAppScript({ to: requesterEmail, subject, htmlBody, textBody });
+          await sendEmail({ to: requesterEmail, subject, htmlBody, textBody });
         }
       } catch (emailError) {
         console.error("Error sending approval email:", emailError);
