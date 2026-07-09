@@ -6,7 +6,8 @@ import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { DatePicker } from "@heroui/date-picker";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
-import { VIETNAM_BANKS, type TBankItem } from "@/constants/banks";
+import { useBanks } from "@/hooks/use-banks";
+import type { TBankItem } from "@/types/banks.types";
 import type { DateValue } from "@internationalized/date";
 import { parseDate } from "@internationalized/date";
 import { TLoanDisbursementData } from "@/types/loan-disbursement";
@@ -56,15 +57,19 @@ export function LoanDisbursementForm({
     });
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { data: banks = [], isLoading: isBanksLoading, error: banksError } = useBanks();
 
     // Filter banks by search (bank_name) for Autocomplete - case-insensitive contains
     const filteredBanks = useMemo(() => {
         const query = (formData.bank_name || "").trim().toLowerCase();
-        if (!query) return [...VIETNAM_BANKS];
-        return VIETNAM_BANKS.filter((b) =>
-            b.name.toLowerCase().includes(query)
+        if (!query) return banks;
+        return banks.filter(
+            (bank) =>
+                bank.name.toLowerCase().includes(query) ||
+                bank.shortName.toLowerCase().includes(query) ||
+                bank.code.toLowerCase().includes(query)
         );
-    }, [formData.bank_name]);
+    }, [formData.bank_name, banks]);
 
     // Update form data when initialData changes
     useEffect(() => {
@@ -377,22 +382,27 @@ export function LoanDisbursementForm({
                     <Autocomplete
                         label="Tên ngân hàng"
                         placeholder="Nhập để tìm kiếm hoặc chọn ngân hàng"
-                        description="Click vào ô để mở danh sách, nhập để lọc"
+                        description={
+                            banksError
+                                ? "Không tải được danh sách ngân hàng. Bạn vẫn có thể nhập tay."
+                                : "Click vào ô để mở danh sách, nhập để lọc"
+                        }
                         items={filteredBanks}
                         allowsCustomValue
                         menuTrigger="focus"
+                        isLoading={isBanksLoading}
                         inputValue={formData.bank_name || ""}
                         onInputChange={(value) => updateField("bank_name", value)}
                         selectedKey={
-                            VIETNAM_BANKS.find((b) => b.name === formData.bank_name)
-                                ?.id ?? null
+                            banks.find((bank) => bank.name === formData.bank_name)?.id ??
+                            null
                         }
                         onSelectionChange={(key) => {
                             if (key == null) {
                                 updateField("bank_name", "");
                                 return;
                             }
-                            const bank = VIETNAM_BANKS.find((b) => b.id === key);
+                            const bank = banks.find((item) => item.id === key);
                             if (bank) updateField("bank_name", bank.name);
                         }}
                         isInvalid={!!errors.bank_name}
@@ -401,7 +411,16 @@ export function LoanDisbursementForm({
                     >
                         {(item: TBankItem) => (
                             <AutocompleteItem key={item.id} textValue={item.name}>
-                                {item.name}
+                                <div className="flex items-center gap-2">
+                                    {item.logo ? (
+                                        <img
+                                            src={item.logo}
+                                            alt=""
+                                            className="h-6 w-6 object-contain"
+                                        />
+                                    ) : null}
+                                    <span>{item.name}</span>
+                                </div>
                             </AutocompleteItem>
                         )}
                     </Autocomplete>
