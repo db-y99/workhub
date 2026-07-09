@@ -410,16 +410,24 @@ export function LoanDisbursementForm({
                         isRequired
                     >
                         {(item: TBankItem) => (
-                            <AutocompleteItem key={item.id} textValue={item.name}>
+                            <AutocompleteItem
+                                key={item.id}
+                                textValue={`${item.name} ${item.code} ${item.shortName}`}
+                            >
                                 <div className="flex items-center gap-2">
                                     {item.logo ? (
                                         <img
                                             src={item.logo}
                                             alt=""
-                                            className="h-6 w-6 object-contain"
+                                            className="h-6 w-6 shrink-0 object-contain"
                                         />
                                     ) : null}
-                                    <span>{item.name}</span>
+                                    <div className="min-w-0">
+                                        <p className="truncate">{item.name}</p>
+                                        <p className="text-xs text-default-500">
+                                            {item.code} · {item.shortName}
+                                        </p>
+                                    </div>
                                 </div>
                             </AutocompleteItem>
                         )}
