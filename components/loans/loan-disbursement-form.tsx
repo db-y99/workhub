@@ -58,10 +58,14 @@ export function LoanDisbursementForm({
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { data: banks = [], isLoading: isBanksLoading, error: banksError } = useBanks();
+    const [selectedBankKey, setSelectedBankKey] = useState<string | null>(null);
+    const [bankInputValue, setBankInputValue] = useState(
+        () => initialData?.bank_name ?? ""
+    );
 
-    // Filter banks by search (bank_name) for Autocomplete - case-insensitive contains
+    // Filter banks by search input for Autocomplete - case-insensitive contains
     const filteredBanks = useMemo(() => {
-        const query = (formData.bank_name || "").trim().toLowerCase();
+        const query = bankInputValue.trim().toLowerCase();
         if (!query) return banks;
         return banks.filter(
             (bank) =>
@@ -69,7 +73,7 @@ export function LoanDisbursementForm({
                 bank.shortName.toLowerCase().includes(query) ||
                 bank.code.toLowerCase().includes(query)
         );
-    }, [formData.bank_name, banks]);
+    }, [bankInputValue, banks]);
 
     // Update form data when initialData changes
     useEffect(() => {
@@ -81,8 +85,23 @@ export function LoanDisbursementForm({
             if (initialData.cc_emails) {
                 setCcEmailsArray(parseCCEmailsRaw(initialData.cc_emails));
             }
+            if (initialData.bank_name !== undefined) {
+                setBankInputValue(initialData.bank_name);
+            }
         }
     }, [initialData]);
+
+    // Sync selected bank key when banks load or bank_name is set externally
+    useEffect(() => {
+        const bankName = formData.bank_name?.trim();
+        if (!bankName || banks.length === 0) {
+            setSelectedBankKey(null);
+            return;
+        }
+
+        const matchedBank = banks.find((bank) => bank.name === bankName);
+        setSelectedBankKey(matchedBank?.id ?? null);
+    }, [banks, formData.bank_name]);
 
     // Tự động tính ngày kết thúc vay và ngày đến hạn hàng tháng khi có ngày bắt đầu và thời hạn
     useEffect(() => {
@@ -391,29 +410,34 @@ export function LoanDisbursementForm({
                         allowsCustomValue
                         menuTrigger="focus"
                         isLoading={isBanksLoading}
-                        inputValue={formData.bank_name || ""}
-                        onInputChange={(value) => updateField("bank_name", value)}
-                        selectedKey={
-                            banks.find((bank) => bank.name === formData.bank_name)?.id ??
-                            null
-                        }
+                        inputValue={bankInputValue}
+                        onInputChange={(value) => {
+                            setBankInputValue(value);
+                            setSelectedBankKey(null);
+                            updateField("bank_name", value);
+                        }}
+                        selectedKey={selectedBankKey}
                         onSelectionChange={(key) => {
-                            if (key == null) {
-                                updateField("bank_name", "");
-                                return;
-                            }
-                            const bank = banks.find((item) => item.id === key);
-                            if (bank) updateField("bank_name", bank.name);
+                            if (key == null) return;
+                            const bank = banks.find((item) => item.id === String(key));
+                            if (!bank) return;
+                            setSelectedBankKey(bank.id);
+                            setBankInputValue(bank.name);
+                            updateField("bank_name", bank.name);
+                        }}
+                        onClose={() => {
+                            if (!selectedBankKey) return;
+                            const bank = banks.find((item) => item.id === selectedBankKey);
+                            if (!bank) return;
+                            setBankInputValue(bank.name);
+                            updateField("bank_name", bank.name);
                         }}
                         isInvalid={!!errors.bank_name}
                         errorMessage={errors.bank_name}
                         isRequired
                     >
                         {(item: TBankItem) => (
-                            <AutocompleteItem
-                                key={item.id}
-                                textValue={`${item.name} ${item.code} ${item.shortName}`}
-                            >
+                            <AutocompleteItem key={item.id} textValue={item.name}>
                                 <div className="flex items-center gap-2">
                                     {item.logo ? (
                                         <img
