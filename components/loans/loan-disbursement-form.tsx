@@ -8,6 +8,7 @@ import { DatePicker } from "@heroui/date-picker";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { useBanks } from "@/hooks/use-banks";
 import type { TBankItem } from "@/types/banks.types";
+import { findBankByDisplayValue, formatBankDisplay } from "@/lib/bank-utils";
 import type { DateValue } from "@internationalized/date";
 import { parseDate } from "@internationalized/date";
 import { TLoanDisbursementData } from "@/types/loan-disbursement";
@@ -77,18 +78,20 @@ export function LoanDisbursementForm({
 
     // Update form data when initialData changes
     useEffect(() => {
-        if (initialData) {
-            setFormData(initialData);
-            if (initialData.customer_email) {
-                setToEmailsArray([initialData.customer_email]);
-            }
-            if (initialData.cc_emails) {
-                setCcEmailsArray(parseCCEmailsRaw(initialData.cc_emails));
-            }
-            if (initialData.bank_name !== undefined) {
-                setBankInputValue(initialData.bank_name);
-            }
+        if (!initialData) {
+            setBankInputValue("");
+            setSelectedBankKey(null);
+            return;
         }
+
+        setFormData(initialData);
+        if (initialData.customer_email) {
+            setToEmailsArray([initialData.customer_email]);
+        }
+        if (initialData.cc_emails) {
+            setCcEmailsArray(parseCCEmailsRaw(initialData.cc_emails));
+        }
+        setBankInputValue(initialData.bank_name ?? "");
     }, [initialData]);
 
     // Sync selected bank key when banks load or bank_name is set externally
@@ -99,7 +102,7 @@ export function LoanDisbursementForm({
             return;
         }
 
-        const matchedBank = banks.find((bank) => bank.name === bankName);
+        const matchedBank = findBankByDisplayValue(bankName, banks);
         setSelectedBankKey(matchedBank?.id ?? null);
     }, [banks, formData.bank_name]);
 
@@ -235,6 +238,8 @@ export function LoanDisbursementForm({
         setCcEmailsArray([]);
         setAttachments([]);
         setErrors({});
+        setBankInputValue("");
+        setSelectedBankKey(null);
 
         // Call parent onReset if provided
         if (onReset) {
@@ -421,23 +426,28 @@ export function LoanDisbursementForm({
                             if (key == null) return;
                             const bank = banks.find((item) => item.id === String(key));
                             if (!bank) return;
+                            const displayValue = formatBankDisplay(bank);
                             setSelectedBankKey(bank.id);
-                            setBankInputValue(bank.name);
-                            updateField("bank_name", bank.name);
+                            setBankInputValue(displayValue);
+                            updateField("bank_name", displayValue);
                         }}
                         onClose={() => {
                             if (!selectedBankKey) return;
                             const bank = banks.find((item) => item.id === selectedBankKey);
                             if (!bank) return;
-                            setBankInputValue(bank.name);
-                            updateField("bank_name", bank.name);
+                            const displayValue = formatBankDisplay(bank);
+                            setBankInputValue(displayValue);
+                            updateField("bank_name", displayValue);
                         }}
                         isInvalid={!!errors.bank_name}
                         errorMessage={errors.bank_name}
                         isRequired
                     >
                         {(item: TBankItem) => (
-                            <AutocompleteItem key={item.id} textValue={item.name}>
+                            <AutocompleteItem
+                                key={item.id}
+                                textValue={`${item.name} ${item.code}`}
+                            >
                                 <div className="flex items-center gap-2">
                                     {item.logo ? (
                                         <img
@@ -446,12 +456,9 @@ export function LoanDisbursementForm({
                                             className="h-6 w-6 shrink-0 object-contain"
                                         />
                                     ) : null}
-                                    <div className="min-w-0">
-                                        <p className="truncate">{item.name}</p>
-                                        <p className="text-xs text-default-500">
-                                            {item.code} · {item.shortName}
-                                        </p>
-                                    </div>
+                                    <p className="min-w-0 truncate">
+                                        {item.name} ({item.code})
+                                    </p>
                                 </div>
                             </AutocompleteItem>
                         )}

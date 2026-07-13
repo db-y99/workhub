@@ -212,8 +212,8 @@ export function renderEmailHTML(
                     ${formattedDisbursementDate}
                 </li>
                 <li>
-                    <span class="detail-label">Tài khoản thụ hưởng:</span>
-                    ${data.bank_account_number} ${data.bank_name}
+                    <span class="detail-label">Ngân hàng thụ hưởng:</span>
+                    ${data.bank_name}
                 </li>
                 <li>
                     <span class="detail-label">Người thụ hưởng:</span>
