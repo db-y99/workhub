@@ -8,11 +8,14 @@ import {
   TRequestCreatedData,
   TBulletinCreatedData,
 } from "@/types/email.types";
-import { formatCurrency, stripHtml, numberToVietnameseWords, formatDateDMY  } from "@/lib/functions";
+import {
+  formatCurrency,
+  stripHtml,
+  numberToVietnameseWords,
+  formatDateDMY,
+} from "@/lib/functions";
 import { getBaseUrl } from "@/config/env";
 import { EMAIL_LOGO_URL } from "@/constants/email";
-
-
 
 /**
  * Render email HTML từ template và dữ liệu
@@ -20,20 +23,22 @@ import { EMAIL_LOGO_URL } from "@/constants/email";
  * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderEmailHTML(
-    data: TLoanDisbursementData,
-    logoUrl?: string
+  data: TLoanDisbursementData,
+  logoUrl?: string,
 ): string {
-    const disbursementAmountWords = numberToVietnameseWords(data.disbursement_amount);
-    const formattedDisbursementAmount = formatCurrency(data.disbursement_amount);
-    const formattedTotalLoanAmount = formatCurrency(data.total_loan_amount);
-    const formattedDisbursementDate = formatDateDMY(data.disbursement_date);
-    const formattedLoanStartDate = formatDateDMY(data.loan_start_date);
-    const formattedLoanEndDate = formatDateDMY(data.loan_end_date);
+  const disbursementAmountWords = numberToVietnameseWords(
+    data.disbursement_amount,
+  );
+  const formattedDisbursementAmount = formatCurrency(data.disbursement_amount);
+  const formattedTotalLoanAmount = formatCurrency(data.total_loan_amount);
+  const formattedDisbursementDate = formatDateDMY(data.disbursement_date);
+  const formattedLoanStartDate = formatDateDMY(data.loan_start_date);
+  const formattedLoanEndDate = formatDateDMY(data.loan_end_date);
 
-    // Trong email HTML cần absolute URL để logo hiển thị được
-    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+  // Trong email HTML cần absolute URL để logo hiển thị được
+  const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -213,7 +218,7 @@ export function renderEmailHTML(
                 </li>
                 <li>
                     <span class="detail-label">Ngân hàng thụ hưởng:</span>
-                    ${data.bank_name}
+                    ${data.bank_account_number} ${data.bank_name}
                 </li>
                 <li>
                     <span class="detail-label">Người thụ hưởng:</span>
@@ -283,7 +288,7 @@ export function renderEmailHTML(
  * Tạo subject line cho email
  */
 export function getEmailSubject(contractCode: string): string {
-    return `[NO REPLY] Thông báo Giải ngân Khoản vay theo Hợp đồng số ${contractCode}`;
+  return `[NO REPLY] Thông báo Giải ngân Khoản vay theo Hợp đồng số ${contractCode}`;
 }
 
 /**
@@ -292,13 +297,13 @@ export function getEmailSubject(contractCode: string): string {
  * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderUserAccountEmailHTML(
-    data: TUserAccountData,
-    logoUrl?: string
+  data: TUserAccountData,
+  logoUrl?: string,
 ): string {
-    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
-    const loginUrl = `${getBaseUrl()}/login`;
+  const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+  const loginUrl = `${getBaseUrl()}/login`;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -462,7 +467,7 @@ export function renderUserAccountEmailHTML(
  * Tạo subject line cho email thông tin tài khoản mới
  */
 export function getUserAccountEmailSubject(): string {
-    return `[NO REPLY] Thông tin Tài khoản Mới - CÔNG TY CỔ PHẦN CẦM ĐỒ Y99`;
+  return `[NO REPLY] Thông tin Tài khoản Mới - CÔNG TY CỔ PHẦN CẦM ĐỒ Y99`;
 }
 
 /**
@@ -471,18 +476,18 @@ export function getUserAccountEmailSubject(): string {
  * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderRequestCreatedEmailHTML(
-    data: TRequestCreatedData,
-    logoUrl?: string
+  data: TRequestCreatedData,
+  logoUrl?: string,
 ): string {
-    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
-    const approveUrl = data.approveUrl;
+  const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+  const approveUrl = data.approveUrl;
 
-    // Convert HTML description to plain text for email
-    const plainTextDescription = data.description
-        ? stripHtml(data.description)
-        : null;
+  // Convert HTML description to plain text for email
+  const plainTextDescription = data.description
+    ? stripHtml(data.description)
+    : null;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -668,20 +673,32 @@ export function renderRequestCreatedEmailHTML(
                     <span class="detail-label">👤 Người yêu cầu:</span>
                     ${data.requesterName}${data.requesterEmail ? ` (${data.requesterEmail})` : ""}
                 </li>
-                ${data.departmentName ? `<li>
+                ${
+                  data.departmentName
+                    ? `<li>
                     <span class="detail-label">🏢 Phòng ban:</span>
                     ${data.departmentName}
-                </li>` : ""}
-                ${data.attachmentsCount > 0 ? `<li>
+                </li>`
+                    : ""
+                }
+                ${
+                  data.attachmentsCount > 0
+                    ? `<li>
                     <span class="detail-label">📎 File đính kèm:</span>
                     ${data.attachmentsCount} file
-                </li>` : ""}
+                </li>`
+                    : ""
+                }
             </ul>
 
-            ${plainTextDescription ? `<div class="section-title">Nội dung chi tiết:</div>
+            ${
+              plainTextDescription
+                ? `<div class="section-title">Nội dung chi tiết:</div>
             <div class="description-box">
                 ${plainTextDescription}
-            </div>` : ""}
+            </div>`
+                : ""
+            }
 
             <div style="text-align: center;">
                 <a href="${approveUrl}" class="view-button">Xem chi tiết</a>
@@ -734,7 +751,7 @@ export function renderRequestCreatedEmailHTML(
  * Tạo subject line cho email thông báo tạo request
  */
 export function getRequestCreatedEmailSubject(title: string): string {
-    return `[Workhub] Yêu cầu phê duyệt mới: ${title}`;
+  return `[Workhub] Yêu cầu phê duyệt mới: ${title}`;
 }
 
 /**
@@ -743,18 +760,18 @@ export function getRequestCreatedEmailSubject(title: string): string {
  * @param logoUrl - URL của logo (optional, mặc định dùng EMAIL_LOGO_URL)
  */
 export function renderBulletinCreatedEmailHTML(
-    data: TBulletinCreatedData,
-    logoUrl?: string
+  data: TBulletinCreatedData,
+  logoUrl?: string,
 ): string {
-    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
-    const bulletinUrl = data.bulletinUrl;
+  const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+  const bulletinUrl = data.bulletinUrl;
 
-    // Convert HTML description to plain text for email
-    const plainTextDescription = data.description
-        ? stripHtml(data.description)
-        : null;
+  // Convert HTML description to plain text for email
+  const plainTextDescription = data.description
+    ? stripHtml(data.description)
+    : null;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -940,20 +957,32 @@ export function renderBulletinCreatedEmailHTML(
                     <span class="detail-label">👤 Người đăng:</span>
                     ${data.creatorName}${data.creatorEmail ? ` (${data.creatorEmail})` : ""}
                 </li>
-                ${data.departmentNames ? `<li>
+                ${
+                  data.departmentNames
+                    ? `<li>
                     <span class="detail-label">🏢 Phòng ban:</span>
                     ${data.departmentNames}
-                </li>` : ""}
-                ${data.attachmentsCount > 0 ? `<li>
+                </li>`
+                    : ""
+                }
+                ${
+                  data.attachmentsCount > 0
+                    ? `<li>
                     <span class="detail-label">📎 File đính kèm:</span>
                     ${data.attachmentsCount} file
-                </li>` : ""}
+                </li>`
+                    : ""
+                }
             </ul>
 
-            ${plainTextDescription ? `<div class="section-title">Nội dung:</div>
+            ${
+              plainTextDescription
+                ? `<div class="section-title">Nội dung:</div>
             <div class="description-box">
                 ${plainTextDescription}
-            </div>` : ""}
+            </div>`
+                : ""
+            }
 
             <div style="text-align: center;">
                 <a href="${bulletinUrl}" class="view-button">Xem chi tiết</a>
@@ -1006,19 +1035,19 @@ export function renderBulletinCreatedEmailHTML(
  * Tạo subject line cho email thông báo tạo bulletin
  */
 export function getBulletinCreatedEmailSubject(title: string): string {
-    return `[Workhub] Bảng tin mới: ${title}`;
+  return `[Workhub] Bảng tin mới: ${title}`;
 }
 
 /**
  * Render email HTML thông báo yêu cầu đã được duyệt
  */
 export function renderRequestApprovedEmailHTML(
-    data: import("@/types/email.types").TRequestApprovedData,
-    logoUrl?: string
+  data: import("@/types/email.types").TRequestApprovedData,
+  logoUrl?: string,
 ): string {
-    const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
+  const logoImageUrl = logoUrl || EMAIL_LOGO_URL;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -1165,5 +1194,5 @@ export function renderRequestApprovedEmailHTML(
  * Subject line cho email thông báo yêu cầu được duyệt
  */
 export function getRequestApprovedEmailSubject(title: string): string {
-    return `[Workhub] Yêu cầu đã được duyệt: ${title}`;
+  return `[Workhub] Yêu cầu đã được duyệt: ${title}`;
 }
