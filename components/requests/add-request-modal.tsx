@@ -33,6 +33,8 @@ interface AddRequestModalProps {
   onSuccess: () => void;
 }
 
+const DEFAULT_CC_EMAILS = ["nguyen.quyen@y99.vn", "sy@y99.vn"] as const;
+
 /** CC Picker: search by name/email, show chip tags, select from dropdown */
 function CcEmailPicker({
   value,
@@ -168,7 +170,7 @@ export function AddRequestModal({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
-    ccEmails: ["nguyen.quyen@y99.vn"] as string[],
+    ccEmails: [...DEFAULT_CC_EMAILS] as string[],
     description: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -254,7 +256,7 @@ export function AddRequestModal({
       }
 
       if (result.success) {
-        setFormData({ title: "", ccEmails: ["nguyen.quyen@y99.vn"], description: "" });
+        setFormData({ title: "", ccEmails: [...DEFAULT_CC_EMAILS], description: "" });
         setSelectedFiles([]);
         onSuccess();
         onClose();
@@ -263,7 +265,7 @@ export function AddRequestModal({
   };
 
   const handleClose = () => {
-    setFormData({ title: "", ccEmails: ["nguyen.quyen@y99.vn"], description: "" });
+    setFormData({ title: "", ccEmails: [...DEFAULT_CC_EMAILS], description: "" });
     setSelectedFiles([]);
     setError(null);
     onClose();
