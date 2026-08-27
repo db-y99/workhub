@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { getNextSortOrder } from "@/lib/db/next-sort-order";
 
 export async function GET() {
   try {
@@ -8,11 +9,14 @@ export async function GET() {
     if (!auth.ok) return auth.response;
 
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("roles")
-      .select("id, code, name, description, sort_order, created_at, updated_at")
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
+    const [{ data, error }, nextSortOrder] = await Promise.all([
+      supabase
+        .from("roles")
+        .select("id, code, name, description, sort_order, created_at, updated_at")
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true }),
+      getNextSortOrder(supabase, "roles"),
+    ]);
 
     if (error) {
       console.error("Error fetching roles:", error);
@@ -21,7 +25,11 @@ export async function GET() {
         { status: 500 }
       );
     }
-    return NextResponse.json({ roles: data ?? [] });
+    return NextResponse.json({
+      roles: data ?? [],
+      nextSortOrder,
+      maxSortOrder: nextSortOrder - 1,
+    });
   } catch (error) {
     console.error("Error in roles API:", error);
     return NextResponse.json(
@@ -53,13 +61,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const sortOrder =
+      body.sort_order === undefined || body.sort_order === null || body.sort_order === ""
+        ? await getNextSortOrder(supabase, "roles")
+        : Number(body.sort_order) || 0;
+
     const { data, error } = await supabase
       .from("roles")
       .insert({
         code: body.code.trim().toLowerCase(),
         name: body.name.trim(),
         description: body.description?.trim() || null,
-        sort_order: body.sort_order ?? 0,
+        sort_order: sortOrder,
       })
       .select("id, code, name, description, sort_order, created_at, updated_at")
       .single();

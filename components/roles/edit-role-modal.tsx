@@ -18,6 +18,7 @@ interface EditRoleModalProps {
   onClose: () => void;
   role: Role | null;
   onSuccess: () => void;
+  maxSortOrder?: number;
 }
 
 export function EditRoleModal({
@@ -25,6 +26,7 @@ export function EditRoleModal({
   onClose,
   role,
   onSuccess,
+  maxSortOrder = 0,
 }: EditRoleModalProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +149,11 @@ export function EditRoleModal({
                       sort_order: parseInt(value) || 0,
                     })
                   }
-                  description="Số càng nhỏ càng hiển thị trước"
+                  description={
+                    maxSortOrder > 0
+                      ? `Đang dùng: ${role?.sort_order}. Số lớn nhất hiện có: ${maxSortOrder}.`
+                      : "Số càng nhỏ càng hiển thị trước"
+                  }
                 />
               </div>
             </ModalBody>

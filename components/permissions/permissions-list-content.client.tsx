@@ -25,12 +25,19 @@ const EMPTY_FORM = { code: "", name: "", description: "", sort_order: "0" };
 
 // ---- Add / Edit Modal ----
 function PermissionFormModal({
-  isOpen, onClose, permission, onSuccess,
+  isOpen,
+  onClose,
+  permission,
+  onSuccess,
+  nextSortOrder,
+  maxSortOrder,
 }: {
   isOpen: boolean;
   onClose: () => void;
   permission: Permission | null;
   onSuccess: () => void;
+  nextSortOrder: number;
+  maxSortOrder: number;
 }) {
   const isEdit = !!permission;
   const [form, setForm] = useState(EMPTY_FORM);
@@ -42,31 +49,58 @@ function PermissionFormModal({
       setError(null);
       setForm(
         permission
-          ? { code: permission.code, name: permission.name ?? "", description: permission.description ?? "", sort_order: String(permission.sort_order) }
-          : EMPTY_FORM
+          ? {
+              code: permission.code,
+              name: permission.name ?? "",
+              description: permission.description ?? "",
+              sort_order: String(permission.sort_order),
+            }
+          : { ...EMPTY_FORM, sort_order: String(nextSortOrder) }
       );
     }
-  }, [isOpen, permission]);
+  }, [isOpen, permission, nextSortOrder]);
 
   const handleSave = () => {
-    if (!form.code.trim()) { setError("Mã quyền không được để trống"); return; }
-    if (!form.name.trim()) { setError("Tên quyền không được để trống"); return; }
+    if (!form.code.trim()) {
+      setError("Mã quyền không được để trống");
+      return;
+    }
+    if (!form.name.trim()) {
+      setError("Tên quyền không được để trống");
+      return;
+    }
 
     startTransition(async () => {
       setError(null);
-      const body = { ...form, sort_order: Number(form.sort_order) || 0, ...(isEdit ? { id: permission!.id } : {}) };
+      const body = {
+        ...form,
+        sort_order: Number(form.sort_order) || 0,
+        ...(isEdit ? { id: permission!.id } : {}),
+      };
       const res = await fetch("/api/permissions/list", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok || json.error) { setError(json.error ?? "Đã xảy ra lỗi"); return; }
-      addToast({ title: isEdit ? "Đã cập nhật quyền" : "Đã tạo quyền mới", color: "success" });
+      if (!res.ok || json.error) {
+        setError(json.error ?? "Đã xảy ra lỗi");
+        return;
+      }
+      addToast({
+        title: isEdit ? "Đã cập nhật quyền" : "Đã tạo quyền mới",
+        color: "success",
+      });
       onSuccess();
       onClose();
     });
   };
+
+  const sortOrderDescription = isEdit
+    ? `Đang dùng: ${permission?.sort_order}. Số lớn nhất hiện có: ${maxSortOrder}.`
+    : maxSortOrder > 0
+      ? `Tự điền tiếp theo sau số lớn nhất (${maxSortOrder}). Chỉ đổi nếu muốn chèn giữa.`
+      : "Chưa có quyền nào — bắt đầu từ 1.";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md">
@@ -75,15 +109,48 @@ function PermissionFormModal({
           <>
             <ModalHeader>{isEdit ? "Sửa quyền" : "Thêm quyền mới"}</ModalHeader>
             <ModalBody className="flex flex-col gap-3">
-              {error && <div className="p-3 rounded-lg bg-danger-50 border border-danger-200"><p className="text-sm text-danger">{error}</p></div>}
-              <Input label="Mã quyền" placeholder="VD: users:view" value={form.code} onValueChange={(v) => setForm({ ...form, code: v })} isRequired isDisabled={isEdit} description={isEdit ? "Không thể thay đổi mã quyền" : undefined} />
-              <Input label="Tên quyền" placeholder="VD: Xem người dùng" value={form.name} onValueChange={(v) => setForm({ ...form, name: v })} isRequired />
-              <Input label="Mô tả" placeholder="Mô tả ngắn (tuỳ chọn)" value={form.description} onValueChange={(v) => setForm({ ...form, description: v })} />
-              <Input label="Thứ tự" type="number" value={form.sort_order} onValueChange={(v) => setForm({ ...form, sort_order: v })} />
+              {error && (
+                <div className="p-3 rounded-lg bg-danger-50 border border-danger-200">
+                  <p className="text-sm text-danger">{error}</p>
+                </div>
+              )}
+              <Input
+                label="Mã quyền"
+                placeholder="VD: users:view"
+                value={form.code}
+                onValueChange={(v) => setForm({ ...form, code: v })}
+                isRequired
+                isDisabled={isEdit}
+                description={isEdit ? "Không thể thay đổi mã quyền" : undefined}
+              />
+              <Input
+                label="Tên quyền"
+                placeholder="VD: Xem người dùng"
+                value={form.name}
+                onValueChange={(v) => setForm({ ...form, name: v })}
+                isRequired
+              />
+              <Input
+                label="Mô tả"
+                placeholder="Mô tả ngắn (tuỳ chọn)"
+                value={form.description}
+                onValueChange={(v) => setForm({ ...form, description: v })}
+              />
+              <Input
+                label="Thứ tự sắp xếp"
+                type="number"
+                value={form.sort_order}
+                onValueChange={(v) => setForm({ ...form, sort_order: v })}
+                description={sortOrderDescription}
+              />
             </ModalBody>
             <ModalFooter>
-              <Button variant="light" onPress={onClose} isDisabled={isPending}>Hủy</Button>
-              <Button color="primary" onPress={handleSave} isLoading={isPending}>{isEdit ? "Lưu thay đổi" : "Tạo quyền"}</Button>
+              <Button variant="light" onPress={onClose} isDisabled={isPending}>
+                Hủy
+              </Button>
+              <Button color="primary" onPress={handleSave} isLoading={isPending}>
+                {isEdit ? "Lưu thay đổi" : "Tạo quyền"}
+              </Button>
             </ModalFooter>
           </>
         )}
@@ -168,6 +235,8 @@ export default function PermissionsListContent() {
   const permissions = data?.permissions ?? [];
   const totalPages = data?.totalPages ?? 0;
   const total = data?.total ?? 0;
+  const nextSortOrder = data?.nextSortOrder ?? 1;
+  const maxSortOrder = data?.maxSortOrder ?? 0;
   const isRefreshing = isValidating && !isLoading;
 
   const openAdd = () => { setEditing(null); onFormOpen(); };
@@ -275,6 +344,8 @@ export default function PermissionsListContent() {
         onClose={onFormClose}
         permission={editing}
         onSuccess={mutate}
+        nextSortOrder={nextSortOrder}
+        maxSortOrder={maxSortOrder}
       />
       <DeletePermissionModal
         isOpen={isDeleteOpen}

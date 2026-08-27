@@ -128,13 +128,13 @@ export const siteConfig = {
       label: "Phân quyền",
       href: ROUTES.PERMISSIONS,
       icon: KeyRound,
-      adminOnly: true,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS],
     },
     {
       label: "Danh sách quyền",
       href: ROUTES.PERMISSIONS_LIST,
       icon: List,
-      adminOnly: true,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.PERMISSIONS_LIST],
     },
     {
       label: "Cài đặt",

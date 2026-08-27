@@ -67,6 +67,8 @@ const columns = [
 
 interface RolesResponse {
   roles: Role[];
+  nextSortOrder?: number;
+  maxSortOrder?: number;
 }
 
 async function fetcher(url: string): Promise<RolesResponse> {
@@ -119,6 +121,8 @@ export function RolesContent() {
   });
 
   const roles = data?.roles || [];
+  const nextSortOrder = data?.nextSortOrder ?? 1;
+  const maxSortOrder = data?.maxSortOrder ?? 0;
   const loading = isLoading && !data; // Only show skeleton on first load
   const isRefreshing = isValidating && !isLoading;
 
@@ -326,12 +330,15 @@ export function RolesContent() {
         isOpen={isAddModalOpen}
         onClose={onAddModalClose}
         onSuccess={handleSuccess}
+        nextSortOrder={nextSortOrder}
+        maxSortOrder={maxSortOrder}
       />
       <EditRoleModal
         isOpen={isEditModalOpen}
         onClose={onEditModalClose}
         role={editingRole}
         onSuccess={handleSuccess}
+        maxSortOrder={maxSortOrder}
       />
       <DeleteRoleModal
         isOpen={isDeleteModalOpen}

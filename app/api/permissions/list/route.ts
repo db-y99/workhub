@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
+import { getNextSortOrder } from "@/lib/db/next-sort-order";
 
 export async function GET(request: Request) {
   try {
@@ -46,12 +47,23 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data, error } = await query;
+    const [{ data, error }, nextSortOrder] = await Promise.all([
+      query,
+      getNextSortOrder(supabase, "permissions"),
+    ]);
     if (error) {
       return NextResponse.json({ error: "Failed to fetch permissions" }, { status: 500 });
     }
 
-    return NextResponse.json({ permissions: data ?? [], total, totalPages, page, limit });
+    return NextResponse.json({
+      permissions: data ?? [],
+      total,
+      totalPages,
+      page,
+      limit,
+      nextSortOrder,
+      maxSortOrder: nextSortOrder - 1,
+    });
   } catch (error) {
     console.error("Error in permissions list GET:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -72,13 +84,18 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
+    const sortOrder =
+      body.sort_order === undefined || body.sort_order === null || body.sort_order === ""
+        ? await getNextSortOrder(admin, "permissions")
+        : Number(body.sort_order) || 0;
+
     const { data, error } = await admin
       .from("permissions")
       .insert({
         code: body.code.trim(),
         name: body.name.trim(),
         description: body.description?.trim() || null,
-        sort_order: body.sort_order ?? 0,
+        sort_order: sortOrder,
       })
       .select("id, code, name, description, sort_order, created_at, updated_at, deleted_at")
       .single();

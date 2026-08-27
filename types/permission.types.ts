@@ -31,4 +31,8 @@ export interface PermissionsListResponse {
   totalPages: number;
   page: number;
   limit: number;
+  /** Gợi ý sort_order khi thêm mới = max + 1 */
+  nextSortOrder: number;
+  /** sort_order lớn nhất hiện có (0 nếu chưa có bản ghi) */
+  maxSortOrder: number;
 }

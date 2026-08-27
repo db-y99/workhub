@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -16,12 +16,16 @@ interface AddRoleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  nextSortOrder?: number;
+  maxSortOrder?: number;
 }
 
 export function AddRoleModal({
   isOpen,
   onClose,
   onSuccess,
+  nextSortOrder = 1,
+  maxSortOrder = 0,
 }: AddRoleModalProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +33,20 @@ export function AddRoleModal({
     code: "",
     name: "",
     description: "",
-    sort_order: 0,
+    sort_order: nextSortOrder,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setFormData({
+        code: "",
+        name: "",
+        description: "",
+        sort_order: nextSortOrder,
+      });
+    }
+  }, [isOpen, nextSortOrder]);
 
   const handleSubmit = () => {
     if (!formData.code.trim() || !formData.name.trim()) return;
@@ -50,12 +66,6 @@ export function AddRoleModal({
       }
 
       if (result.success) {
-        setFormData({
-          code: "",
-          name: "",
-          description: "",
-          sort_order: 0,
-        });
         onSuccess();
         onClose();
       }
@@ -63,15 +73,14 @@ export function AddRoleModal({
   };
 
   const handleClose = () => {
-    setFormData({
-      code: "",
-      name: "",
-      description: "",
-      sort_order: 0,
-    });
     setError(null);
     onClose();
   };
+
+  const sortOrderDescription =
+    maxSortOrder > 0
+      ? `Tự điền tiếp theo sau số lớn nhất (${maxSortOrder}). Chỉ đổi nếu muốn chèn giữa.`
+      : "Chưa có vai trò nào — bắt đầu từ 1.";
 
   return (
     <Modal
@@ -127,7 +136,7 @@ export function AddRoleModal({
                 <Input
                   type="number"
                   label="Thứ tự sắp xếp"
-                  placeholder="0"
+                  placeholder={String(nextSortOrder)}
                   value={formData.sort_order.toString()}
                   onValueChange={(value) =>
                     setFormData({
@@ -135,7 +144,7 @@ export function AddRoleModal({
                       sort_order: parseInt(value) || 0,
                     })
                   }
-                  description="Số càng nhỏ càng hiển thị trước"
+                  description={sortOrderDescription}
                 />
               </div>
             </ModalBody>

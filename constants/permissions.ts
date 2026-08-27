@@ -95,6 +95,10 @@ export const PERMISSIONS = {
   BRANCHES_CREATE: "branches:create",
   BRANCHES_EDIT: "branches:edit",
   BRANCHES_DELETE: "branches:delete",
+
+  // Permissions management
+  PERMISSIONS_VIEW: "permissions:view",
+  PERMISSIONS_LIST_VIEW: "permissions-list:view",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -118,6 +122,8 @@ export const PERMISSION_PAGES = [
   { code: "customers-import", name: "Import khách hàng", description: "Import và xem báo cáo dữ liệu khách hàng từ Excel", sort_order: 15 },
   { code: "customer-leads", name: "Quản lý khách hàng", description: "Nhập và quản lý thông tin khách hàng vay vốn", sort_order: 16 },
   { code: "branches", name: "Chi nhánh", description: "Quản lý thông tin chi nhánh", sort_order: 17 },
+  { code: "permissions", name: "Phân quyền", description: "Thiết lập quyền hạn theo vai trò", sort_order: 18 },
+  { code: "permissions-list", name: "Danh sách quyền", description: "Quản lý mã quyền trong hệ thống", sort_order: 19 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -139,6 +145,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/customers/import": toPermissionCode("customers-import", PERMISSION_ACTIONS.VIEW),
   "/customers/leads": toPermissionCode("customer-leads", PERMISSION_ACTIONS.VIEW),
   "/branches": toPermissionCode("branches", PERMISSION_ACTIONS.VIEW),
+  "/permissions": toPermissionCode("permissions", PERMISSION_ACTIONS.VIEW),
+  "/permissions/list": toPermissionCode("permissions-list", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];

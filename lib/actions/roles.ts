@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getNextSortOrder } from "@/lib/db/next-sort-order";
 import type { Role } from "@/types/role.types";
 
 export interface CreateRoleInput {
@@ -32,13 +33,18 @@ export async function createRole(formData: CreateRoleInput) {
       return { error: "Tên vai trò không được để trống" };
     }
 
+    const sortOrder =
+      formData.sort_order === undefined || formData.sort_order === null
+        ? await getNextSortOrder(supabase, "roles")
+        : Number(formData.sort_order) || 0;
+
     const { data, error } = await supabase
       .from("roles")
       .insert({
         code: formData.code.trim().toLowerCase(),
         name: formData.name.trim(),
         description: formData.description?.trim() || null,
-        sort_order: formData.sort_order ?? 0,
+        sort_order: sortOrder,
       })
       .select("id, code, name, description, sort_order, created_at, updated_at")
       .single();

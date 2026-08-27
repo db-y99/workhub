@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import type { PermissionFormRow } from "@/types/permission.types";
 
@@ -10,6 +11,11 @@ export async function saveRolePermissions(
   rows: PermissionFormRow[]
 ) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     // Collect all checked permission IDs

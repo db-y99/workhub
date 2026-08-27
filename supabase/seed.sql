@@ -61,7 +61,9 @@ INSERT INTO public.permissions (code, name, sort_order) VALUES
   ('customer-leads:view', 'Xem Khách hàng tiềm năng', 29),
   ('customer-leads:create', 'Tạo Khách hàng tiềm năng', 30),
   ('customer-leads:edit', 'Sửa Khách hàng tiềm năng', 31),
-  ('customer-leads:delete', 'Xóa Khách hàng tiềm năng', 32)
+  ('customer-leads:delete', 'Xóa Khách hàng tiềm năng', 32),
+  ('permissions:view', 'Xem phân quyền', 33),
+  ('permissions-list:view', 'Xem danh sách quyền', 34)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   sort_order = EXCLUDED.sort_order;
