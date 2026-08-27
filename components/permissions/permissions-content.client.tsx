@@ -7,6 +7,7 @@ import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Accordion, AccordionItem } from "@heroui/accordion";
 import { Checkbox } from "@heroui/checkbox";
+import { Spinner } from "@heroui/spinner";
 import { KeyRound } from "lucide-react";
 
 import type { Role } from "@/types/role.types";
@@ -73,22 +74,37 @@ export function PermissionsContent() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { data: rolesData } = useSWR<{ roles: Role[] }>("/api/roles");
-  const { data: allPermsData } = useSWR<{ permissions: Permission[] }>(ALL_PERMISSIONS_URL);
-  const { data: rolePermsData, mutate: mutatePermissions } = useSWR<RolePermissionsResponse>(
+  const { data: rolesData, isLoading: isLoadingRoles } = useSWR<{ roles: Role[] }>("/api/roles");
+  const { data: allPermsData, isLoading: isLoadingAllPerms } = useSWR<{ permissions: Permission[] }>(
+    ALL_PERMISSIONS_URL
+  );
+  const {
+    data: rolePermsData,
+    mutate: mutatePermissions,
+    isLoading: isLoadingRolePerms,
+  } = useSWR<RolePermissionsResponse>(
     selectedRoleId ? `/api/permissions?role_id=${selectedRoleId}` : null
   );
 
   const roles = rolesData?.roles ?? [];
   const allPermissions = allPermsData?.permissions;
 
+  // Đang load quyền của role vừa chọn (hoặc danh sách permission gốc)
+  const isLoadingPermissions =
+    Boolean(selectedRoleId) &&
+    (isLoadingRolePerms || isLoadingAllPerms || !rolePermsData || !allPermissions?.length);
+
   useEffect(() => {
-    if (!selectedRoleId || !allPermissions?.length) {
+    if (!selectedRoleId) {
       setFormRows([]);
       setInitialRows([]);
       return;
     }
-    const grantedIds = new Set(rolePermsData?.grantedIds ?? []);
+    // Chờ đủ data — tránh flash form với grantedIds rỗng khi đang fetch
+    if (!allPermissions?.length || !rolePermsData) {
+      return;
+    }
+    const grantedIds = new Set(rolePermsData.grantedIds ?? []);
     const rows = buildFormRows(allPermissions, grantedIds);
     setFormRows(rows);
     setInitialRows(JSON.parse(JSON.stringify(rows)));
@@ -147,6 +163,16 @@ export function PermissionsContent() {
     });
   };
 
+  const handleRoleChange = (keys: Iterable<unknown>) => {
+    const nextId = (Array.from(keys)[0] as string) ?? "";
+    setSelectedRoleId(nextId);
+    setError(null);
+    setSuccessMessage(null);
+    // Clear form ngay khi đổi role để không hiện quyền cũ trong lúc load
+    setFormRows([]);
+    setInitialRows([]);
+  };
+
   return (
     <div className="container mx-auto max-w-4xl px-6 py-8">
       <Card className="w-full">
@@ -165,7 +191,9 @@ export function PermissionsContent() {
             label="Phân quyền cho"
             placeholder="Chọn vai trò"
             selectedKeys={selectedRoleId ? [selectedRoleId] : []}
-            onSelectionChange={(keys) => setSelectedRoleId((Array.from(keys)[0] as string) ?? "")}
+            onSelectionChange={handleRoleChange}
+            isLoading={isLoadingRoles || isLoadingPermissions}
+            isDisabled={isLoadingRoles}
             classNames={{ trigger: "max-w-md" }}
           >
             {roles.map((r) => (
@@ -187,10 +215,20 @@ export function PermissionsContent() {
           )}
 
           <div className="flex gap-2">
-            <Button color="default" variant="flat" onPress={handleCancel} isDisabled={!selectedRoleId || !hasChanges || isPending}>
+            <Button
+              color="default"
+              variant="flat"
+              onPress={handleCancel}
+              isDisabled={!selectedRoleId || !hasChanges || isPending || isLoadingPermissions}
+            >
               Hủy
             </Button>
-            <Button color="primary" onPress={handleSave} isLoading={isPending} isDisabled={!selectedRoleId || !hasChanges}>
+            <Button
+              color="primary"
+              onPress={handleSave}
+              isLoading={isPending}
+              isDisabled={!selectedRoleId || !hasChanges || isLoadingPermissions}
+            >
               Lưu thay đổi
             </Button>
           </div>
@@ -198,12 +236,21 @@ export function PermissionsContent() {
 
         <CardBody>
           {!selectedRoleId ? (
-            <p className="text-default-500 text-sm">Chọn một vai trò ở trên để thiết lập quyền theo từng trang.</p>
+            <p className="text-default-500 text-sm">
+              Chọn một vai trò ở trên để thiết lập quyền theo từng trang.
+            </p>
+          ) : isLoadingPermissions ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-12">
+              <Spinner size="lg" color="primary" />
+              <p className="text-sm text-default-500">Đang tải phân quyền...</p>
+            </div>
           ) : (
             <>
               <p className="text-default-600 text-sm mb-4">
                 Phân quyền cho: <span className="font-semibold">{selectedRole?.name}</span>
-                {selectedRole?.description && <span className="text-default-500"> — {selectedRole.description}</span>}
+                {selectedRole?.description && (
+                  <span className="text-default-500"> — {selectedRole.description}</span>
+                )}
               </p>
 
               <div className="flex items-center justify-between mb-2">
