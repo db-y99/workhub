@@ -16,6 +16,9 @@ import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { createRequest } from "@/lib/actions/requests";
+import { DEPARTMENT_CODES } from "@/constants/departments";
+import { DEFAULT_REQUEST_CC_EMAILS } from "@/constants/requests";
+import { USER_STATUS } from "@/lib/constants";
 import { Plus, X, Send, Trash2, Search } from "lucide-react";
 
 const TiptapRichEditor = dynamic(
@@ -23,8 +26,15 @@ const TiptapRichEditor = dynamic(
   { ssr: false }
 );
 
-type Employee = { id: string; full_name: string; email: string };
-type ProfilesResponse = { employees?: Employee[] };
+type TEmployee = {
+  id: string;
+  full_name: string;
+  email: string;
+  status?: string;
+};
+type TProfilesResponse = { employees?: TEmployee[] };
+type TDepartmentOption = { id: string; name: string; code: string };
+type TDepartmentsResponse = { departments?: TDepartmentOption[] };
 
 interface AddRequestModalProps {
   isOpen: boolean;
@@ -33,7 +43,58 @@ interface AddRequestModalProps {
   onSuccess: () => void;
 }
 
-const DEFAULT_CC_EMAILS = ["nguyen.quyen@y99.vn", "sy@y99.vn"] as const;
+const uniqueEmails = (emails: string[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const email of emails) {
+    const trimmed = email.trim();
+    const key = trimmed.toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+
+  return result;
+};
+
+async function fetchDefaultCcEmails(): Promise<string[]> {
+  const deptRes = await fetch("/api/departments?limit=200", {
+    credentials: "include",
+  });
+  if (!deptRes.ok) {
+    return [...DEFAULT_REQUEST_CC_EMAILS];
+  }
+
+  const deptJson = (await deptRes.json()) as TDepartmentsResponse;
+  const accountantDept = (deptJson.departments ?? []).find(
+    (dept) =>
+      dept.code === DEPARTMENT_CODES.ACCOUNTANT ||
+      dept.name === DEPARTMENT_CODES.ACCOUNTANT
+  );
+
+  if (!accountantDept) {
+    return [...DEFAULT_REQUEST_CC_EMAILS];
+  }
+
+  const profilesRes = await fetch(
+    `/api/profiles?limit=100&page=1&department_id=${encodeURIComponent(accountantDept.id)}`,
+    { credentials: "include" }
+  );
+  if (!profilesRes.ok) {
+    return [...DEFAULT_REQUEST_CC_EMAILS];
+  }
+
+  const profilesJson = (await profilesRes.json()) as TProfilesResponse;
+  const accountingEmails = (profilesJson.employees ?? [])
+    .filter(
+      (profile) => !profile.status || profile.status === USER_STATUS.ACTIVE
+    )
+    .map((profile) => profile.email)
+    .filter((email): email is string => Boolean(email?.trim()));
+
+  return uniqueEmails([...DEFAULT_REQUEST_CC_EMAILS, ...accountingEmails]);
+}
 
 /** CC Picker: search by name/email, show chip tags, select from dropdown */
 function CcEmailPicker({
@@ -49,7 +110,7 @@ function CcEmailPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading } = useSWR<ProfilesResponse>(
+  const { data, isLoading } = useSWR<TProfilesResponse>(
     `/api/profiles?limit=20&page=1&search=${encodeURIComponent(debouncedSearch)}`,
     { revalidateOnFocus: false }
   );
@@ -170,11 +231,28 @@ export function AddRequestModal({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
-    ccEmails: [...DEFAULT_CC_EMAILS] as string[],
+    ccEmails: [...DEFAULT_REQUEST_CC_EMAILS] as string[],
     description: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const didInitCcRef = useRef(false);
+
+  const { data: defaultCcEmails } = useSWR(
+    isOpen ? "default-request-cc-emails" : null,
+    fetchDefaultCcEmails,
+    { revalidateOnFocus: false }
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      didInitCcRef.current = false;
+      return;
+    }
+    if (!defaultCcEmails || didInitCcRef.current) return;
+    setFormData((prev) => ({ ...prev, ccEmails: defaultCcEmails }));
+    didInitCcRef.current = true;
+  }, [isOpen, defaultCcEmails]);
 
   const isEmptyHtml = (html: string) => {
     const tmp = document.createElement("div");
@@ -256,7 +334,7 @@ export function AddRequestModal({
       }
 
       if (result.success) {
-        setFormData({ title: "", ccEmails: [...DEFAULT_CC_EMAILS], description: "" });
+        setFormData({ title: "", ccEmails: [...DEFAULT_REQUEST_CC_EMAILS], description: "" });
         setSelectedFiles([]);
         onSuccess();
         onClose();
@@ -265,7 +343,7 @@ export function AddRequestModal({
   };
 
   const handleClose = () => {
-    setFormData({ title: "", ccEmails: [...DEFAULT_CC_EMAILS], description: "" });
+    setFormData({ title: "", ccEmails: [...DEFAULT_REQUEST_CC_EMAILS], description: "" });
     setSelectedFiles([]);
     setError(null);
     onClose();

@@ -29,21 +29,16 @@ interface RolesResponse {
   roles: Role[];
 }
 
-interface BranchesResponse {
-  data: Array<{
-    id: string;
-    name: string;
-    code: string;
-  }>;
-}
+const EMPTY_FORM = {
+  full_name: "",
+  email: "",
+  password: "",
+  phone: "",
+  department_id: "",
+  role_id: "",
+};
 
 async function fetcher(url: string): Promise<RolesResponse> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-}
-
-async function branchesFetcher(url: string): Promise<BranchesResponse> {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -58,15 +53,7 @@ export function AddUserModal({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    password: "",
-    phone: "",
-    department_id: "",
-    role_id: "",
-    branch_id: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
   const { data: rolesData } = useSWR<RolesResponse>(
     isOpen ? "/api/roles" : null,
@@ -74,15 +61,6 @@ export function AddUserModal({
     { revalidateOnFocus: false }
   );
   const roles = rolesData?.roles || [];
-  const defaultRole = roles.find((r) => r.code === "user");
-
-  // Fetch branches
-  const { data: branchesData } = useSWR<BranchesResponse>(
-    isOpen ? "/api/branches" : null,
-    branchesFetcher,
-    { revalidateOnFocus: false }
-  );
-  const branches = branchesData?.data || [];
 
   const handleGeneratePassword = () => {
     const newPassword = generatePassword();
@@ -90,20 +68,24 @@ export function AddUserModal({
   };
 
   const handleSubmit = () => {
-    if (!formData.full_name.trim() || !formData.email.trim() || !formData.password.trim()) {
+    const fullName = formData.full_name.trim();
+    const email = formData.email.trim();
+    const password = formData.password.trim();
+    const phone = formData.phone.trim();
+
+    if (!fullName || !email || !password) {
       return;
     }
 
     startTransition(async () => {
       setError(null);
       const result = await createProfile({
-        full_name: formData.full_name,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone || undefined,
+        full_name: fullName,
+        email,
+        password,
+        phone: phone || undefined,
         department_id: formData.department_id || undefined,
         role_id: formData.role_id || undefined,
-        branch_id: formData.branch_id || undefined,
       });
 
       if (result.error) {
@@ -112,15 +94,7 @@ export function AddUserModal({
       }
 
       if (result.success) {
-        setFormData({
-          full_name: "",
-          email: "",
-          password: "",
-          phone: "",
-          department_id: "",
-          role_id: defaultRole?.id || "",
-          branch_id: "",
-        });
+        setFormData(EMPTY_FORM);
         onSuccess();
         onClose();
       }
@@ -128,15 +102,7 @@ export function AddUserModal({
   };
 
   const handleClose = () => {
-    setFormData({
-      full_name: "",
-      email: "",
-      password: "",
-      phone: "",
-      department_id: "",
-      role_id: defaultRole?.id || "",
-      branch_id: "",
-    });
+    setFormData(EMPTY_FORM);
     setError(null);
     onClose();
   };
@@ -241,6 +207,7 @@ export function AddUserModal({
                   />
                   <Select
                     label="Phòng ban"
+                    placeholder="Chọn phòng ban"
                     selectedKeys={
                       formData.department_id ? [formData.department_id] : []
                     }
@@ -256,36 +223,21 @@ export function AddUserModal({
                     ))}
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Vai trò"
-                    selectedKeys={formData.role_id ? [formData.role_id] : []}
-                    onSelectionChange={(keys) => {
-                      setFormData({
-                        ...formData,
-                        role_id: (Array.from(keys)[0] as string) || "",
-                      });
-                    }}
-                  >
-                    {roles.map((r) => (
-                      <SelectItem key={r.id}>{r.name}</SelectItem>
-                    ))}
-                  </Select>
-                  <Select
-                    label="Chi nhánh"
-                    selectedKeys={formData.branch_id ? [formData.branch_id] : []}
-                    onSelectionChange={(keys) => {
-                      setFormData({
-                        ...formData,
-                        branch_id: (Array.from(keys)[0] as string) || "",
-                      });
-                    }}
-                  >
-                    {branches.map((b) => (
-                      <SelectItem key={b.id}>{b.name} ({b.code})</SelectItem>
-                    ))}
-                  </Select>
-                </div>
+                <Select
+                  label="Vai trò"
+                  placeholder="Chọn vai trò"
+                  selectedKeys={formData.role_id ? [formData.role_id] : []}
+                  onSelectionChange={(keys) => {
+                    setFormData({
+                      ...formData,
+                      role_id: (Array.from(keys)[0] as string) || "",
+                    });
+                  }}
+                >
+                  {roles.map((r) => (
+                    <SelectItem key={r.id}>{r.name}</SelectItem>
+                  ))}
+                </Select>
               </div>
             </ModalBody>
             <ModalFooter>

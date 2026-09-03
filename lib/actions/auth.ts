@@ -16,7 +16,7 @@ export async function signInWithEmailPassword(email: string, password: string) {
 
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: email.trim(),
     password,
   });
 

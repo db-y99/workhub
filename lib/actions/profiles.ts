@@ -21,7 +21,7 @@ import {
   UpdateProfileStatusSchema,
   UpdatePasswordSchema,
 } from "@/lib/actions/profiles/schemas";
-import { sendEmailViaAppScript } from "@/lib/services/email-app-script.service";
+import { sendEmail } from "@/lib/services/email.service";
 import { stripHtml } from "@/lib/functions";
 import {
   renderUserAccountEmailHTML,
@@ -50,8 +50,8 @@ export async function createProfile(data: {
   const parsed = CreateProfileSchema.safeParse({
     full_name: data.full_name?.trim(),
     email: data.email?.trim(),
-    password: data.password,
-    phone: data.phone || null,
+    password: data.password?.trim(),
+    phone: data.phone?.trim() || null,
     department_id: data.department_id || null,
     role_id: data.role_id || null,
     branch_id: data.branch_id || null,
@@ -89,27 +89,31 @@ export async function createProfile(data: {
     return { error: msg };
   }
 
-  // Gửi email thông tin tài khoản (format mới: htmlBody + textBody)
-  const htmlContent = juice(
-    renderUserAccountEmailHTML({
-      full_name: parsed.data.full_name,
-      email: parsed.data.email,
-      password: parsed.data.password,
-    })
-  );
-  const emailResult = await sendEmailViaAppScript({
-    to: parsed.data.email,
-    subject: getUserAccountEmailSubject(),
-    htmlBody: htmlContent,
-    textBody: stripHtml(htmlContent),
-  });
-
-  if (isErr(emailResult)) {
-    // Log error nhưng không block việc tạo user
-    console.error(
-      "[createProfile] Failed to send account email:",
-      emailResult.error
+  // Gửi email thông tin tài khoản (không block nếu gửi thất bại)
+  try {
+    const recipientEmail = parsed.data.email.trim();
+    const htmlContent = juice(
+      renderUserAccountEmailHTML({
+        full_name: parsed.data.full_name.trim(),
+        email: recipientEmail,
+        password: parsed.data.password,
+      })
     );
+    const emailResult = await sendEmail({
+      to: recipientEmail,
+      subject: getUserAccountEmailSubject(),
+      htmlBody: htmlContent,
+      textBody: stripHtml(htmlContent),
+    });
+
+    if (isErr(emailResult)) {
+      console.error(
+        "[createProfile] Failed to send account email:",
+        emailResult.error
+      );
+    }
+  } catch (emailError) {
+    console.error("[createProfile] Failed to send account email:", emailError);
   }
 
   revalidatePath(ROUTES.USERS);
