@@ -279,6 +279,11 @@ export function UsersContent() {
               <Input
                 className="flex-1 max-w-[300px]"
                 classNames={{ inputWrapper: "bg-default-100" }}
+                type="search"
+                name="users-list-search"
+                autoComplete="nope"
+                autoCorrect="off"
+                spellCheck="false"
                 placeholder="Tìm theo tên, email, SĐT, phòng ban..."
                 startContent={<Search className="text-default-400" size={18} />}
                 endContent={

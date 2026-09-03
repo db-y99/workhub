@@ -137,11 +137,35 @@ export function AddUserModal({
                   <p className="text-sm text-danger">{error}</p>
                 </div>
               )}
-              <div className="flex flex-col gap-4">
+              <form
+                autoComplete="off"
+                className="flex flex-col gap-4"
+                onSubmit={(e) => e.preventDefault()}
+              >
+                {/* Chrome password manager: hút autofill khỏi ô tìm kiếm trên trang */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+                >
+                  <input
+                    autoComplete="username"
+                    name="fake-username"
+                    tabIndex={-1}
+                    type="text"
+                  />
+                  <input
+                    autoComplete="new-password"
+                    name="fake-password"
+                    tabIndex={-1}
+                    type="password"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     isRequired
+                    autoComplete="off"
                     label="Họ tên"
+                    name="new-user-full-name"
                     value={formData.full_name}
                     onValueChange={(v) =>
                       setFormData({ ...formData, full_name: v })
@@ -149,7 +173,9 @@ export function AddUserModal({
                   />
                   <Input
                     isRequired
+                    autoComplete="off"
                     label="Email"
+                    name="new-user-email"
                     type="email"
                     value={formData.email}
                     onValueChange={(v) =>
@@ -160,7 +186,9 @@ export function AddUserModal({
                 <div className="flex flex-col gap-2">
                   <Input
                     isRequired
+                    autoComplete="new-password"
                     label="Mật khẩu"
+                    name="new-user-password"
                     type={isPasswordVisible ? "text" : "password"}
                     value={formData.password}
                     onValueChange={(v) =>
@@ -199,7 +227,9 @@ export function AddUserModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
+                    autoComplete="off"
                     label="Số điện thoại"
+                    name="new-user-phone"
                     value={formData.phone}
                     onValueChange={(v) =>
                       setFormData({ ...formData, phone: v })
@@ -238,7 +268,7 @@ export function AddUserModal({
                     <SelectItem key={r.id}>{r.name}</SelectItem>
                   ))}
                 </Select>
-              </div>
+              </form>
             </ModalBody>
             <ModalFooter>
               <Button

@@ -100,9 +100,11 @@ async function fetchDefaultCcEmails(): Promise<string[]> {
 function CcEmailPicker({
   value,
   onChange,
+  isDisabled = false,
 }: {
   value: string[];
   onChange: (emails: string[]) => void;
+  isDisabled?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -111,7 +113,9 @@ function CcEmailPicker({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useSWR<TProfilesResponse>(
-    `/api/profiles?limit=20&page=1&search=${encodeURIComponent(debouncedSearch)}`,
+    isDisabled
+      ? null
+      : `/api/profiles?limit=20&page=1&search=${encodeURIComponent(debouncedSearch)}`,
     { revalidateOnFocus: false }
   );
 
@@ -122,18 +126,28 @@ function CcEmailPicker({
 
   const addEmail = useCallback(
     (email: string) => {
+      if (isDisabled) return;
       if (!value.includes(email)) onChange([...value, email]);
       setSearch("");
       setOpen(false);
       inputRef.current?.focus();
     },
-    [value, onChange]
+    [isDisabled, value, onChange]
   );
 
   const removeEmail = useCallback(
-    (email: string) => onChange(value.filter((e) => e !== email)),
-    [value, onChange]
+    (email: string) => {
+      if (isDisabled) return;
+      onChange(value.filter((e) => e !== email));
+    },
+    [isDisabled, value, onChange]
   );
+
+  useEffect(() => {
+    if (!isDisabled) return;
+    setOpen(false);
+    setSearch("");
+  }, [isDisabled]);
 
   // Close on outside click
   useEffect(() => {
@@ -156,7 +170,7 @@ function CcEmailPicker({
           {value.map((email) => (
             <Chip
               key={email}
-              onClose={() => removeEmail(email)}
+              onClose={isDisabled ? undefined : () => removeEmail(email)}
               variant="flat"
               color="primary"
               size="sm"
@@ -172,21 +186,28 @@ function CcEmailPicker({
         <Input
           ref={inputRef}
           size="md"
+          isDisabled={isDisabled}
           placeholder="Tìm theo tên hoặc email..."
           value={search}
           onValueChange={(v) => {
+            if (isDisabled) return;
             setSearch(v);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            if (isDisabled) return;
+            setOpen(true);
+          }}
           startContent={<Search size={15} className="text-default-400 shrink-0" />}
-          endContent={isLoading ? <Spinner size="sm" /> : null}
+          endContent={
+            isDisabled || isLoading ? <Spinner size="sm" /> : null
+          }
           classNames={{ inputWrapper: "bg-default-100" }}
           autoComplete="off"
         />
 
         {/* Dropdown */}
-        {open && (
+        {open && !isDisabled && (
           <div className="absolute z-50 w-full mt-1 bg-content1 border border-default-200 rounded-lg shadow-lg max-h-56 overflow-auto">
             {isLoading && suggestions.length === 0 ? (
               <div className="flex items-center justify-center py-4 text-sm text-default-400">
@@ -238,11 +259,12 @@ export function AddRequestModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const didInitCcRef = useRef(false);
 
-  const { data: defaultCcEmails } = useSWR(
+  const { data: defaultCcEmails, isLoading: isLoadingDefaultCc } = useSWR(
     isOpen ? "default-request-cc-emails" : null,
     fetchDefaultCcEmails,
     { revalidateOnFocus: false }
   );
+  const isCcInitializing = isOpen && (isLoadingDefaultCc || !defaultCcEmails);
 
   useEffect(() => {
     if (!isOpen) {
@@ -421,6 +443,7 @@ export function AddRequestModal({
                 />
                 <CcEmailPicker
                   value={formData.ccEmails}
+                  isDisabled={isCcInitializing}
                   onChange={(emails) => setFormData({ ...formData, ccEmails: emails })}
                 />
                 <div>
