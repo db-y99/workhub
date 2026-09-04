@@ -133,7 +133,7 @@ export async function resetPasswordForEmail(email: string) {
  * Cần bật Email OTP trong Supabase Dashboard và dùng template có {{ .Token }}.
  */
 export async function sendOtpToEmail(email: string) {
-  const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim().toLowerCase();
   if (!trimmedEmail) {
     return { error: "Vui lòng nhập email." };
   }
@@ -182,7 +182,7 @@ export async function verifyEmailOtp(email: string, token: string) {
     data: { session },
     error,
   } = await supabase.auth.verifyOtp({
-    email: email.trim(),
+    email: email.trim().toLowerCase(),
     token: token.trim(),
     type: "email",
   });

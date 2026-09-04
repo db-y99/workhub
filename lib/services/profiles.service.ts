@@ -39,28 +39,39 @@ export async function getProfileById(
   }
 }
 
+const escapeIlikeExact = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
 /**
  * Get profile by email (server-side).
+ * Dùng admin client vì hàm này được gọi khi user chưa đăng nhập (OTP / OAuth callback).
+ * RLS profiles chỉ cho `authenticated` SELECT — anon sẽ luôn ra 0 row dù email có trong bảng.
  */
 export async function getProfileByEmail(
   email: string
 ): Promise<ProfileFromApi | null> {
-  try {
-    const supabase = await createClient();
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    return null;
+  }
 
-    const { data, error } = await supabase
+  try {
+    const admin = createAdminClient();
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
+    const { data, error } = await admin
       .from("profiles")
       .select("*, role:roles(code, name)")
-      .eq("email", email)
+      .ilike("email", escapeIlikeExact(normalizedEmail))
       .is("deleted_at", null)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error fetching profile by email:", error.message, error.code);
       return null;
     }
 
-    return data as ProfileFromApi;
+    return (data as ProfileFromApi) ?? null;
   } catch (err) {
     console.error("Error fetching profile by email (thrown):", err);
     return null;
