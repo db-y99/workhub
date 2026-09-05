@@ -279,7 +279,6 @@ export function UsersContent() {
               <Input
                 className="flex-1 max-w-[300px]"
                 classNames={{ inputWrapper: "bg-default-100" }}
-                type="search"
                 name="users-list-search"
                 autoComplete="nope"
                 autoCorrect="off"
@@ -289,6 +288,7 @@ export function UsersContent() {
                 endContent={
                   searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery("")}
                       className="text-default-400 hover:text-default-600"
                     >

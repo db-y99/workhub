@@ -106,14 +106,17 @@ export function RequestDetailModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              <h2 className="text-2xl font-bold">{request.title}</h2>
-              <p className="text-sm text-default-500 font-normal">
+            <ModalHeader className="flex flex-col gap-1 min-w-0 overflow-hidden pr-10">
+              <h2 className="text-2xl font-bold break-words">{request.title}</h2>
+              <p
+                className="text-sm text-default-500 font-normal font-mono truncate"
+                title={request.id}
+              >
                 {request.id}
               </p>
             </ModalHeader>
-            <ModalBody>
-              <div className="flex flex-col gap-4">
+            <ModalBody className="overflow-x-hidden">
+              <div className="flex flex-col gap-4 min-w-0">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-semibold text-default-500 mb-1">
@@ -232,7 +235,7 @@ export function RequestDetailModal({
                         <Paperclip size={14} />
                         File đính kèm
                       </p>
-                      <ul className="flex flex-col gap-2">
+                      <ul className="flex flex-col gap-2 min-w-0">
                         {request.attachments.map(
                           (
                             att: {
@@ -243,50 +246,58 @@ export function RequestDetailModal({
                             },
                             i: number
                           ) => {
+                            const label = att.name || att.url || `File ${i + 1}`;
+                            const sizeLabel =
+                              att.size != null ? (
+                                <span className="text-default-400 text-xs shrink-0">
+                                  ({(att.size / 1024).toFixed(1)} KB)
+                                </span>
+                              ) : null;
+
                             // Nếu có fileId (file mới từ Google Drive)
                             if (att.fileId) {
                               return (
-                                <Link isExternal key={i} href={`/api/request-files?fileId=${att.fileId}&requestId=${request.id}`}>
-                                  <ExternalLink size={14} />
-                                  {att.name || `File ${i + 1}`}
-                                  {att.size != null && (
-                                    <span className="text-default-400 text-xs">
-                                      ({(att.size / 1024).toFixed(1)} KB)
-                                    </span>
-                                  )}
-                                </Link>
+                                <li key={i} className="min-w-0">
+                                  <Link
+                                    isExternal
+                                    href={`/api/request-files?fileId=${att.fileId}&requestId=${request.id}`}
+                                    className="flex items-center gap-2 max-w-full min-w-0"
+                                    title={label}
+                                  >
+                                    <ExternalLink size={14} className="shrink-0" />
+                                    <span className="truncate">{label}</span>
+                                    {sizeLabel}
+                                  </Link>
+                                </li>
                               );
                             }
                             // Nếu có url (file cũ, backward compatibility)
                             if (att.url) {
                               return (
-                                <li key={i}>
+                                <li key={i} className="min-w-0">
                                   <a
                                     href={att.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-primary hover:underline"
+                                    className="flex items-center gap-2 max-w-full min-w-0 text-primary hover:underline"
+                                    title={label}
                                   >
-                                    <ExternalLink size={14} />
-                                    {att.name || att.url || `File ${i + 1}`}
-                                    {att.size != null && (
-                                      <span className="text-default-400 text-xs">
-                                        ({(att.size / 1024).toFixed(1)} KB)
-                                      </span>
-                                    )}
+                                    <ExternalLink size={14} className="shrink-0" />
+                                    <span className="truncate">{label}</span>
+                                    {sizeLabel}
                                   </a>
                                 </li>
                               );
                             }
                             // Chỉ có name (file không có link)
                             return (
-                              <li key={i} className="text-sm text-default-700">
-                                {att.name || `File ${i + 1}`}
-                                {att.size != null && (
-                                  <span className="text-default-400 text-xs ml-1">
-                                    ({(att.size / 1024).toFixed(1)} KB)
-                                  </span>
-                                )}
+                              <li
+                                key={i}
+                                className="flex items-center gap-2 min-w-0 text-sm text-default-700"
+                                title={label}
+                              >
+                                <span className="truncate">{label}</span>
+                                {sizeLabel}
                               </li>
                             );
                           }

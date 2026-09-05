@@ -168,7 +168,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
         startContent={
           <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0 w-4 h-4" />
         }
-        type="search"
         onClick={(e) => {
           const timeSinceLastClose = Date.now() - lastCloseTimeRef.current;
 

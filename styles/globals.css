@@ -2,6 +2,14 @@
 
 @config "../tailwind.config.js";
 
+/* Hide browser native clear on search inputs — app uses custom / HeroUI clear */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 /* Hide scrollbar for all browsers */
 * {
   scrollbar-width: none; /* Firefox */
