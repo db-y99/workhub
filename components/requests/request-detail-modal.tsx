@@ -20,21 +20,23 @@ import { stripHtml } from "@/lib/functions";
 import { Paperclip, ExternalLink } from "lucide-react";
 import { Link } from "@heroui/link";
 import { addToast } from "@heroui/toast";
+import { RequestActorFields } from "@/components/requests/request-actor-fields";
+import { REQUEST_ACTOR_LABELS } from "@/constants/requests";
+import type { TApproveRequestItem } from "@/types/approve.types";
 
-
-interface RequestDetailModalProps {
+type TRequestDetailModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  request: any;
+  request: TApproveRequestItem;
   onUpdate: () => void;
-}
+};
 
 export function RequestDetailModal({
   isOpen,
   onClose,
   request,
   onUpdate,
-}: RequestDetailModalProps) {
+}: TRequestDetailModalProps) {
   const { hasPermission, currentUser, isAdmin } = useAuth();
   const canApprove = hasPermission(PERMISSIONS.APPROVE_APPROVE);
   const isOwner = currentUser?.id === request?.requested_by;
@@ -163,29 +165,24 @@ export function RequestDetailModal({
                         : "-"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-default-500 mb-1">
-                      Người phê duyệt
-                    </p>
-                    <p className="text-base">
-                      {request.approved_by_profile?.full_name || "-"}
-                    </p>
-                    {request.approved_by_profile?.email && (
-                      <p className="text-sm text-default-400">
-                        {request.approved_by_profile.email}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-default-500 mb-1">
-                      Ngày duyệt
-                    </p>
-                    <p className="text-base">
-                      {request.approved_at
-                        ? formatDate(request.approved_at)
-                        : "-"}
-                    </p>
-                  </div>
+                  <RequestActorFields
+                    personLabel={REQUEST_ACTOR_LABELS.APPROVER}
+                    dateLabel={REQUEST_ACTOR_LABELS.APPROVED_AT}
+                    profile={request.approved_by_profile}
+                    at={request.approved_at}
+                  />
+                  <RequestActorFields
+                    personLabel={REQUEST_ACTOR_LABELS.REJECTOR}
+                    dateLabel={REQUEST_ACTOR_LABELS.REJECTED_AT}
+                    profile={request.rejected_by_profile}
+                    at={request.rejected_at}
+                  />
+                  <RequestActorFields
+                    personLabel={REQUEST_ACTOR_LABELS.COMPLETER}
+                    dateLabel={REQUEST_ACTOR_LABELS.COMPLETED_AT}
+                    profile={request.completed_by_profile}
+                    at={request.completed_at}
+                  />
                 </div>
 
                 {/* CC emails */}

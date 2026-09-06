@@ -370,21 +370,50 @@ export async function updateRequestStatus(
       return { error: ERROR_MESSAGES.INVALID_STATUS_TRANSITION };
     }
 
+    const now = new Date().toISOString();
     const updateData: Record<string, unknown> = {
       status,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
 
-    // Chỉ ghi người duyệt khi duyệt/từ chối từ trạng thái chờ.
-    // "Hủy hoàn thành" (completed → approved) không được ghi đè approved_by.
-    if (isApproveOrRejectFromPending) {
+    if (
+      isApproveOrRejectFromPending &&
+      status === REQUEST_STATUS.APPROVED
+    ) {
       updateData.approved_by = user.id;
-      updateData.approved_at = new Date().toISOString();
+      updateData.approved_at = now;
+      updateData.rejected_by = null;
+      updateData.rejected_at = null;
+    }
+
+    if (
+      isApproveOrRejectFromPending &&
+      status === REQUEST_STATUS.REJECTED
+    ) {
+      updateData.rejected_by = user.id;
+      updateData.rejected_at = now;
+      updateData.approved_by = null;
+      updateData.approved_at = null;
+    }
+
+    if (isCompleteFromApproved) {
+      updateData.completed_by = user.id;
+      updateData.completed_at = now;
+    }
+
+    // "Hủy hoàn thành" không ghi đè người duyệt; chỉ xóa người hoàn thành.
+    if (isUncompleteFromCompleted) {
+      updateData.completed_by = null;
+      updateData.completed_at = null;
     }
 
     if (isResubmitToPending) {
       updateData.approved_by = null;
       updateData.approved_at = null;
+      updateData.rejected_by = null;
+      updateData.rejected_at = null;
+      updateData.completed_by = null;
+      updateData.completed_at = null;
     }
 
     // Store comment in metadata if provided

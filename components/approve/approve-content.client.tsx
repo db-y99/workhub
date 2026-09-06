@@ -840,7 +840,7 @@ export default function ApproveContent() {
         </Card>
 
         {
-          isOpen && (
+          isOpen && selectedRequest && (
             <RequestDetailModal
               isOpen={isOpen}
               onClose={onClose}

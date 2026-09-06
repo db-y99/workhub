@@ -115,6 +115,10 @@ export interface Request {
   attachments?: RequestAttachment[] | null;
   metadata?: Record<string, any> | null;
   approved_at?: string | null;
+  rejected_by?: string | null;
+  rejected_at?: string | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
@@ -124,6 +128,8 @@ export interface Request {
 export interface RequestWithRelations extends Request {
   requester?: Profile | null;
   approver?: Profile | null;
+  rejector?: Profile | null;
+  completer?: Profile | null;
   department?: Department | null;
 }
 

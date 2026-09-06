@@ -95,6 +95,8 @@ export async function GET(request: Request) {
         *,
         requested_by_profile:profiles!requests_requested_by_fkey(id, full_name, email),
         approved_by_profile:profiles!requests_approved_by_fkey(id, full_name, email),
+        rejected_by_profile:profiles!requests_rejected_by_fkey(id, full_name, email),
+        completed_by_profile:profiles!requests_completed_by_fkey(id, full_name, email),
         department:departments(id, name, code)
       `
       )

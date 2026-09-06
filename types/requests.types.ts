@@ -1,3 +1,9 @@
+export type TRequestActorProfile = {
+  id?: string;
+  full_name?: string | null;
+  email?: string | null;
+};
+
 export type TRequestComment = {
   id: string;
   request_id: string;
