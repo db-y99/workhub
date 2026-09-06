@@ -111,12 +111,6 @@ export function RequestDetailModal({
           <>
             <ModalHeader className="flex flex-col gap-1 min-w-0 overflow-hidden pr-10">
               <h2 className="text-2xl font-bold break-words">{request.title}</h2>
-              <p
-                className="text-sm text-default-500 font-normal font-mono truncate"
-                title={request.id}
-              >
-                {request.id}
-              </p>
             </ModalHeader>
             <ModalBody className="overflow-x-hidden">
               <div className="flex flex-col gap-4 min-w-0">
