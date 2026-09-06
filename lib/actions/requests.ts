@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
 import { EMAIL_LOGO_URL } from "@/constants/email";
+import { ERROR_MESSAGES } from "@/constants/error-messages";
+import { PERMISSIONS } from "@/constants/permissions";
 import { REQUEST_STATUS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import type { TRequestComment } from "@/types/requests.types";
 import { getProfileById } from "@/lib/services/profiles.service";
+import { getPermissionsByUserId } from "@/lib/services/permissions.service";
 import { sendEmail } from "@/lib/services/email.service";
 import { getBaseUrl } from "@/config/env";
 import { stripHtml } from "@/lib/functions";
@@ -315,13 +318,12 @@ export async function updateRequestStatus(
     const user = await getCurrentUser();
 
     if (!user) {
-      return { error: "Bạn cần đăng nhập" };
+      return { error: ERROR_MESSAGES.LOGIN_REQUIRED };
     }
 
-    // Check if request exists
     const { data: existing } = await supabase
       .from("requests")
-      .select("*")
+      .select("id, status, requested_by, title, department_id, metadata")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -330,15 +332,59 @@ export async function updateRequestStatus(
       return { error: "Yêu cầu không tồn tại" };
     }
 
+    const permissions = await getPermissionsByUserId(user.id);
+    const canApprove = permissions.includes(PERMISSIONS.APPROVE_APPROVE);
+    const isOwner = existing.requested_by === user.id;
+    const currentStatus = existing.status;
+
+    const isApproveOrRejectFromPending =
+      currentStatus === REQUEST_STATUS.PENDING &&
+      (status === REQUEST_STATUS.APPROVED || status === REQUEST_STATUS.REJECTED);
+    const isCompleteFromApproved =
+      currentStatus === REQUEST_STATUS.APPROVED &&
+      status === REQUEST_STATUS.COMPLETED;
+    const isUncompleteFromCompleted =
+      currentStatus === REQUEST_STATUS.COMPLETED &&
+      status === REQUEST_STATUS.APPROVED;
+    const isResubmitToPending =
+      status === REQUEST_STATUS.PENDING &&
+      (currentStatus === REQUEST_STATUS.REJECTED ||
+        currentStatus === REQUEST_STATUS.CANCELLED);
+
+    if (isApproveOrRejectFromPending) {
+      if (!canApprove) {
+        return { error: ERROR_MESSAGES.APPROVE_PERMISSION_REQUIRED };
+      }
+      if (isOwner) {
+        return { error: ERROR_MESSAGES.CANNOT_APPROVE_OWN_REQUEST };
+      }
+    } else if (isCompleteFromApproved || isUncompleteFromCompleted) {
+      if (!canApprove && !isOwner) {
+        return { error: ERROR_MESSAGES.STATUS_CHANGE_NOT_ALLOWED };
+      }
+    } else if (isResubmitToPending) {
+      if (!isOwner && !canApprove) {
+        return { error: ERROR_MESSAGES.STATUS_CHANGE_NOT_ALLOWED };
+      }
+    } else {
+      return { error: ERROR_MESSAGES.INVALID_STATUS_TRANSITION };
+    }
+
     const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
 
-    // If approving or rejecting, set approved_by and approved_at
-    if (status === REQUEST_STATUS.APPROVED || status === REQUEST_STATUS.REJECTED) {
+    // Chỉ ghi người duyệt khi duyệt/từ chối từ trạng thái chờ.
+    // "Hủy hoàn thành" (completed → approved) không được ghi đè approved_by.
+    if (isApproveOrRejectFromPending) {
       updateData.approved_by = user.id;
       updateData.approved_at = new Date().toISOString();
+    }
+
+    if (isResubmitToPending) {
+      updateData.approved_by = null;
+      updateData.approved_at = null;
     }
 
     // Store comment in metadata if provided
@@ -365,8 +411,8 @@ export async function updateRequestStatus(
 
     revalidatePath(ROUTES.APPROVE);
 
-    // Gửi email thông báo cho người gửi khi yêu cầu được duyệt
-    if (status === REQUEST_STATUS.APPROVED) {
+    // Gửi email thông báo cho người gửi khi yêu cầu được duyệt lần đầu
+    if (isApproveOrRejectFromPending && status === REQUEST_STATUS.APPROVED) {
       try {
         const requesterProfile = await getProfileById(existing.requested_by);
         const approverProfile = await getProfileById(user.id);

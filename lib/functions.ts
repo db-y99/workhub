@@ -9,6 +9,7 @@ export const formatDate = (dateString: string | null | undefined) => {
   if (isNaN(date.getTime())) return "-";
 
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

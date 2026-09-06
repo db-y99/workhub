@@ -19,6 +19,7 @@ import { PERMISSIONS } from "@/constants/permissions";
 import { stripHtml } from "@/lib/functions";
 import { Paperclip, ExternalLink } from "lucide-react";
 import { Link } from "@heroui/link";
+import { addToast } from "@heroui/toast";
 
 
 interface RequestDetailModalProps {
@@ -92,6 +93,8 @@ export function RequestDetailModal({
       if (result.success) {
         onUpdate();
         onClose();
+      } else if (result.error) {
+        addToast({ title: result.error, color: "danger" });
       }
       setLoadingAction(null);
     });
