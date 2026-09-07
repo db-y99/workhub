@@ -11,17 +11,27 @@ import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
 import { Tabs, Tab } from "@heroui/tabs";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 export default function CustomersPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const canImport = hasPermission(ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_IMPORT]);
+  const canViewLeads = hasPermission(ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_LEADS]);
+
   useEffect(() => {
+    if (!canViewLeads) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       const [{ data: leadsData, count }, { data: branchesData }] = await Promise.all([
         getCustomerLeads({ page: 1, pageSize: 10 }),
@@ -33,13 +43,14 @@ export default function CustomersPage() {
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [canViewLeads]);
 
-  // Determine active tab based on query parameter
   const getActiveTab = () => {
     const tab = searchParams.get("tab");
-    if (tab === "leads") return "leads";
-    return "import"; // default to import tab
+    if (tab === "leads" && canViewLeads) return "leads";
+    if (canImport) return "import";
+    if (canViewLeads) return "leads";
+    return "import";
   };
 
   const handleTabChange = (key: string) => {
@@ -53,7 +64,12 @@ export default function CustomersPage() {
   };
 
   return (
-    <PermissionGuard requiredPermissions={[ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS]]}>
+    <PermissionGuard
+      requiredPermissions={[
+        ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_IMPORT],
+        ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_LEADS],
+      ]}
+    >
       <AppLayout>
         <div className="space-y-6">
           <div>
@@ -63,31 +79,35 @@ export default function CustomersPage() {
             </p>
           </div>
 
-          <Tabs 
-            aria-label="Customer tabs" 
-            color="primary" 
+          <Tabs
+            aria-label="Customer tabs"
+            color="primary"
             variant="underlined"
             selectedKey={getActiveTab()}
             onSelectionChange={(key) => handleTabChange(key as string)}
           >
-            <Tab key="import" title="Import Excel">
-              <div className="pt-4">
-                <ImportExcelContent />
-              </div>
-            </Tab>
-            <Tab key="leads" title="Danh sách Khách hàng">
-              <div className="pt-4">
-                {loading ? (
-                  <div className="text-center py-8 text-default-500">Đang tải...</div>
-                ) : (
-                  <LeadsManagerContent 
-                    initialLeads={leads}
-                    initialTotal={total}
-                    branches={branches}
-                  />
-                )}
-              </div>
-            </Tab>
+            {canImport ? (
+              <Tab key="import" title="Import Excel">
+                <div className="pt-4">
+                  <ImportExcelContent />
+                </div>
+              </Tab>
+            ) : null}
+            {canViewLeads ? (
+              <Tab key="leads" title="Danh sách Khách hàng">
+                <div className="pt-4">
+                  {loading ? (
+                    <div className="text-center py-8 text-default-500">Đang tải...</div>
+                  ) : (
+                    <LeadsManagerContent
+                      initialLeads={leads}
+                      initialTotal={total}
+                      branches={branches}
+                    />
+                  )}
+                </div>
+              </Tab>
+            ) : null}
           </Tabs>
         </div>
       </AppLayout>

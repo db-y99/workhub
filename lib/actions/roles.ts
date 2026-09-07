@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
+import { PERMISSIONS } from "@/constants/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getNextSortOrder } from "@/lib/db/next-sort-order";
@@ -23,6 +25,11 @@ export interface UpdateRoleInput {
 
 export async function createRole(formData: CreateRoleInput) {
   try {
+    const auth = await requirePermission(PERMISSIONS.ROLES_CREATE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     if (!formData.code?.trim()) {
@@ -67,6 +74,11 @@ export async function createRole(formData: CreateRoleInput) {
 
 export async function updateRole(id: string, formData: UpdateRoleInput) {
   try {
+    const auth = await requirePermission(PERMISSIONS.ROLES_EDIT);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     const updates: Record<string, unknown> = {
@@ -125,6 +137,11 @@ export async function updateRole(id: string, formData: UpdateRoleInput) {
 
 export async function restoreRole(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.ROLES_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const adminSupabase = createAdminClient();
 
     const { error } = await adminSupabase
@@ -148,6 +165,11 @@ export async function restoreRole(id: string) {
 
 export async function deleteRole(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.ROLES_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
 

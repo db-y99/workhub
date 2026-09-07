@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { getNextSortOrder } from "@/lib/db/next-sort-order";
+
+function adminDeniedResponse(error: string) {
+  const status = error === "Unauthorized" ? 401 : 403;
+  return NextResponse.json({ error }, { status });
+}
 
 export async function GET(request: Request) {
   try {
@@ -72,8 +78,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireAuth();
-    if (!auth.ok) return auth.response;
+    const adminAuth = await requireAdmin();
+    if (!adminAuth.ok) return adminDeniedResponse(adminAuth.error);
 
     const body = await request.json();
     if (!body.code?.trim()) {
@@ -116,8 +122,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const auth = await requireAuth();
-    if (!auth.ok) return auth.response;
+    const adminAuth = await requireAdmin();
+    if (!adminAuth.ok) return adminDeniedResponse(adminAuth.error);
 
     const body = await request.json();
     if (!body.id) {
@@ -154,8 +160,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const auth = await requireAuth();
-    if (!auth.ok) return auth.response;
+    const adminAuth = await requireAdmin();
+    if (!adminAuth.ok) return adminDeniedResponse(adminAuth.error);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

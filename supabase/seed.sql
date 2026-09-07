@@ -63,7 +63,10 @@ INSERT INTO public.permissions (code, name, sort_order) VALUES
   ('customer-leads:edit', 'Sửa Khách hàng tiềm năng', 31),
   ('customer-leads:delete', 'Xóa Khách hàng tiềm năng', 32),
   ('permissions:view', 'Xem phân quyền', 33),
-  ('permissions-list:view', 'Xem danh sách quyền', 34)
+  ('permissions-list:view', 'Xem danh sách quyền', 34),
+  ('cms-lookup:view', 'Xem Tra cứu CMS', 35),
+  ('messages:view', 'Xem Tin nhắn', 36),
+  ('debt-report:view', 'Xem Báo cáo dư nợ', 37)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   sort_order = EXCLUDED.sort_order;
@@ -101,8 +104,8 @@ WHERE r.code = 'staff'
      AND p.code NOT LIKE 'departments:%'
      AND p.code NOT LIKE 'roles:%'
      AND p.code NOT LIKE 'settings:%')
-    -- Hoặc create/edit cho approve
-    OR (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete')
+    -- Approve: view, create — không có quyền duyệt (approve:approve) và không delete
+    OR (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete' AND p.code <> 'approve:approve')
     OR (p.code LIKE 'company-resources:%' AND p.code NOT LIKE '%:delete')
     OR (p.code LIKE 'statistics:%' AND p.code NOT LIKE '%:delete')
     -- Bulletins: view, create, edit (không delete)
@@ -119,10 +122,8 @@ FROM public.roles r
 CROSS JOIN public.permissions p
 WHERE r.code = 'cs'
   AND (
-    -- Xem home
-    p.code LIKE 'home:%'
-    -- Approve: view, create, edit (không delete)
-    OR (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete')
+    -- Approve: view, create — không có quyền duyệt (approve:approve) và không delete
+    (p.code LIKE 'approve:%' AND p.code NOT LIKE '%:delete' AND p.code <> 'approve:approve')
     -- Xem statistics
     OR p.code LIKE 'statistics:view'
     -- Bulletins: view, create, edit (không delete)
@@ -142,8 +143,7 @@ CROSS JOIN public.permissions p
 WHERE r.code = 'user'
   AND (
     -- Chỉ xem
-    p.code LIKE 'home:view'
-    OR p.code LIKE 'approve:view'
+    p.code LIKE 'approve:view'
     OR p.code LIKE 'company-resources:view'
     OR p.code LIKE 'statistics:view'
     OR p.code LIKE 'bulletins:view'

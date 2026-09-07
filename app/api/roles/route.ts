@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 import { getNextSortOrder } from "@/lib/db/next-sort-order";
 
 export async function GET() {
@@ -41,7 +42,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.ROLES_CREATE);
     if (!auth.ok) return auth.response;
 
     const supabase = await createClient();

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { LoanDisbursementSchema } from "@/types/loan-disbursement";
-import { requireAuth } from "@/lib/api-auth";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 import { getEmailSubject } from "@/lib/email-template";
 import { sendLoanDisbursementEmail } from "@/lib/email-sender";
 import { parseCCEmails } from "@/lib/functions";
@@ -13,7 +14,7 @@ import { createError } from "@/lib/errors";
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.SEND_EMAIL_VIEW);
     if (!auth.ok) return auth.response;
 
     // 1. Parse dữ liệu từ request

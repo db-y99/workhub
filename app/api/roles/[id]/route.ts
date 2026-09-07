@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.ROLES_EDIT);
     if (!auth.ok) return auth.response;
 
     const { id } = await params;
@@ -87,7 +88,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.ROLES_DELETE);
     if (!auth.ok) return auth.response;
 
     const { id } = await params;

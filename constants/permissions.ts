@@ -99,6 +99,9 @@ export const PERMISSIONS = {
   // Permissions management
   PERMISSIONS_VIEW: "permissions:view",
   PERMISSIONS_LIST_VIEW: "permissions-list:view",
+
+  // Debt report
+  DEBT_REPORT_VIEW: "debt-report:view",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -124,6 +127,7 @@ export const PERMISSION_PAGES = [
   { code: "branches", name: "Chi nhánh", description: "Quản lý thông tin chi nhánh", sort_order: 17 },
   { code: "permissions", name: "Phân quyền", description: "Thiết lập quyền hạn theo vai trò", sort_order: 18 },
   { code: "permissions-list", name: "Danh sách quyền", description: "Quản lý mã quyền trong hệ thống", sort_order: 19 },
+  { code: "debt-report", name: "Báo cáo dư nợ", description: "Upload và đối chiếu báo cáo dư nợ", sort_order: 20 },
 ] as const;
 
 /** Mapping route -> permission code (view) cho sidebar và route protection */
@@ -147,6 +151,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/branches": toPermissionCode("branches", PERMISSION_ACTIONS.VIEW),
   "/permissions": toPermissionCode("permissions", PERMISSION_ACTIONS.VIEW),
   "/permissions/list": toPermissionCode("permissions-list", PERMISSION_ACTIONS.VIEW),
+  "/debt-report": toPermissionCode("debt-report", PERMISSION_ACTIONS.VIEW),
 };
 
 export type PermissionPageItem = (typeof PERMISSION_PAGES)[number];

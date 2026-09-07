@@ -37,6 +37,7 @@ import { siteConfig } from "@/config/site";
 import { ROUTES } from "@/constants/routes";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { canSeeNavItem } from "@/lib/nav-permissions";
 import { signOut } from "@/lib/actions/auth";
 import { Button } from "@heroui/button";
 import NextLink from "next/link";
@@ -50,7 +51,7 @@ export interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser: user, hasPermission } = useAuth();
+  const { currentUser: user, hasPermission, isAdmin } = useAuth();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
@@ -100,11 +101,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
     }
   }, [isOpen, isClosing]);
 
-  const allNavItems = siteConfig.navMenuItems.filter((item) => {
-    const perm = item.permissionCode ?? null;
-    if (perm && !hasPermission(perm)) return false;
-    return true;
-  });
+  const allNavItems = siteConfig.navMenuItems.filter((item) =>
+    canSeeNavItem(item, hasPermission, isAdmin)
+  );
 
   // Filter navigation items based on user role and search query
   const filteredNavItems = allNavItems.filter((item) =>
@@ -320,7 +319,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
             </div>
           )}
           <div className="mx-4 mt-2 flex flex-col gap-2">
-            {siteConfig.navMenuItems.map((item, index) => (
+            {allNavItems.map((item, index) => (
               <NavbarMenuItem key={`${item.href}-${index}`}>
                 <Link
                   color={pathname === item.href ? "primary" : "foreground"}

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { RESOURCE_TYPE } from "@/constants/resources";
-import { requireAuth } from "@/lib/api-auth";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const VALID_TYPES = Object.values(RESOURCE_TYPE);
 
@@ -10,7 +11,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.COMPANY_RESOURCES_EDIT);
     if (!auth.ok) return auth.response;
 
     const { id } = await params;
@@ -72,7 +73,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireApiPermission(PERMISSIONS.COMPANY_RESOURCES_DELETE);
     if (!auth.ok) return auth.response;
 
     const { id } = await params;

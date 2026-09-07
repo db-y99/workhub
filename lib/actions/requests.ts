@@ -8,6 +8,7 @@ import { PERMISSIONS } from "@/constants/permissions";
 import { REQUEST_STATUS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
+import { requirePermission } from "@/lib/auth/require-permission";
 import type { TRequestComment } from "@/types/requests.types";
 import { getProfileById } from "@/lib/services/profiles.service";
 import { getPermissionsByUserId } from "@/lib/services/permissions.service";
@@ -40,12 +41,13 @@ export async function createRequest(
       }
 ) {
   try {
-    const supabase = await createClient();
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return { error: "Bạn cần đăng nhập để tạo yêu cầu" };
+    const auth = await requirePermission(PERMISSIONS.APPROVE_CREATE);
+    if (!auth.ok) {
+      return { error: auth.error };
     }
+
+    const supabase = await createClient();
+    const user = auth.user;
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -258,6 +260,24 @@ export async function updateRequest(
 
     if (!user) {
       return { error: "Bạn cần đăng nhập để cập nhật yêu cầu" };
+    }
+
+    const { data: existing } = await supabase
+      .from("requests")
+      .select("id, requested_by")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!existing) {
+      return { error: "Yêu cầu không tồn tại" };
+    }
+
+    const permissions = await getPermissionsByUserId(user.id);
+    const canCreate = permissions.includes(PERMISSIONS.APPROVE_CREATE);
+    const isOwner = existing.requested_by === user.id;
+    if (!isOwner && !canCreate) {
+      return { error: ERROR_MESSAGES.PERMISSION_DENIED };
     }
 
     const updateData: Record<string, unknown> = {};

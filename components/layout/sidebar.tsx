@@ -11,6 +11,7 @@ import { siteConfig } from "@/config/site";
 import type { NavMenuItem } from "@/config/site";
 import { Logo } from "@/components/icons";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { canSeeNavItem, getVisibleNavChildren } from "@/lib/nav-permissions";
 import { link as linkStyles } from "@heroui/theme";
 
 export const SIDEBAR_WIDTH = 256;
@@ -30,16 +31,18 @@ function NavItem({
   collapsed,
   isMobile,
   onMobileClose,
+  visibleChildren,
 }: {
   item: NavMenuItem;
   pathname: string;
   collapsed: boolean;
   isMobile: boolean;
   onMobileClose?: () => void;
+  visibleChildren: NonNullable<NavMenuItem["children"]>;
 }) {
-  const hasChildren = item.children && item.children.length > 0;
+  const hasChildren = visibleChildren.length > 0;
   const isParentActive = hasChildren
-    ? item.children!.some((c) => pathname === c.href)
+    ? visibleChildren.some((c) => pathname === c.href)
     : pathname === item.href;
 
   const [open, setOpen] = useState(isParentActive);
@@ -117,7 +120,7 @@ function NavItem({
       </button>
       {open && (
         <div className="ml-8 mt-0.5 flex flex-col gap-0.5">
-          {item.children!.map((child) => {
+          {visibleChildren.map((child) => {
             const isActive = pathname === child.href;
             return (
               <NextLink
@@ -158,12 +161,9 @@ export function Sidebar({
   const toggleCollapsed = () =>
     onCollapsedChange ? onCollapsedChange(!collapsed) : setInternalCollapsed((c) => !c);
 
-  const navItems = siteConfig.navMenuItems.filter((item) => {
-    if (item.adminOnly) return isAdmin;
-    const perm = item.permissionCode ?? null;
-    if (perm && !hasPermission(perm)) return false;
-    return true;
-  });
+  const navItems = siteConfig.navMenuItems.filter((item) =>
+    canSeeNavItem(item, hasPermission, isAdmin)
+  );
 
   const content = (
     <>
@@ -188,6 +188,7 @@ export function Sidebar({
             collapsed={collapsed}
             isMobile={isMobile}
             onMobileClose={onMobileClose}
+            visibleChildren={getVisibleNavChildren(item, hasPermission)}
           />
         ))}
       </nav>

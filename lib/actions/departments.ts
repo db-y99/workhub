@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
+import { PERMISSIONS } from "@/constants/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Department } from "@/types";
@@ -16,6 +18,11 @@ export async function createDepartment(formData: {
   email?: string;
 }) {
   try {
+    const auth = await requirePermission(PERMISSIONS.DEPARTMENTS_CREATE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     // Check if code already exists
@@ -76,6 +83,11 @@ export async function updateDepartment(
   }
 ) {
   try {
+    const auth = await requirePermission(PERMISSIONS.DEPARTMENTS_EDIT);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     // Check if code already exists (excluding current department)
@@ -131,6 +143,11 @@ export async function updateDepartment(
  */
 export async function restoreDepartment(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.DEPARTMENTS_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const adminSupabase = createAdminClient();
 
     const { error } = await adminSupabase
@@ -157,6 +174,11 @@ export async function restoreDepartment(id: string) {
  */
 export async function deleteDepartment(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.DEPARTMENTS_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     // Check if department has employees

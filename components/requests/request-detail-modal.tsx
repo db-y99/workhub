@@ -22,6 +22,10 @@ import { Link } from "@heroui/link";
 import { addToast } from "@heroui/toast";
 import { RequestActorFields } from "@/components/requests/request-actor-fields";
 import { REQUEST_ACTOR_LABELS } from "@/constants/requests";
+import {
+  RequestStatusConfirmModal,
+  type TConfirmableRequestStatus,
+} from "@/components/requests/request-status-confirm-modal";
 import type { TApproveRequestItem } from "@/types/approve.types";
 
 type TRequestDetailModalProps = {
@@ -43,6 +47,8 @@ export function RequestDetailModal({
   const canManageOwn = isAdmin || isOwner;
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [confirmStatus, setConfirmStatus] =
+    useState<TConfirmableRequestStatus | null>(null);
 
   const getStatusConfig = (status: RequestStatus) => {
     switch (status) {
@@ -93,6 +99,7 @@ export function RequestDetailModal({
       const result = await updateRequestStatus(request.id, newStatus);
 
       if (result.success) {
+        setConfirmStatus(null);
         onUpdate();
         onClose();
       } else if (result.error) {
@@ -102,12 +109,24 @@ export function RequestDetailModal({
     });
   };
 
+  const handleCloseConfirm = () => {
+    if (isPending) return;
+    setConfirmStatus(null);
+  };
+
+  const handleDetailClose = () => {
+    if (isPending) return;
+    setConfirmStatus(null);
+    onClose();
+  };
+
   if (!request) return null;
 
   const statusConfig = getStatusConfig(request.status);
 
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" size="2xl" onClose={onClose}>
+    <>
+      <Modal isOpen={isOpen} scrollBehavior="inside" size="2xl" onClose={handleDetailClose}>
       <ModalContent>
         {(onClose) => (
           <>
@@ -311,7 +330,7 @@ export function RequestDetailModal({
                     color="success"
                     isDisabled={isPending}
                     isLoading={loadingAction === REQUEST_STATUS.APPROVED}
-                    onPress={() => handleStatusUpdate(REQUEST_STATUS.APPROVED)}
+                    onPress={() => setConfirmStatus(REQUEST_STATUS.APPROVED)}
                   >
                     Duyệt
                   </Button>
@@ -320,7 +339,7 @@ export function RequestDetailModal({
                     variant="flat"
                     isDisabled={isPending}
                     isLoading={loadingAction === REQUEST_STATUS.REJECTED}
-                    onPress={() => handleStatusUpdate(REQUEST_STATUS.REJECTED)}
+                    onPress={() => setConfirmStatus(REQUEST_STATUS.REJECTED)}
                   >
                     Từ chối
                   </Button>
@@ -378,5 +397,17 @@ export function RequestDetailModal({
         )}
       </ModalContent>
     </Modal>
+    <RequestStatusConfirmModal
+      isOpen={isOpen && confirmStatus !== null}
+      isPending={isPending}
+      requestTitle={request.title ?? ""}
+      status={confirmStatus}
+      onClose={handleCloseConfirm}
+      onConfirm={() => {
+        if (!confirmStatus) return;
+        handleStatusUpdate(confirmStatus);
+      }}
+    />
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardBody } from "@heroui/card";
 import { Spinner } from "@heroui/spinner";
@@ -8,26 +8,32 @@ import { Button } from "@heroui/button";
 import { ShieldAlert, Home } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { getFirstAllowedNavHref } from "@/lib/nav-permissions";
 
-interface PermissionGuardProps {
+type TPermissionGuardProps = {
   children: React.ReactNode;
   /** Permission code cần có (VD: users:view). User cần có ít nhất 1 trong số này. */
   requiredPermissions?: string[];
   fallbackPath?: string;
   /** Chỉ cho phép admin (role = admin) truy cập */
   adminOnly?: boolean;
-}
+};
 
 export function PermissionGuard({
   children,
   requiredPermissions = [],
-  fallbackPath = ROUTES.APPROVE,
+  fallbackPath,
   adminOnly = false,
-}: PermissionGuardProps) {
+}: TPermissionGuardProps) {
   const router = useRouter();
   const { currentUser, profile, hasPermission, isAdmin, loading } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
+
+  const resolvedFallback = useMemo(
+    () => fallbackPath ?? getFirstAllowedNavHref(hasPermission, isAdmin),
+    [fallbackPath, hasPermission, isAdmin]
+  );
 
   useEffect(() => {
     const check = () => {
@@ -104,7 +110,7 @@ export function PermissionGuard({
             <Button
               color="primary"
               startContent={<Home size={18} />}
-              onPress={() => router.push(fallbackPath)}
+              onPress={() => router.push(resolvedFallback)}
               size="lg"
             >
               Quay về trang chủ

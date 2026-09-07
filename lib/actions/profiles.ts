@@ -11,7 +11,8 @@ import {
   updateUserPasswordService,
   getProfilesByDepartmentCode,
 } from "@/lib/services/profiles.service";
-import { getCurrentUser } from "./auth";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { PERMISSIONS } from "@/constants/permissions";
 import { ERROR_CODES } from "@/constants/error-codes";
 import { ERROR_MESSAGES } from "@/constants/error-messages";
 import { isErr } from "@/types/result.types";
@@ -31,7 +32,7 @@ import juice from 'juice';
 
 /**
  * Create a new user (auth + profile).
- * Requires SUPABASE_SERVICE_ROLE_KEY. Permission check ở page (PermissionGuard).
+ * Requires SUPABASE_SERVICE_ROLE_KEY.
  */
 export async function createProfile(data: {
   full_name: string;
@@ -42,9 +43,9 @@ export async function createProfile(data: {
   role_id?: string;
   branch_id?: string;
 }) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    return { error: ERROR_MESSAGES.LOGIN_REQUIRED };
+  const auth = await requirePermission(PERMISSIONS.USERS_CREATE);
+  if (!auth.ok) {
+    return { error: auth.error };
   }
 
   const parsed = CreateProfileSchema.safeParse({
@@ -134,6 +135,11 @@ export async function updateProfile(
     branch_id?: string;
   }
 ) {
+  const auth = await requirePermission(PERMISSIONS.USERS_EDIT);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   const parsed = UpdateProfileSchema.safeParse({
     full_name: formData.full_name?.trim(),
     email: formData.email?.trim(),
@@ -175,6 +181,11 @@ export async function updateProfile(
  * Restore a soft-deleted profile
  */
 export async function restoreProfile(id: string) {
+  const auth = await requirePermission(PERMISSIONS.USERS_DELETE);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   if (!id || typeof id !== "string" || id.length === 0) {
     return { error: "ID không hợp lệ" };
   }
@@ -195,6 +206,11 @@ export async function restoreProfile(id: string) {
  * Delete a profile (soft delete)
  */
 export async function deleteProfile(id: string) {
+  const auth = await requirePermission(PERMISSIONS.USERS_DELETE);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   if (!id || typeof id !== "string" || id.length === 0) {
     return { error: "ID không hợp lệ" };
   }
@@ -217,6 +233,11 @@ export async function updateUserPassword(
   userId: string,
   data: { password: string; confirmPassword: string }
 ) {
+  const auth = await requirePermission(PERMISSIONS.USERS_EDIT);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   if (!userId || typeof userId !== "string" || userId.length === 0) {
     return { error: "ID không hợp lệ" };
   }
@@ -252,6 +273,11 @@ export async function updateProfileStatus(
   id: string,
   status: "active" | "inactive" | "suspended"
 ) {
+  const auth = await requirePermission(PERMISSIONS.USERS_EDIT);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   const parsed = UpdateProfileStatusSchema.safeParse({ status });
   if (!parsed.success) {
     return { error: "Trạng thái không hợp lệ" };

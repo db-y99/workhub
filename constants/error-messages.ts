@@ -7,6 +7,7 @@ export const ERROR_MESSAGES = {
   // Auth
   LOGIN_REQUIRED: "Bạn cần đăng nhập",
   ADMIN_REQUIRED: "Chỉ admin mới được thực hiện thao tác này",
+  PERMISSION_DENIED: "Bạn không có quyền thực hiện thao tác này",
   APPROVE_PERMISSION_REQUIRED: "Bạn không có quyền duyệt yêu cầu",
   CANNOT_APPROVE_OWN_REQUEST: "Bạn không thể duyệt yêu cầu của chính mình",
   STATUS_CHANGE_NOT_ALLOWED: "Bạn không có quyền thực hiện thao tác này",

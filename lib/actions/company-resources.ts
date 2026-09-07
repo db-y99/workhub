@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/constants/routes";
+import { PERMISSIONS } from "@/constants/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 import { RESOURCE_TYPE } from "@/constants/resources";
 import type {
@@ -17,6 +19,11 @@ export async function createCompanyResource(
   formData: CreateCompanyResourceInput
 ) {
   try {
+    const auth = await requirePermission(PERMISSIONS.COMPANY_RESOURCES_CREATE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     if (!formData.name?.trim()) {
@@ -57,6 +64,11 @@ export async function updateCompanyResource(
   formData: UpdateCompanyResourceInput
 ) {
   try {
+    const auth = await requirePermission(PERMISSIONS.COMPANY_RESOURCES_EDIT);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const supabase = await createClient();
 
     if (formData.name !== undefined && !formData.name?.trim()) {
@@ -108,6 +120,11 @@ export async function updateCompanyResource(
 
 export async function restoreCompanyResource(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.COMPANY_RESOURCES_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const adminSupabase = createAdminClient();
 
     const { error } = await adminSupabase
@@ -131,6 +148,11 @@ export async function restoreCompanyResource(id: string) {
 
 export async function deleteCompanyResource(id: string) {
   try {
+    const auth = await requirePermission(PERMISSIONS.COMPANY_RESOURCES_DELETE);
+    if (!auth.ok) {
+      return { error: auth.error };
+    }
+
     const adminSupabase = createAdminClient();
 
     const { error } = await adminSupabase

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCustomerLead, CustomerLeadInput } from "@/lib/actions/customer-leads";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireApiPermission(PERMISSIONS.CUSTOMERS_LEADS_CREATE);
+    if (!auth.ok) return auth.response;
+
     const body = await request.json();
     const { customers } = body as { customers: CustomerLeadInput[] };
 

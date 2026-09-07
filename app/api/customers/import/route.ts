@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { calculateLeadReportStats } from "@/lib/customers/lead-report-stats";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 function excelDateToString(serial: number): string {
   if (!serial || typeof serial !== "number") return "";
@@ -128,6 +130,9 @@ function calcStats(rows: any[], weekLabel: string, layout: TImportLayout) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireApiPermission(PERMISSIONS.CUSTOMERS_IMPORT_VIEW);
+    if (!auth.ok) return auth.response;
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file)

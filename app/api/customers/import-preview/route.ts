@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { CustomerLeadInput } from "@/lib/actions/customer-leads";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireApiPermission(PERMISSIONS.CUSTOMERS_IMPORT_VIEW);
+    if (!auth.ok) return auth.response;
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 

@@ -2,18 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { bulkImportCustomerLeads } from "@/lib/customers/bulk-import-leads";
 import { createClient } from "@/lib/supabase/server";
+import { requireApiPermission } from "@/lib/api-auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const auth = await requireApiPermission(PERMISSIONS.CUSTOMERS_LEADS_CREATE);
+  if (!auth.ok) return auth.response;
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized", success: false as const }, { status: 401 });
-  }
+  const supabase = await createClient();
 
   let body: unknown;
   try {
@@ -45,6 +43,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await bulkImportCustomerLeads(supabase, user.id, customers);
+  const result = await bulkImportCustomerLeads(supabase, auth.user.id, customers);
   return NextResponse.json(result);
 }

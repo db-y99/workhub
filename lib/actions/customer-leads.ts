@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/actions/auth";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { PERMISSIONS } from "@/constants/permissions";
 
 export interface CustomerLeadInput {
   date?: string;
@@ -288,12 +289,16 @@ export async function getCustomerLeadsStats(
 }
 
 export async function createCustomerLead(input: CustomerLeadInput) {
+  const auth = await requirePermission(PERMISSIONS.CUSTOMERS_LEADS_CREATE);
+  if (!auth.ok) {
+    return { error: auth.error, data: null };
+  }
+
   const supabase = await createClient();
-  const user = await getCurrentUser();
 
   const { data, error } = await supabase
     .from("customer_leads")
-    .insert({ ...input, created_by: user?.id ?? null })
+    .insert({ ...input, created_by: auth.user.id })
     .select()
     .single();
 
@@ -305,6 +310,11 @@ export async function updateCustomerLead(
   id: string,
   input: Partial<CustomerLeadInput>,
 ) {
+  const auth = await requirePermission(PERMISSIONS.CUSTOMERS_LEADS_EDIT);
+  if (!auth.ok) {
+    return { error: auth.error, data: null };
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -319,6 +329,11 @@ export async function updateCustomerLead(
 }
 
 export async function deleteCustomerLead(id: string) {
+  const auth = await requirePermission(PERMISSIONS.CUSTOMERS_LEADS_DELETE);
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("customer_leads").delete().eq("id", id);
   if (error) return { error: error.message };

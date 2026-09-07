@@ -49,8 +49,6 @@ export type RouteValue = (typeof ROUTES)[keyof typeof ROUTES];
 export const PUBLIC_ROUTES = [
   ROUTES.HOME,
   ROUTES.LOGIN,
-  ROUTES.VISION,
-  ROUTES.CALCULATOR,
 ] as const;
 
 export const PROTECTED_ROUTES = [

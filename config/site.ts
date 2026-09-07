@@ -1,19 +1,25 @@
-import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator, FileSearch, MessageSquare, MapPin } from "lucide-react";
+import { ClipboardCheck, BarChart3, Settings, Users, Building2, type LucideIcon, Banknote, Package, KeyRound, Shield, Megaphone, List, ScanEye, Calculator, FileSearch, MessageSquare, MapPin, FileSpreadsheet } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
 
-export interface NavMenuItem {
+export type NavMenuChild = {
+  href: string;
+  label: string;
+  permissionCode?: string;
+};
+
+export type NavMenuItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Permission code cần có để hiển thị (VD: approve:view). Nếu không set, dùng ROUTE_PERMISSION_MAP[href]. */
+  /** Permission code cần có để hiển thị (VD: approve:view). */
   permissionCode?: string;
   /** Chỉ hiển thị cho admin */
   adminOnly?: boolean;
   /** Sub-items hiển thị dưới dạng expandable trong sidebar */
-  children?: { href: string; label: string }[];
-}
+  children?: NavMenuChild[];
+};
 
 export type SiteConfig = typeof siteConfig;
 
@@ -37,24 +43,31 @@ export const siteConfig = {
       label: "Send email",
       href: ROUTES.LOANS_DISBURSEMENT_SUCCESS,
       icon: Banknote,
-      // Hiển thị cho tất cả user đã đăng nhập
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.LOANS_DISBURSEMENT_SUCCESS],
     },
     {
       label: "Calculator",
       href: ROUTES.CALCULATOR,
       icon: Calculator,
-      // Trang public, không phân quyền
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CALCULATOR],
     },
     {
       label: "Vision OCR",
       href: ROUTES.VISION,
       icon: ScanEye,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.VISION],
     },
     {
       label: "Tra cứu CMS",
       href: ROUTES.CMS_LOOKUP,
       icon: FileSearch,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CMS_LOOKUP],
+    },
+    {
+      label: "Báo cáo dư nợ",
+      href: ROUTES.DEBT_REPORT,
+      icon: FileSpreadsheet,
+      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.DEBT_REPORT],
     },
     {
       label: "Tin nhắn",
@@ -66,10 +79,17 @@ export const siteConfig = {
       label: "Khách hàng",
       href: ROUTES.CUSTOMERS,
       icon: Users,
-      permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS],
       children: [
-        { href: ROUTES.CUSTOMERS_IMPORT, label: "Import Excel" },
-        { href: ROUTES.CUSTOMERS_LEADS, label: "Danh sách Khách hàng" },
+        {
+          href: ROUTES.CUSTOMERS_IMPORT,
+          label: "Import Excel",
+          permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_IMPORT],
+        },
+        {
+          href: ROUTES.CUSTOMERS_LEADS,
+          label: "Danh sách Khách hàng",
+          permissionCode: ROUTE_PERMISSION_MAP[ROUTES.CUSTOMERS_LEADS],
+        },
       ],
     },
     {
