@@ -1,5 +1,15 @@
 import type { RequestStatus } from "@/types";
 import { REQUEST_STATUS } from "@/lib/constants";
+import { formatCurrency } from "@/lib/functions";
+
+export function formatRequestPaymentAmount(
+  value: number | string | null | undefined
+): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return null;
+  return `${formatCurrency(amount)} VNĐ`;
+}
 
 export function formatRequestCode(createdAt: string, id: string): string {
   const d = new Date(createdAt);

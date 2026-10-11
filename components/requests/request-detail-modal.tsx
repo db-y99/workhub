@@ -12,16 +12,16 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { RequestStatus } from "@/types";
 import { updateRequestStatus } from "@/lib/actions/requests";
-import { formatDate } from "@/lib/functions";
+import { formatDate, stripHtml } from "@/lib/functions";
 import { REQUEST_STATUS } from "@/lib/constants";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { PERMISSIONS } from "@/constants/permissions";
-import { stripHtml } from "@/lib/functions";
 import { Paperclip, ExternalLink } from "lucide-react";
 import { Link } from "@heroui/link";
 import { addToast } from "@heroui/toast";
 import { RequestActorFields } from "@/components/requests/request-actor-fields";
-import { REQUEST_ACTOR_LABELS } from "@/constants/requests";
+import { REQUEST_ACTOR_LABELS, REQUEST_PAYMENT_LABELS } from "@/constants/requests";
+import { formatRequestPaymentAmount } from "@/lib/request-utils";
 import {
   RequestStatusConfirmModal,
   type TConfirmableRequestStatus,
@@ -49,6 +49,14 @@ export function RequestDetailModal({
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [confirmStatus, setConfirmStatus] =
     useState<TConfirmableRequestStatus | null>(null);
+
+  const paymentAmountLabel = formatRequestPaymentAmount(request?.payment_amount);
+  const purpose = request?.purpose?.trim() ?? "";
+  const purchasePlace = request?.purchase_place?.trim() ?? "";
+  const varianceNote = request?.amount_variance_note?.trim() ?? "";
+  const hasPaymentDetails = Boolean(
+    purpose || purchasePlace || paymentAmountLabel || varianceNote
+  );
 
   const getStatusConfig = (status: RequestStatus) => {
     switch (status) {
@@ -226,6 +234,43 @@ export function RequestDetailModal({
                       </div>
                     </div>
                   )}
+
+                {hasPaymentDetails ? (
+                  <div className="pt-2 border-t border-divider grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {purpose ? (
+                      <div>
+                        <p className="text-sm font-semibold text-default-500 mb-1">
+                          {REQUEST_PAYMENT_LABELS.PURPOSE}
+                        </p>
+                        <p className="text-base whitespace-pre-wrap">{purpose}</p>
+                      </div>
+                    ) : null}
+                    {purchasePlace ? (
+                      <div>
+                        <p className="text-sm font-semibold text-default-500 mb-1">
+                          {REQUEST_PAYMENT_LABELS.PURCHASE_PLACE}
+                        </p>
+                        <p className="text-base whitespace-pre-wrap">{purchasePlace}</p>
+                      </div>
+                    ) : null}
+                    {paymentAmountLabel ? (
+                      <div>
+                        <p className="text-sm font-semibold text-default-500 mb-1">
+                          {REQUEST_PAYMENT_LABELS.PAYMENT_AMOUNT}
+                        </p>
+                        <p className="text-base">{paymentAmountLabel}</p>
+                      </div>
+                    ) : null}
+                    {varianceNote ? (
+                      <div>
+                        <p className="text-sm font-semibold text-default-500 mb-1">
+                          {REQUEST_PAYMENT_LABELS.VARIANCE_NOTE}
+                        </p>
+                        <p className="text-base whitespace-pre-wrap">{varianceNote}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {/* Nội dung chi tiết – plain text, không render HTML */}
                 {(request.description ?? "").trim() !== "" && (

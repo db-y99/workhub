@@ -1,9 +1,23 @@
 import { REQUEST_STATUS } from "@/lib/constants";
 
+export const REQUEST_ADMIN_CC_EMAIL = "thuytd.act@y99.vn";
+
 export const DEFAULT_REQUEST_CC_EMAILS = [
   "nguyen.quyen@y99.vn",
   "sy@y99.vn",
+  REQUEST_ADMIN_CC_EMAIL,
 ] as const;
+
+export const REQUEST_CC_HINT =
+  "Tag người phê duyệt để họ nhận thông báo. Chị Thúy (Admin) đã được thêm vào CC mặc định.";
+
+export const REQUEST_PAYMENT_LABELS = {
+  PURPOSE: "Mục đích sử dụng",
+  PURCHASE_PLACE: "Nơi mua",
+  PAYMENT_AMOUNT: "Số tiền thanh toán",
+  HAS_VARIANCE: "Số tiền thực tế có chênh lệch",
+  VARIANCE_NOTE: "Ghi chú chênh lệch",
+} as const;
 
 export const REQUEST_ACTOR_LABELS = {
   APPROVER: "Người duyệt",

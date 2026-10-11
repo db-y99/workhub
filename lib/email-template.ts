@@ -487,6 +487,35 @@ export function renderRequestCreatedEmailHTML(
     ? stripHtml(data.description)
     : null;
 
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const paymentAmountLabel =
+    typeof data.paymentAmount === "number" && Number.isFinite(data.paymentAmount)
+      ? `${formatCurrency(data.paymentAmount)} VNĐ`
+      : null;
+
+  const paymentDetailItems = [
+    data.purpose
+      ? `<li><span class="detail-label">Mục đích sử dụng:</span> ${escapeHtml(data.purpose)}</li>`
+      : "",
+    data.purchasePlace
+      ? `<li><span class="detail-label">Nơi mua:</span> ${escapeHtml(data.purchasePlace)}</li>`
+      : "",
+    paymentAmountLabel
+      ? `<li><span class="detail-label">Số tiền thanh toán:</span> ${paymentAmountLabel}</li>`
+      : "",
+    data.amountVarianceNote
+      ? `<li><span class="detail-label">Ghi chú chênh lệch:</span> ${escapeHtml(data.amountVarianceNote)}</li>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -681,6 +710,7 @@ export function renderRequestCreatedEmailHTML(
                 </li>`
                     : ""
                 }
+                ${paymentDetailItems}
                 ${
                   data.attachmentsCount > 0
                     ? `<li>

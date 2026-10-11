@@ -112,6 +112,10 @@ export interface Request {
   proposed_solution?: string | null;
   possible_solution?: string | null;
   description?: string | null;
+  purpose?: string | null;
+  purchase_place?: string | null;
+  payment_amount?: number | string | null;
+  amount_variance_note?: string | null;
   attachments?: RequestAttachment[] | null;
   metadata?: Record<string, any> | null;
   approved_at?: string | null;

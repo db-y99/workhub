@@ -12,13 +12,19 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
+import { Input, Textarea } from "@heroui/input";
+import { Checkbox } from "@heroui/checkbox";
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { createRequest } from "@/lib/actions/requests";
 import { DEPARTMENT_CODES } from "@/constants/departments";
-import { DEFAULT_REQUEST_CC_EMAILS } from "@/constants/requests";
+import {
+  DEFAULT_REQUEST_CC_EMAILS,
+  REQUEST_CC_HINT,
+  REQUEST_PAYMENT_LABELS,
+} from "@/constants/requests";
 import { USER_STATUS } from "@/lib/constants";
+import { formatCurrencyInput, parseCurrencyInput } from "@/lib/functions";
 import { Plus, X, Send, Trash2, Search } from "lucide-react";
 
 const TiptapRichEditor = dynamic(
@@ -57,6 +63,28 @@ const uniqueEmails = (emails: string[]): string[] => {
 
   return result;
 };
+
+type TAddRequestForm = {
+  title: string;
+  ccEmails: string[];
+  description: string;
+  purpose: string;
+  purchasePlace: string;
+  paymentAmount: string;
+  hasAmountVariance: boolean;
+  amountVarianceNote: string;
+};
+
+const createEmptyRequestForm = (ccEmails: string[]): TAddRequestForm => ({
+  title: "",
+  ccEmails,
+  description: "",
+  purpose: "",
+  purchasePlace: "",
+  paymentAmount: "",
+  hasAmountVariance: false,
+  amountVarianceNote: "",
+});
 
 async function fetchDefaultCcEmails(): Promise<string[]> {
   const deptRes = await fetch("/api/departments?limit=200", {
@@ -238,7 +266,7 @@ function CcEmailPicker({
           </div>
         )}
       </div>
-      <p className="text-xs text-default-400 mt-1.5">Chọn từ danh sách nhân viên</p>
+      <p className="text-xs text-default-400 mt-1.5">Chọn từ danh sách nhân viên. {REQUEST_CC_HINT}</p>
     </div>
   );
 }
@@ -250,11 +278,9 @@ export function AddRequestModal({
 }: AddRequestModalProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    ccEmails: [...DEFAULT_REQUEST_CC_EMAILS] as string[],
-    description: "",
-  });
+  const [formData, setFormData] = useState<TAddRequestForm>(() =>
+    createEmptyRequestForm([...DEFAULT_REQUEST_CC_EMAILS])
+  );
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const didInitCcRef = useRef(false);
@@ -285,8 +311,14 @@ export function AddRequestModal({
   const handleSubmit = () => {
     const title = formData.title.trim();
     const description = formData.description.trim();
+    const purpose = formData.purpose.trim();
+    const purchasePlace = formData.purchasePlace.trim();
+    const paymentAmount = parseCurrencyInput(formData.paymentAmount);
+    const amountVarianceNote = formData.amountVarianceNote.trim();
 
     if (!title) return;
+    if (!purpose || !purchasePlace || paymentAmount <= 0) return;
+    if (formData.hasAmountVariance && !amountVarianceNote) return;
     if (!description || isEmptyHtml(description)) return;
 
     startTransition(async () => {
@@ -337,6 +369,16 @@ export function AddRequestModal({
       const formDataToSend = new FormData();
       formDataToSend.append("title", title);
       formDataToSend.append("description", description);
+      formDataToSend.append("purpose", purpose);
+      formDataToSend.append("purchase_place", purchasePlace);
+      formDataToSend.append("payment_amount", String(paymentAmount));
+      formDataToSend.append(
+        "has_amount_variance",
+        formData.hasAmountVariance ? "true" : "false"
+      );
+      if (formData.hasAmountVariance) {
+        formDataToSend.append("amount_variance_note", amountVarianceNote);
+      }
 
       // Thêm CC emails
       formData.ccEmails.forEach((email) => {
@@ -356,7 +398,7 @@ export function AddRequestModal({
       }
 
       if (result.success) {
-        setFormData({ title: "", ccEmails: [...DEFAULT_REQUEST_CC_EMAILS], description: "" });
+        setFormData(createEmptyRequestForm([...DEFAULT_REQUEST_CC_EMAILS]));
         setSelectedFiles([]);
         onSuccess();
         onClose();
@@ -365,7 +407,7 @@ export function AddRequestModal({
   };
 
   const handleClose = () => {
-    setFormData({ title: "", ccEmails: [...DEFAULT_REQUEST_CC_EMAILS], description: "" });
+    setFormData(createEmptyRequestForm([...DEFAULT_REQUEST_CC_EMAILS]));
     setSelectedFiles([]);
     setError(null);
     onClose();
@@ -385,8 +427,13 @@ export function AddRequestModal({
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const paymentAmountValue = parseCurrencyInput(formData.paymentAmount);
   const isValid =
     formData.title.trim().length > 0 &&
+    formData.purpose.trim().length > 0 &&
+    formData.purchasePlace.trim().length > 0 &&
+    paymentAmountValue > 0 &&
+    (!formData.hasAmountVariance || formData.amountVarianceNote.trim().length > 0) &&
     formData.description.trim().length > 0 &&
     !isEmptyHtml(formData.description);
 
@@ -441,6 +488,81 @@ export function AddRequestModal({
                     label: "font-semibold text-sm",
                   }}
                 />
+                <Input
+                  isRequired
+                  label={REQUEST_PAYMENT_LABELS.PURPOSE}
+                  labelPlacement="outside"
+                  placeholder="VD: Mua văn phòng phẩm cho phòng kế toán"
+                  value={formData.purpose}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, purpose: value })
+                  }
+                  classNames={{
+                    label: "font-semibold text-sm",
+                  }}
+                />
+                <Input
+                  isRequired
+                  label={REQUEST_PAYMENT_LABELS.PURCHASE_PLACE}
+                  labelPlacement="outside"
+                  placeholder="VD: Nhà sách Nguyễn Văn Cừ"
+                  value={formData.purchasePlace}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, purchasePlace: value })
+                  }
+                  classNames={{
+                    label: "font-semibold text-sm",
+                  }}
+                />
+                <Input
+                  isRequired
+                  label={REQUEST_PAYMENT_LABELS.PAYMENT_AMOUNT}
+                  labelPlacement="outside"
+                  placeholder="VD: 1.500.000"
+                  inputMode="numeric"
+                  value={formData.paymentAmount}
+                  onValueChange={(value) => {
+                    const digits = value.replace(/[^\d]/g, "");
+                    setFormData({
+                      ...formData,
+                      paymentAmount: digits
+                        ? formatCurrencyInput(Number(digits))
+                        : "",
+                    });
+                  }}
+                  endContent={<span className="text-xs text-default-400">VNĐ</span>}
+                  classNames={{
+                    label: "font-semibold text-sm",
+                  }}
+                />
+                <Checkbox
+                  isSelected={formData.hasAmountVariance}
+                  onValueChange={(checked) =>
+                    setFormData({
+                      ...formData,
+                      hasAmountVariance: checked,
+                      amountVarianceNote: checked ? formData.amountVarianceNote : "",
+                    })
+                  }
+                >
+                  {REQUEST_PAYMENT_LABELS.HAS_VARIANCE}
+                </Checkbox>
+                {formData.hasAmountVariance ? (
+                  <Textarea
+                    isRequired
+                    label={REQUEST_PAYMENT_LABELS.VARIANCE_NOTE}
+                    labelPlacement="outside"
+                    placeholder="Ghi rõ số tiền báo giá và số tiền thực tế"
+                    value={formData.amountVarianceNote}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, amountVarianceNote: value })
+                    }
+                    minRows={2}
+                    classNames={{
+                      label: "font-semibold text-sm",
+                    }}
+                  />
+                ) : null}
                 <CcEmailPicker
                   value={formData.ccEmails}
                   isDisabled={isCcInitializing}

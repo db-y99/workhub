@@ -14,7 +14,8 @@ import { getProfileById } from "@/lib/services/profiles.service";
 import { getPermissionsByUserId } from "@/lib/services/permissions.service";
 import { sendEmail } from "@/lib/services/email.service";
 import { getBaseUrl } from "@/config/env";
-import { stripHtml } from "@/lib/functions";
+import { formatCurrency, stripHtml } from "@/lib/functions";
+import { CreateRequestPaymentSchema } from "@/features/requests/actions/create-request.schema";
 import {
   renderRequestCreatedEmailHTML,
   getRequestCreatedEmailSubject,
@@ -38,6 +39,11 @@ export async function createRequest(
         description?: string;
         cc_emails?: string[];
         attachments?: TAttachment[];
+        purpose: string;
+        purchase_place: string;
+        payment_amount: number | string;
+        has_amount_variance: boolean;
+        amount_variance_note?: string;
       }
 ) {
   try {
@@ -64,6 +70,11 @@ export async function createRequest(
     let departmentId: string | null | undefined;
     let description: string | undefined;
     let ccEmails: string[] = [];
+    let purpose = "";
+    let purchasePlace = "";
+    let paymentAmount: number | string = "";
+    let hasAmountVariance = false;
+    let amountVarianceNote = "";
     const attachments: TAttachment[] = [];
 
     if (dataOrFormData instanceof FormData) {
@@ -74,6 +85,11 @@ export async function createRequest(
       description = (dataOrFormData.get("description") as string)?.trim() || undefined;
       const ccEmailsRaw = dataOrFormData.getAll("cc_emails") as string[];
       ccEmails = ccEmailsRaw.filter((e) => e && e.trim().length > 0);
+      purpose = (dataOrFormData.get("purpose") as string) ?? "";
+      purchasePlace = (dataOrFormData.get("purchase_place") as string) ?? "";
+      paymentAmount = (dataOrFormData.get("payment_amount") as string) ?? "";
+      hasAmountVariance = dataOrFormData.get("has_amount_variance") === "true";
+      amountVarianceNote = (dataOrFormData.get("amount_variance_note") as string) ?? "";
       // Attachments đã được upload qua API route, nhận từ formData dưới dạng JSON
       const attachmentsJson = dataOrFormData.get("attachments") as string | null;
       if (attachmentsJson) {
@@ -91,11 +107,33 @@ export async function createRequest(
               (e) => typeof e === "string" && e.trim().length > 0
             )
           : [];
+      purpose = dataOrFormData.purpose;
+      purchasePlace = dataOrFormData.purchase_place;
+      paymentAmount = dataOrFormData.payment_amount;
+      hasAmountVariance = dataOrFormData.has_amount_variance;
+      amountVarianceNote = dataOrFormData.amount_variance_note ?? "";
     }
 
     if (!title) {
       return { error: "Vui lòng nhập tiêu đề" };
     }
+
+    const paymentParsed = CreateRequestPaymentSchema.safeParse({
+      purpose,
+      purchase_place: purchasePlace,
+      payment_amount: paymentAmount,
+      has_amount_variance: hasAmountVariance,
+      amount_variance_note: amountVarianceNote,
+    });
+
+    if (!paymentParsed.success) {
+      return { error: paymentParsed.error.issues[0]?.message ?? "Dữ liệu thanh toán không hợp lệ" };
+    }
+
+    const payment = paymentParsed.data;
+    const amountVarianceNoteToSave = payment.has_amount_variance
+      ? payment.amount_variance_note
+      : null;
 
     // Mặc định lấy department của người tạo khi không truyền department_id
     const finalDepartmentId = departmentId ?? profile.department_id ?? null;
@@ -142,6 +180,10 @@ export async function createRequest(
         requested_by: user.id,
         approved_by: null,
         description: description || null,
+        purpose: payment.purpose,
+        purchase_place: payment.purchase_place,
+        payment_amount: payment.payment_amount,
+        amount_variance_note: amountVarianceNoteToSave,
         cc_emails: ccEmails,
         attachments: attachments.length > 0 ? attachments : null,
         status: "pending",
@@ -174,6 +216,10 @@ export async function createRequest(
           requesterEmail: requesterEmail || undefined,
           departmentName: departmentName || undefined,
           description: description || undefined,
+          purpose: payment.purpose,
+          purchasePlace: payment.purchase_place,
+          paymentAmount: payment.payment_amount,
+          amountVarianceNote: amountVarianceNoteToSave,
           attachmentsCount: attachments.length,
           approveUrl,
         };
@@ -191,6 +237,12 @@ export async function createRequest(
           `📋 Tiêu đề: ${title}`,
           `👤 Người yêu cầu: ${requesterName}${requesterEmail ? ` (${requesterEmail})` : ""}`,
           departmentName ? `🏢 Phòng ban: ${departmentName}` : "",
+          `Mục đích sử dụng: ${payment.purpose}`,
+          `Nơi mua: ${payment.purchase_place}`,
+          `Số tiền thanh toán: ${formatCurrency(payment.payment_amount)} VNĐ`,
+          amountVarianceNoteToSave
+            ? `Ghi chú chênh lệch: ${amountVarianceNoteToSave}`
+            : "",
           description ? `📝 Nội dung chi tiết:\n${stripHtml(description)}` : "",
           attachments.length > 0 ? `📎 File đính kèm: ${attachments.length} file` : "",
           "",

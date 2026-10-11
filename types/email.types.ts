@@ -20,6 +20,10 @@ export type TRequestCreatedData = {
   requesterEmail?: string;
   departmentName?: string | null;
   description?: string | null;
+  purpose?: string | null;
+  purchasePlace?: string | null;
+  paymentAmount?: number | null;
+  amountVarianceNote?: string | null;
   attachmentsCount: number;
   approveUrl: string;
 };

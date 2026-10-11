@@ -19,6 +19,10 @@ export type TApproveRequestItem = {
   completed_by?: string | null;
   completed_at?: string | null;
   completed_by_profile?: TRequestActorProfile | null;
+  purpose?: string | null;
+  purchase_place?: string | null;
+  payment_amount?: number | string | null;
+  amount_variance_note?: string | null;
   cc_emails?: string[];
   metadata?: { cc_emails?: string | string[]; comment_count?: number };
   attachments?: { name?: string; url?: string; fileId?: string; size?: number }[];
