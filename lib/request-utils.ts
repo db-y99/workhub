@@ -40,6 +40,8 @@ export function getStatusConfig(status: RequestStatus): TStatusConfig {
   switch (status) {
     case REQUEST_STATUS.PENDING:
       return { color: "warning", label: "Chờ duyệt" };
+    case REQUEST_STATUS.ON_HOLD:
+      return { color: "default", label: "Chờ xem xét" };
     case REQUEST_STATUS.APPROVED:
       return { color: "success", label: "Đã duyệt" };
     case REQUEST_STATUS.REJECTED:

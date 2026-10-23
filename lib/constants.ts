@@ -17,6 +17,7 @@ export const USER_ROLE = {
 // Request Status Constants
 export const REQUEST_STATUS = {
   PENDING: "pending",
+  ON_HOLD: "on_hold",
   APPROVED: "approved",
   REJECTED: "rejected",
   CANCELLED: "cancelled",
@@ -30,6 +31,7 @@ export const REQUEST_STATUS_LABELS: Record<
 > = {
   [REQUEST_STATUS.APPROVED]: "Đã duyệt",
   [REQUEST_STATUS.PENDING]: "Chờ duyệt",
+  [REQUEST_STATUS.ON_HOLD]: "Chờ xem xét",
   [REQUEST_STATUS.REJECTED]: "Từ chối",
   [REQUEST_STATUS.CANCELLED]: "Đã hủy",
   [REQUEST_STATUS.COMPLETED]: "Hoàn thành",

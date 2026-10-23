@@ -9,6 +9,7 @@ import { REQUEST_STATUS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import type { RequestStatus } from "@/types";
 import type { TRequestComment } from "@/types/requests.types";
 import { getProfileById } from "@/lib/services/profiles.service";
 import { getPermissionsByUserId } from "@/lib/services/permissions.service";
@@ -382,7 +383,7 @@ export async function updateRequest(
  */
 export async function updateRequestStatus(
   id: string,
-  status: "pending" | "approved" | "rejected" | "cancelled" | "completed",
+  status: RequestStatus,
   comment?: string
 ) {
   try {
@@ -409,9 +410,15 @@ export async function updateRequestStatus(
     const isOwner = existing.requested_by === user.id;
     const currentStatus = existing.status;
 
+    const isAwaitingDecision =
+      currentStatus === REQUEST_STATUS.PENDING ||
+      currentStatus === REQUEST_STATUS.ON_HOLD;
     const isApproveOrRejectFromPending =
-      currentStatus === REQUEST_STATUS.PENDING &&
+      isAwaitingDecision &&
       (status === REQUEST_STATUS.APPROVED || status === REQUEST_STATUS.REJECTED);
+    const isDeferToOnHold =
+      currentStatus === REQUEST_STATUS.PENDING &&
+      status === REQUEST_STATUS.ON_HOLD;
     const isCompleteFromApproved =
       currentStatus === REQUEST_STATUS.APPROVED &&
       status === REQUEST_STATUS.COMPLETED;
@@ -423,7 +430,7 @@ export async function updateRequestStatus(
       (currentStatus === REQUEST_STATUS.REJECTED ||
         currentStatus === REQUEST_STATUS.CANCELLED);
 
-    if (isApproveOrRejectFromPending) {
+    if (isApproveOrRejectFromPending || isDeferToOnHold) {
       if (!canApprove) {
         return { error: ERROR_MESSAGES.APPROVE_PERMISSION_REQUIRED };
       }

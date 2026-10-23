@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const requestList = (requests as RequestRow[]) || [];
     const total = requestList.length;
     const pending = requestList.filter((r) => r.status === REQUEST_STATUS.PENDING).length;
+    const onHold = requestList.filter((r) => r.status === REQUEST_STATUS.ON_HOLD).length;
     const approved = requestList.filter((r) => r.status === REQUEST_STATUS.APPROVED).length;
     const rejected = requestList.filter((r) => r.status === REQUEST_STATUS.REJECTED).length;
     const cancelled = requestList.filter((r) => r.status === REQUEST_STATUS.CANCELLED).length;
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
     const statusDistribution = [
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.APPROVED], value: approved, status: REQUEST_STATUS.APPROVED },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.PENDING], value: pending, status: REQUEST_STATUS.PENDING },
+      { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.ON_HOLD], value: onHold, status: REQUEST_STATUS.ON_HOLD },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.REJECTED], value: rejected, status: REQUEST_STATUS.REJECTED },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.CANCELLED], value: cancelled, status: REQUEST_STATUS.CANCELLED },
       { name: REQUEST_STATUS_LABELS[REQUEST_STATUS.COMPLETED], value: completed, status: REQUEST_STATUS.COMPLETED },
@@ -114,6 +116,7 @@ export async function GET(request: NextRequest) {
       overview: {
         total,
         pending,
+        onHold,
         approved,
         rejected,
         cancelled,

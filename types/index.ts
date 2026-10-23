@@ -91,7 +91,13 @@ export type TUpdateProfileInput = {
 export type TChangePasswordProfile = Pick<ProfileFromApi, "id" | "full_name" | "email">;
 
 // Request Types
-export type RequestStatus = "pending" | "approved" | "rejected" | "cancelled" | "completed";
+export type RequestStatus =
+  | "pending"
+  | "on_hold"
+  | "approved"
+  | "rejected"
+  | "cancelled"
+  | "completed";
 
 export interface RequestAttachment {
   id: string;

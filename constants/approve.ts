@@ -13,6 +13,7 @@ export const APPROVE_ROWS_PER_PAGE = 10;
 export const APPROVE_STATUS_FILTER_OPTIONS = [
   { value: "all", label: "Tất cả" },
   { value: "pending", label: "Chờ duyệt" },
+  { value: "on_hold", label: "Chờ xem xét" },
   { value: "approved", label: "Đã duyệt" },
   { value: "rejected", label: "Từ chối" },
   { value: "cancelled", label: "Đã hủy" },

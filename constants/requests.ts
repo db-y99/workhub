@@ -41,4 +41,10 @@ export const REQUEST_STATUS_CONFIRM = {
     confirmLabel: "Từ chối",
     confirmColor: "danger",
   },
+  [REQUEST_STATUS.ON_HOLD]: {
+    title: "Xác nhận chờ xem xét",
+    actionLabel: "để chờ xem xét",
+    confirmLabel: "Chờ xem xét",
+    confirmColor: "default",
+  },
 } as const;

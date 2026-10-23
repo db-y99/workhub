@@ -66,6 +66,12 @@ export function RequestDetailModal({
           label: "Chờ duyệt",
           dotClass: "bg-warning",
         };
+      case REQUEST_STATUS.ON_HOLD:
+        return {
+          color: "default" as const,
+          label: "Chờ xem xét",
+          dotClass: "bg-default-400",
+        };
       case REQUEST_STATUS.APPROVED:
         return {
           color: "success" as const,
@@ -369,8 +375,10 @@ export function RequestDetailModal({
               <Button color="danger" variant="light" onPress={onClose}>
                 Đóng
               </Button>
-              {canApprove && request.status === REQUEST_STATUS.PENDING && (
-                <div className="flex gap-2">
+              {canApprove &&
+                (request.status === REQUEST_STATUS.PENDING ||
+                  request.status === REQUEST_STATUS.ON_HOLD) && (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     color="success"
                     isDisabled={isPending}
@@ -388,6 +396,17 @@ export function RequestDetailModal({
                   >
                     Từ chối
                   </Button>
+                  {request.status === REQUEST_STATUS.PENDING && (
+                    <Button
+                      color="default"
+                      variant="flat"
+                      isDisabled={isPending}
+                      isLoading={loadingAction === REQUEST_STATUS.ON_HOLD}
+                      onPress={() => setConfirmStatus(REQUEST_STATUS.ON_HOLD)}
+                    >
+                      Chờ xem xét
+                    </Button>
+                  )}
                 </div>
               )}
               {(canApprove || isOwner) && request.status === REQUEST_STATUS.APPROVED && (
