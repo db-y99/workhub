@@ -429,8 +429,11 @@ export async function updateRequestStatus(
       status === REQUEST_STATUS.PENDING &&
       (currentStatus === REQUEST_STATUS.REJECTED ||
         currentStatus === REQUEST_STATUS.CANCELLED);
+    const isRevertApproval =
+      currentStatus === REQUEST_STATUS.APPROVED &&
+      status === REQUEST_STATUS.PENDING;
 
-    if (isApproveOrRejectFromPending || isDeferToOnHold) {
+    if (isApproveOrRejectFromPending || isDeferToOnHold || isRevertApproval) {
       if (!canApprove) {
         return { error: ERROR_MESSAGES.APPROVE_PERMISSION_REQUIRED };
       }
@@ -484,6 +487,12 @@ export async function updateRequestStatus(
     if (isUncompleteFromCompleted) {
       updateData.completed_by = null;
       updateData.completed_at = null;
+    }
+
+    // Hoàn tác duyệt: đưa về "Chờ duyệt" và xóa thông tin người duyệt.
+    if (isRevertApproval) {
+      updateData.approved_by = null;
+      updateData.approved_at = null;
     }
 
     if (isResubmitToPending) {

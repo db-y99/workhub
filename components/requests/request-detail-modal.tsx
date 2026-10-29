@@ -16,7 +16,7 @@ import { formatDate, stripHtml } from "@/lib/functions";
 import { REQUEST_STATUS } from "@/lib/constants";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { PERMISSIONS } from "@/constants/permissions";
-import { Paperclip, ExternalLink } from "lucide-react";
+import { Paperclip, ExternalLink, Undo2 } from "lucide-react";
 import { Link } from "@heroui/link";
 import { addToast } from "@heroui/toast";
 import { RequestActorFields } from "@/components/requests/request-actor-fields";
@@ -408,6 +408,18 @@ export function RequestDetailModal({
                     </Button>
                   )}
                 </div>
+              )}
+              {canApprove && !isOwner && request.status === REQUEST_STATUS.APPROVED && (
+                <Button
+                  color="warning"
+                  variant="flat"
+                  isDisabled={isPending}
+                  isLoading={loadingAction === REQUEST_STATUS.PENDING}
+                  startContent={<Undo2 size={16} />}
+                  onPress={() => setConfirmStatus(REQUEST_STATUS.PENDING)}
+                >
+                  Hoàn tác duyệt
+                </Button>
               )}
               {(canApprove || isOwner) && request.status === REQUEST_STATUS.APPROVED && (
                 <Button

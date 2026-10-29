@@ -41,6 +41,12 @@ export const REQUEST_STATUS_CONFIRM = {
     confirmLabel: "Từ chối",
     confirmColor: "danger",
   },
+  [REQUEST_STATUS.PENDING]: {
+    title: "Xác nhận hoàn tác duyệt",
+    actionLabel: "hoàn tác duyệt (đưa về Chờ duyệt)",
+    confirmLabel: "Hoàn tác",
+    confirmColor: "warning",
+  },
   [REQUEST_STATUS.ON_HOLD]: {
     title: "Xác nhận chờ xem xét",
     actionLabel: "để chờ xem xét",
