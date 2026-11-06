@@ -7,7 +7,7 @@ let jobs: TEmailSendJob[] = EMPTY_JOBS;
 const listeners = new Set<() => void>();
 
 const emit = () => {
-  for (const listener of listeners) listener();
+  listeners.forEach((listener) => listener());
 };
 
 export const isEmailSendInProgress = (status: TEmailSendStatus) =>
