@@ -17,6 +17,8 @@ export type NavMenuItem = {
   permissionCode?: string;
   /** Chỉ hiển thị cho admin */
   adminOnly?: boolean;
+  /** Ẩn khỏi sidebar và tìm kiếm điều hướng, route vẫn truy cập được */
+  hidden?: boolean;
   /** Sub-items hiển thị dưới dạng expandable trong sidebar */
   children?: NavMenuChild[];
 };
@@ -74,6 +76,7 @@ export const siteConfig = {
       href: ROUTES.MESSAGES,
       icon: MessageSquare,
       permissionCode: ROUTE_PERMISSION_MAP[ROUTES.MESSAGES],
+      hidden: true,
     },
     {
       label: "Khách hàng",

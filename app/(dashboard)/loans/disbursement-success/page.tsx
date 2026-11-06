@@ -1,97 +1,109 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { LoanDisbursementForm } from "@/components/loans/loan-disbursement-form";
 import { EmailPreviewModal } from "@/components/loans/email-preview-modal";
 import { TLoanDisbursementData, sampleLoanDisbursementData } from "@/types/loan-disbursement";
 import { Button } from "@heroui/button";
 import { title } from "@/components/primitives";
-import { addToast } from "@heroui/toast";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { EMAIL_SEND_STATUS } from "@/constants/email";
 import { ROUTE_PERMISSION_MAP } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
+import { uploadEmailAttachments } from "@/lib/email-attachment-upload";
+import { startEmailSendJob, updateEmailSendJob } from "@/lib/email-send-tracker";
+import { describeFetchFailure, formatHttpError, readResponseBody } from "@/lib/http-error";
+import type { TEmailAttachmentRef } from "@/types/loan-disbursement";
 
-// Hoist static JSX elements (rule 6.3)
-const LoadingOverlay = (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg">
-            <p>Đang gửi email...</p>
-        </div>
-    </div>
-);
+const sendDisbursementEmail = async (data: TLoanDisbursementData) => {
+    const files = (data.attachments ?? []).filter(
+        (file): file is File => file instanceof File
+    );
+    const jobId = startEmailSendJob({
+        recipient: data.customer_email,
+        customerName: data.customer_name,
+        status: files.length > 0 ? EMAIL_SEND_STATUS.UPLOADING : EMAIL_SEND_STATUS.SENDING,
+        message: files.length > 0 ? `Đang tải file 0/${files.length}` : "Đang gửi email",
+        completedFiles: 0,
+        totalFiles: files.length,
+    });
+
+    try {
+        const attachmentRefs: TEmailAttachmentRef[] | undefined =
+            files.length > 0
+                ? await uploadEmailAttachments(files, (completed, total) => {
+                      updateEmailSendJob(jobId, {
+                          status: EMAIL_SEND_STATUS.UPLOADING,
+                          completedFiles: completed,
+                          totalFiles: total,
+                          message:
+                              completed < total
+                                  ? `Đang tải file ${completed}/${total}`
+                                  : "Đã tải xong file, đang gửi email",
+                      });
+                  })
+                : undefined;
+
+        updateEmailSendJob(jobId, {
+            status: EMAIL_SEND_STATUS.SENDING,
+            message: "Đang gửi email",
+        });
+
+        let response: Response;
+        try {
+            response = await fetch("/api/send-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...data,
+                    attachments: attachmentRefs,
+                }),
+            });
+        } catch (error) {
+            throw new Error(describeFetchFailure(error, "Gửi email"));
+        }
+
+        const { raw, body } = await readResponseBody(response);
+        const accepted =
+            response.ok &&
+            typeof body === "object" &&
+            body !== null &&
+            "ok" in body &&
+            body.ok === true;
+
+        if (accepted) {
+            updateEmailSendJob(jobId, {
+                status: EMAIL_SEND_STATUS.SUCCESS,
+                message: "Đã gửi xong",
+            });
+            return;
+        }
+
+        updateEmailSendJob(jobId, {
+            status: EMAIL_SEND_STATUS.ERROR,
+            message: formatHttpError(response.status, raw, "Gửi email thất bại"),
+        });
+    } catch (error) {
+        updateEmailSendJob(jobId, {
+            status: EMAIL_SEND_STATUS.ERROR,
+            message: describeFetchFailure(error, "Gửi email"),
+        });
+    }
+};
 
 export default function DisbursementPage() {
     const [formData, setFormData] = useState<TLoanDisbursementData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    // Use useTransition instead of manual loading state (rule 6.9)
-    const [isPending, startTransition] = useTransition();
 
     const handlePreview = (data: TLoanDisbursementData) => {
         setFormData(data);
         setIsPreviewOpen(true);
     };
 
-    const handleSubmit = async (data: TLoanDisbursementData) => {
-        startTransition(async () => {
-            try {
-                // Tạo FormData để gửi cả data và files
-                const formData = new FormData();
-
-                // Thêm các field text vào FormData
-                Object.entries(data).forEach(([key, value]) => {
-                    if (key !== "attachments" && value !== undefined) {
-                        if (value instanceof File || value instanceof FileList) {
-                            // Skip files, sẽ thêm riêng
-                            return;
-                        }
-                        formData.append(key, String(value));
-                    }
-                });
-
-                // Thêm attachments nếu có
-                if (data.attachments && data.attachments.length > 0) {
-                    data.attachments.forEach((file) => {
-                        formData.append("attachments", file);
-                    });
-                }
-
-                // Gọi API để gửi email với FormData
-                const response = await fetch("/api/send-email", {
-                    method: "POST",
-                    body: formData,
-                });
-
-                const result = await response.json();
-
-                // Xử lý response theo Result pattern
-                if (result.ok) {
-                    addToast({
-                        title: "Gửi email thành công",
-                        description: `Email đã được gửi thành công đến ${data.customer_email}`,
-                        color: "success",
-                    });
-
-                    handleReset();
-                } else {
-                    // Hiển thị lỗi từ Result pattern
-                    const errorMessage = result.error?.message || "Đã có lỗi xảy ra khi gửi email";
-                    addToast({
-                        title: "Lỗi gửi email",
-                        description: errorMessage,
-                        color: "danger",
-                    });
-                    console.error("Email send error:", result.error);
-                }
-            } catch (error) {
-                console.error("Critical error sending email:", error);
-                addToast({
-                    title: "Lỗi hệ thống",
-                    description: "Đã có lỗi hệ thống xảy ra khi gửi email. Vui lòng thử lại.",
-                    color: "danger",
-                });
-            }
-        });
+    const handleSubmit = (data: TLoanDisbursementData) => {
+        setIsPreviewOpen(false);
+        void sendDisbursementEmail(data);
     };
 
     const handleSendFromPreview = () => {
@@ -145,9 +157,6 @@ export default function DisbursementPage() {
                         data={formData}
                         onSend={handleSendFromPreview}
                     />
-
-                    {/* Explicit conditional rendering (rule 6.8) - use ternary instead of && */}
-                    {isPending ? LoadingOverlay : null}
                 </div>
             </AppLayout>
         </PermissionGuard>

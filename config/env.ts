@@ -29,6 +29,8 @@ const EnvSchema = z.object({
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
   /** Folder Drive cho file approve (khi có feature) */
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+  /** Folder Drive cho file đính kèm email. Không có thì dùng folder approve. */
+  EMAIL_GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
 
   // Vision OCR – Google Apps Script (server-only, gọi qua API route)
   VISION_OCR_SCRIPT_URL: z.string().url().optional(),
@@ -59,6 +61,7 @@ const envInput = {
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
   APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
+  EMAIL_GOOGLE_DRIVE_FOLDER_ID: process.env.EMAIL_GOOGLE_DRIVE_FOLDER_ID,
   VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
   VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
   CMS_API_URL: process.env.CMS_API_URL,
@@ -99,6 +102,7 @@ try {
     GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
     BULLETIN_GOOGLE_DRIVE_FOLDER_ID: process.env.BULLETIN_GOOGLE_DRIVE_FOLDER_ID,
     APPROVE_GOOGLE_DRIVE_FOLDER_ID: process.env.APPROVE_GOOGLE_DRIVE_FOLDER_ID,
+    EMAIL_GOOGLE_DRIVE_FOLDER_ID: process.env.EMAIL_GOOGLE_DRIVE_FOLDER_ID,
     VISION_OCR_SCRIPT_URL: process.env.VISION_OCR_SCRIPT_URL,
     VISION_OCR_FOLDER_ID: process.env.VISION_OCR_FOLDER_ID,
     CMS_API_URL: process.env.CMS_API_URL,

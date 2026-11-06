@@ -8,6 +8,7 @@ import { HeroUIProvider } from "@heroui/system";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 import { ToastProvider } from "@heroui/toast";
+import { EmailSendTracker } from "@/components/loans/email-send-tracker.client";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 import { SWRProvider } from "@/lib/contexts/swr-context";
 
@@ -31,6 +32,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     <HeroUIProvider navigate={router.push} locale="vi-VN">
       <NextThemesProvider {...themeProps}>
         <ToastProvider />
+        <EmailSendTracker />
         <AuthProvider>
           <SWRProvider>{children}</SWRProvider>
         </AuthProvider>

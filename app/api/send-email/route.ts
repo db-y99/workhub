@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { LoanDisbursementSchema } from "@/types/loan-disbursement";
+import { LoanDisbursementSendSchema } from "@/types/loan-disbursement";
 import { requireApiPermission } from "@/lib/api-auth";
 import { PERMISSIONS } from "@/constants/permissions";
 import { getEmailSubject } from "@/lib/email-template";
 import { sendLoanDisbursementEmail } from "@/lib/email-sender";
 import { parseCCEmails } from "@/lib/functions";
 import { createError } from "@/lib/errors";
+
+/** Drive download + Resend có thể lâu hơn timeout mặc định. */
+export const maxDuration = 60;
 
 /**
  * API Route để gửi email thông báo giải ngân
@@ -17,55 +20,34 @@ export async function POST(request: NextRequest) {
     const auth = await requireApiPermission(PERMISSIONS.SEND_EMAIL_VIEW);
     if (!auth.ok) return auth.response;
 
-    // 1. Parse dữ liệu từ request
-    const contentType = request.headers.get("content-type") || "";
-    let rawData: any = {};
-    let attachments: File[] = [];
-
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData();
-      
-      // Extract text fields
-      rawData = {
-        customer_name: formData.get("customer_name"),
-        customer_email: formData.get("customer_email"),
-        cc_emails: formData.get("cc_emails") || undefined,
-        contract_code: formData.get("contract_code"),
-        disbursement_amount: parseFloat(formData.get("disbursement_amount") as string),
-        disbursement_date: formData.get("disbursement_date"),
-        total_loan_amount: parseFloat(formData.get("total_loan_amount") as string),
-        loan_term_months: parseInt(formData.get("loan_term_months") as string),
-        loan_start_date: formData.get("loan_start_date"),
-        loan_end_date: formData.get("loan_end_date"),
-        due_day_each_month: parseInt(formData.get("due_day_each_month") as string),
-        bank_name: formData.get("bank_name"),
-        bank_account_number: formData.get("bank_account_number"),
-        beneficiary_name: formData.get("beneficiary_name"),
-      };
-
-      // Extract files
-      const files = formData.getAll("attachments") as File[];
-      attachments = files.filter((file) => file instanceof File && file.size > 0);
-      rawData.attachments = attachments;
-    } else {
+    // Chỉ nhận JSON + id file Drive. Bytes file không đi qua function
+    // vì Vercel trả FUNCTION_PAYLOAD_TOO_LARGE khi body vượt 4.5MB.
+    let rawData: unknown;
+    try {
       rawData = await request.json();
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: createError.validation("Body không phải JSON hợp lệ") },
+        { status: 400 }
+      );
     }
 
     // 2. Validate với Zod (Rule 12.0 in project-rules.mdc)
-    const validationResult = LoanDisbursementSchema.safeParse(rawData);
+    const validationResult = LoanDisbursementSendSchema.safeParse(rawData);
     
     if (!validationResult.success) {
-      const errorDetails = validationResult.error.issues.map((e) => ({
-        path: e.path.join('.'),
-        message: e.message
+      const errorDetails = validationResult.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
       }));
+      const summary = errorDetails
+        .map((issue) => (issue.path ? `${issue.path}: ${issue.message}` : issue.message))
+        .join("; ");
       
-      const validationError = createError.validation(
-        "Dữ liệu không hợp lệ",
-        errorDetails
+      return NextResponse.json(
+        { ok: false, error: createError.validation(summary || "Dữ liệu không hợp lệ", errorDetails) },
+        { status: 400 }
       );
-      
-      return NextResponse.json({ ok: false, error: validationError }, { status: 400 });
     }
 
     const validatedData = validationResult.data;

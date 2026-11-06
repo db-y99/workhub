@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EMAIL_REGEX } from "@/constants/email";
+import { MAX_EMAIL_ATTACHMENT_COUNT } from "@/constants/files";
 
 /**
  * Zod Schema cho thông báo giải ngân khoản vay (Rule 12.0 in project-rules.mdc)
@@ -21,6 +22,33 @@ export const LoanDisbursementSchema = z.object({
     beneficiary_name: z.string().min(1, "Tên người thụ hưởng là bắt buộc"),
     attachments: z.array(z.any()).optional(),
 });
+
+const DRIVE_FILE_ID = /^[a-zA-Z0-9_-]+$/;
+
+/** File đã upload thẳng lên Drive. API chỉ nhận id, không nhận bytes. */
+export const EmailAttachmentRefSchema = z.object({
+    fileId: z.string().regex(DRIVE_FILE_ID, "File đính kèm không hợp lệ"),
+    fileName: z
+        .string()
+        .trim()
+        .min(1, "Tên file là bắt buộc")
+        .max(255, "Tên file quá dài")
+        .refine((name) => !/[\\/\u0000]/.test(name), "Tên file không hợp lệ"),
+    mimeType: z.string().min(1).max(255).optional(),
+});
+
+export type TEmailAttachmentRef = z.infer<typeof EmailAttachmentRefSchema>;
+
+export const LoanDisbursementSendSchema = LoanDisbursementSchema.omit({
+    attachments: true,
+}).extend({
+    attachments: z
+        .array(EmailAttachmentRefSchema)
+        .max(MAX_EMAIL_ATTACHMENT_COUNT, `Tối đa ${MAX_EMAIL_ATTACHMENT_COUNT} file`)
+        .optional(),
+});
+
+export type TLoanDisbursementSendData = z.infer<typeof LoanDisbursementSendSchema>;
 
 /**
  * Type alias cho dữ liệu giải ngân (Rule 6.0 in performance-rules.mdc)

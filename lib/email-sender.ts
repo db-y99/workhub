@@ -2,12 +2,21 @@
  * Email sender service using Resend API (via fetch)
  */
 
-import { TLoanDisbursementData } from "@/types/loan-disbursement";
+import {
+  TLoanDisbursementData,
+  TLoanDisbursementSendData,
+} from "@/types/loan-disbursement";
 import { renderEmailHTML, getEmailSubject } from "./email-template";
 import { Result, ok, err } from "@/types/result.types";
 import { createError } from "./errors";
 import { env } from "@/config/env";
 import { parseCCEmails } from "@/lib/functions";
+import { MAX_EMAIL_ATTACHMENT_BYTES } from "@/constants/files";
+import {
+  downloadDriveFileFromFolder,
+  getEmailAttachmentFolderId,
+} from "@/lib/google-drive";
+import { formatHttpError, messageFromApiBody } from "@/lib/http-error";
 
 /**
  * Result type for email sending
@@ -22,26 +31,31 @@ export type EmailSendResponse = {
  * @returns Result với ID của email đã gửi hoặc AppErrorObject
  */
 export async function sendLoanDisbursementEmail(
-  data: TLoanDisbursementData
+  data: TLoanDisbursementSendData
 ): Promise<Result<EmailSendResponse>> {
   try {
     const emailHTML = renderEmailHTML(data);
     const subject = getEmailSubject(data.contract_code);
     const ccEmails = parseCCEmails(data.cc_emails);
 
-    // Convert File attachments to Resend format
-    const attachments = data.attachments
-      ? await Promise.all(
-          data.attachments.map(async (file) => {
-            const buffer = await file.arrayBuffer();
-            const base64Content = Buffer.from(buffer).toString("base64");
-            return {
-              filename: file.name,
-              content: base64Content,
-            };
-          })
-        )
-      : undefined;
+    const refs = data.attachments ?? [];
+    let attachments: { filename: string; content: string }[] | undefined;
+
+    if (refs.length > 0) {
+      const folderId = getEmailAttachmentFolderId();
+      const files = await Promise.all(
+        refs.map((file) => downloadDriveFileFromFolder(file.fileId, folderId))
+      );
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      if (totalBytes > MAX_EMAIL_ATTACHMENT_BYTES) {
+        return err(createError.validation("Tổng dung lượng file đính kèm vượt quá 25MB"));
+      }
+
+      attachments = files.map((file, index) => ({
+        filename: refs[index].fileName,
+        content: file.buffer.toString("base64"),
+      }));
+    }
 
     // Resend API payload
     const payload = {
@@ -62,19 +76,38 @@ export async function sendLoanDisbursementEmail(
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    const raw = await response.text();
+    let result: unknown = null;
+    if (raw.trim()) {
+      try {
+        result = JSON.parse(raw) as unknown;
+      } catch {
+        result = null;
+      }
+    }
 
     if (!response.ok) {
-      console.error("Resend API error:", result);
+      console.error("Resend API error:", response.status, raw.slice(0, 500));
       return err(
         createError.email(
-          `Resend API error: ${result.message || response.statusText}`,
-          result
+          `Resend: ${formatHttpError(response.status, raw, response.statusText || "gửi email thất bại")}`
         )
       );
     }
 
-    return ok({ id: result.id });
+    const emailId =
+      result !== null &&
+      typeof result === "object" &&
+      "id" in result &&
+      typeof result.id === "string"
+        ? result.id
+        : "";
+    if (!emailId) {
+      const detail = messageFromApiBody(result) ?? "Resend không trả về id email";
+      return err(createError.email(detail));
+    }
+
+    return ok({ id: emailId });
   } catch (error) {
     console.error("Critical error in sendLoanDisbursementEmail:", error);
     return err(

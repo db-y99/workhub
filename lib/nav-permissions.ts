@@ -16,6 +16,7 @@ export function canSeeNavItem(
   hasPermission: (code: string) => boolean,
   isAdmin: boolean
 ): boolean {
+  if (item.hidden) return false;
   if (item.adminOnly) return isAdmin;
 
   if (item.children && item.children.length > 0) {

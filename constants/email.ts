@@ -7,3 +7,10 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** URL logo dùng trong tất cả email (absolute URL để hiển thị đúng trong client mail) */
 export const EMAIL_LOGO_URL = "https://workhub.y99.info/logo.png";
 
+export const EMAIL_SEND_STATUS = {
+  UPLOADING: "uploading",
+  SENDING: "sending",
+  SUCCESS: "success",
+  ERROR: "error",
+} as const;
+

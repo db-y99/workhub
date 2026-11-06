@@ -505,7 +505,7 @@ export function LoanDisbursementForm({
                             Chọn file đính kèm
                         </Button>
                         <p className="text-xs text-default-500 mt-2">
-                            Kích thước tối đa mỗi file: 10MB. Định dạng hỗ trợ: PDF, DOC,
+                            Mỗi file tối đa 10MB, tổng tối đa 25MB. Định dạng hỗ trợ: PDF, DOC,
                             DOCX, XLS, XLSX, JPG, PNG
                         </p>
                     </div>
